@@ -1,0 +1,120 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths-ignore: ['**.md']
+  pull_request:
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The DSP of every module has no JUCE dependency, so what the modules claim
+  # about themselves is checked in seconds on a bare container. It runs first
+  # and independently, because it is the job whose failure means the sound
+  # changed.
+  dsp:
+    name: DSP
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -DBMO_DSP_ONLY=ON -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  plugin:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+          - name: Windows
+            os: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Ensure Ninja
+        shell: bash
+        run: |
+          if ! command -v ninja >/dev/null 2>&1; then
+            if [ "${{ runner.os }}" = "macOS" ]; then brew install ninja; else choco install ninja -y; fi
+          fi
+          ninja --version
+
+      # The typefaces are licensed and not in the repository; they arrive as
+      # secrets. See assets/fonts/README.md.
+      - name: Restore fonts
+        shell: bash
+        env:
+          MINERVA: ${{ secrets.FONT_TG_MINERVA_BLACK_B64 }}
+          BLENDER: ${{ secrets.FONT_TG_BLENDER_B64 }}
+        run: |
+          if [ -z "$MINERVA" ] || [ -z "$BLENDER" ]; then
+            echo "The font secrets are not set on this repository. See assets/fonts/README.md."
+            exit 1
+          fi
+          mkdir -p assets/fonts
+          printf '%s' "$MINERVA" | base64 --decode | gunzip > assets/fonts/TG-MinervaBlack-Black.otf
+          printf '%s' "$BLENDER" | base64 --decode | gunzip > assets/fonts/TG-Blender.otf
+          ls -la assets/fonts/
+
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Compiler cache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.name }}
+          max-size: 800M
+
+      - name: Configure
+        shell: bash
+        run: |
+          args=(-B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+                -DCMAKE_C_COMPILER_LAUNCHER=ccache
+                -DCMAKE_CXX_COMPILER_LAUNCHER=ccache)
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            # Universal binaries cost double to compile and only matter for
+            # something someone downloads, so tags only.
+            if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+              args+=(-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64")
+            else
+              args+=(-DCMAKE_OSX_ARCHITECTURES="arm64")
+            fi
+          fi
+          cmake "${args[@]}"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Package
+        shell: bash
+        run: tools/packager/package.sh build out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BMO-${{ matrix.name }}
+          path: out/

@@ -1,0 +1,270 @@
+#pragma once
+
+#include "Filters.h"
+#include "core/dsp/Oversampler.h"
+#include "Shaper.h"
+#include <array>
+#include <vector>
+
+namespace bmo::sat
+{
+
+//==============================================================================
+/** One-pole parameter smoother.
+
+    Snaps to the target once it is within epsilon, so a settled parameter
+    compares exactly equal and the coefficient recomputation can be skipped.
+*/
+class Smoother
+{
+public:
+    void prepare (double controlRateHz, double timeMs) noexcept
+    {
+        const auto tau = std::max (timeMs, 0.01) * 0.001;
+        coeff = (float) (1.0 - std::exp (-1.0 / (std::max (controlRateHz, 1.0) * tau)));
+    }
+
+    void snap (float v) noexcept        { current = target = v; }
+    void setTarget (float t) noexcept   { target = t; }
+    float value() const noexcept        { return current; }
+
+    float tick() noexcept
+    {
+        current += coeff * (target - current);
+
+        if (std::abs (target - current) < 1.0e-6f)
+            current = target;
+
+        return current;
+    }
+
+private:
+    float coeff = 1.0f, current = 0.0f, target = 0.0f;
+};
+
+//==============================================================================
+/** Everything the plugin does to audio, with no dependency on JUCE's plugin
+    layer or on a host. Takes plain values and raw buffers, so the measurement
+    harness and the unit tests can drive the real signal path directly.
+
+    The chain, per channel, inside the oversampled region:
+
+        input trim -> the fitted curve
+                   -> plus two harmonic generators, each filling one band
+                   -> DC blocker -> makeup -> output trim
+
+    The generators are the unusual part, and they are the reason this hits the
+    brief rather than merely saturating.
+
+    A waveshaper applied the ordinary way -- signal in, shaped signal out --
+    distributes its new harmonics wherever they fall. On a voice that is mostly
+    the 600 Hz to 2.5 kHz octaves, since that is where the second and third
+    harmonics of the fundamental land. The reference this plugin is fitted to
+    does the opposite: it leaves everything below 2.5 kHz within about a dB of
+    where it started and puts 6 to 8 dB of new energy above it. No single curve
+    applied to the whole signal does that at any drive setting. Push it hard
+    enough to fill the top and the midrange fills with it.
+
+    So the fitted curve runs across the whole signal and carries the character
+    -- the asymmetry, the even-order content, the compression the reference
+    measured -- and two further instances of the same curve at the same drive
+    place the new energy. Each is fed only the band below a corner and read
+    only above it, so what it contributes is harmonic content that was not
+    there before rather than a scaled copy of the programme. They are still
+    harmonics of the programme, made by the same asymmetric curve and carrying
+    its even-order signature; they are simply weighted towards the part of the
+    spectrum the target puts them in.
+
+    That structure also settles the dynamics. The dry path through the stage is
+    never attenuated, so the programme's own peaks arrive intact and the added
+    residual is largest exactly where the waveform moves fastest -- on
+    transients. The crest factor comes out slightly up, which is what was asked
+    for. There is no compressor, limiter, or peak reduction anywhere in here,
+    and adding one would be a change of design rather than a feature.
+*/
+class DspCore
+{
+public:
+    struct Params
+    {
+        float inputGainDb   = 0.0f;
+        float driveAmount   = 40.0f;   // per cent, the panel's DRIVE
+        float toneAmount    = 100.0f;  // per cent, the panel's TONE
+        float mixPercent    = 100.0f;
+        float outputLevelDb = 0.0f;
+
+        bool  saturationIn = true;
+        bool  phaseInvert  = false;
+        bool  autoGain     = false;
+
+        int   oversampling = 1;        // 1, 2, 4 or 8
+    };
+
+    void prepare (double sampleRate, int maxBlockSize, int numChannels, int oversampleFactor = 2);
+    void reset() noexcept;
+
+    /** Round-trip delay of the oversampling filters, in samples at the host's
+        rate. Reported to the host so plugin delay compensation can undo it. */
+    int getLatencySamples() const noexcept { return latencySamples; }
+
+    /** Called once per block, before process(). Cheap: stores targets only. */
+    void setParams (const Params&) noexcept;
+
+    void process (float* const* channels, int numChannels, int numSamples) noexcept;
+
+    //== The character, in one place ==========================================
+
+    /** DRIVE, 0-100 on the panel, mapped to the curve's drive.
+
+        Geometric, because what the ear follows is the ratio between where the
+        signal sits and where the knee is, not the difference. The bottom of
+        the range is deliberately not zero: at DRIVE 0 the curve is still the
+        curve, just far enough below the knee to be almost linear, so turning
+        the control up changes the amount of a character rather than fading one
+        in. */
+    static float driveFor (float amountPercent) noexcept;
+
+    /** Where Auto Gain settles, for a given drive, on the harness's reference
+        voice. Kept for the measurement tool and the tests; the plugin itself
+        no longer uses it. See the note on the detector in the .cpp. */
+    static float makeupGainDb (float amountPercent) noexcept;
+
+    static constexpr int kSubBlock = 32;
+
+    //== The character ========================================================
+    /** The constants that decide what this sounds like, gathered in one place
+        and settable, because they were fitted rather than chosen and will be
+        fitted again whenever a better reference turns up.
+
+        The defaults below are the shipping values. Nothing in the plugin ever
+        changes them; the measurement harness does, so that `measure fit` can
+        search this space against a real before/after pair rather than against
+        a synthetic signal that may or may not resemble one. That distinction
+        cost a release: the first fit was made against a test signal with 22 dB
+        less energy above 6 kHz than the actual reference vocal, so the same
+        harmonic generation that measured +8 dB on the test signal measured
+        +0.4 dB on the real thing.
+    */
+    struct Character
+    {
+        /** Where the target's flat bands stop and its lifted ones begin. */
+        double residualSplitHz = 2400.0;
+
+        /** The two harmonic generators, each a second instance of the same
+            curve at the same drive, fed only from below a corner and read only
+            above it -- so what each contributes is harmonic content that was
+            not there before rather than a scaled copy of the programme.
+
+            The `body` generator refills 600 Hz to 2.5 kHz, which a compressive
+            curve suppresses. The `sheen` generator fills 2.5 kHz upwards,
+            where the reference puts most of its new energy.
+
+            bodyGain's sign is load-bearing and is fitted, not reasoned out.
+            The body generator's harmonics land where the programme already has
+            harmonics of its own, so they either reinforce or cancel depending
+            on which way round they are added -- and which way is right changed
+            when the voicing arrived. It was -3 when the plugin was all
+            waveshaper; it is +3 now. Whenever a generator is fed a band the
+            source already occupies, this sign has to be re-fitted rather than
+            assumed. */
+        double bodySourceHz  = 600.0;
+        float  bodyGain      = -3.0f;
+        double sheenSourceHz = 6000.0;
+        float  sheenGain     = 3.0f;
+
+        /** A shelf on the sheen generator's output only, tilting the top
+            octaves up so 6-18 kHz lifts further than 2.5-6 kHz. It shapes
+            distortion the plugin generated, never the programme, which is why
+            it is not a tone control and is not on the panel. */
+        double sheenHz   = 6000.0;
+        float  sheenTilt = 1.30f;
+
+        /** The voicing.
+
+            Measured, and it is the finding that mattered most: fitting the
+            best linear filter from the reference's dry file to its processed
+            one explains 97 to 98 per cent of the difference. The reference is
+            not mostly harmonic generation. It is a broad bell around 7 kHz of
+            roughly +10 dB, about 2 dB of broadband trim, and a high-pass at
+            the bottom -- with a few per cent of nonlinearity on top.
+
+            No amount of waveshaping reaches those band figures, because the
+            band figures are not made by waveshaping. They are made by an
+            equaliser. This stage is that equaliser, stated plainly rather than
+            hidden inside a curve, and the panel's TONE control scales it from
+            nothing to the fitted shape. */
+        double bellHz     = 7000.0;
+        double bellQ      = 0.90;
+        float  bellGainDb = 11.0f;
+        double highPassHz = 40.0;
+    };
+
+    void setCharacter (const Character& c) noexcept { character = c; }
+    const Character& getCharacter() const noexcept { return character; }
+
+private:
+    void applyOversampling (int factor);
+    void updateAutoGain (double blockInput, double blockProcessed, int samples) noexcept;
+
+    struct Channel
+    {
+        AsymmetricShaper shaper, bodyShaper, sheenShaper;
+        Bell             bell;
+        HighPass         highPass;
+        OnePole          bodyInput[2], bodySplit;
+        OnePole          sheenInput[2], sheenSplit;
+        Shelf            sheenTilt;
+        DcBlocker        dc;
+        Oversampler      oversampler;
+
+        void prepare (double rate, const Character&) noexcept;
+        void reset() noexcept;
+        void setDrive (float drive) noexcept;
+        void setTone (float amountPercent, double rate) noexcept;
+        float toneAmount = 1.0f;
+        const Character* character = nullptr;
+        float process (float x) noexcept;
+
+        /** One harmonic generator: shape the band below the corner, keep what
+            appears above it. */
+        static float generate (AsymmetricShaper&, OnePole (&input)[2], OnePole& split, float x) noexcept;
+    };
+
+    double sampleRate = 44100.0;
+    double effectiveRate = 44100.0;
+    int    latencySamples = 0;
+
+    std::array<Channel, 2> channels;
+
+    // The dry path of the Mix control has to be delayed to match, or a partial
+    // blend combs and a full bypass fails to null.
+    std::vector<float> dryDelay;
+    int dryWrite = 0, dryLength = 1, dryStride = 0;
+
+    Smoother inputGainSm, driveSm, mixSm, outputLevelSm, makeupSm, toneSm;
+
+    /** Auto Gain's detector: the energy going into the saturation and the
+        energy coming out of it, each averaged over about a second and a half.
+
+        Slow on purpose, and the slowness is the whole design. A fast detector
+        that followed the programme would be a compressor, which is the one
+        thing this plugin must not become; at this time constant it cannot
+        respond to anything inside a phrase, so it moves the level and leaves
+        the dynamics alone. A test asserts that switching it on changes the
+        crest factor by less than a quarter of a decibel.
+
+        The first version of this was a fixed table fitted to one voice at one
+        level. It was inaudible on other material and at some settings pulled
+        the wrong way -- which is what "AUTO does nothing" in the test report
+        turned out to mean. */
+    double inputEnergy = 0.0, processedEnergy = 0.0;
+    float  autoGainCoeff = 0.0f;
+
+    Params params;
+    Character character;
+    bool primed = false;
+    int maxBlock = 0, maxChannels = 0;
+    int currentFactor = 0;
+};
+
+} // namespace bmo::sat

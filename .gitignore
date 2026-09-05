@@ -1,0 +1,23 @@
+# Build trees and logs
+build/
+build-*/
+build-*.log
+cmake-build-*/
+
+# Licensed typefaces: see assets/fonts/README.md
+assets/fonts/*.otf
+assets/fonts/*.ttf
+
+# Planning documents and tester packages stay local
+plans/
+packages/
+
+# Rendered panels (regenerate with tools/snapshot)
+snapshots/
+
+# Editors and OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.log
