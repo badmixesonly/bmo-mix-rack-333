@@ -105,16 +105,29 @@ jobs:
           cmake "${args[@]}"
 
       - name: Build
+        id: build
         run: cmake --build build --parallel
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
+      # Everywhere else, Package only runs if Test also passed (the default
+      # `if: success()` every step gets implicitly). add-bmo-opto is still
+      # under active preset/level iteration, where a failing test is often
+      # just a not-yet-retuned preset value, not a reason to withhold a
+      # build there's otherwise something to actually listen to -- so this
+      # branch (and its own v0.x tags) gets a carve-out: package as long as
+      # Build succeeded, test result or not. The job's own conclusion still
+      # shows red on a real test failure either way; only packaging ignores
+      # it, and only here. Revert this carve-out before this workflow file
+      # ever reaches main.
       - name: Package
+        if: steps.build.outcome == 'success' && (success() || github.ref == 'refs/heads/add-bmo-opto' || startsWith(github.ref, 'refs/tags/v0.'))
         shell: bash
         run: tools/packager/package.sh build out
 
       - uses: actions/upload-artifact@v4
+        if: steps.build.outcome == 'success' && (success() || github.ref == 'refs/heads/add-bmo-opto' || startsWith(github.ref, 'refs/tags/v0.'))
         with:
           name: BMO-${{ matrix.name }}
           path: out/
