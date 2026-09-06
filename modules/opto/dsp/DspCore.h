@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Detector.h"
+#include <algorithm>
 #include <array>
 #include <cmath>
 
