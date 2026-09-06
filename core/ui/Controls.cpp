@@ -253,4 +253,89 @@ void OutputMeter::paint (juce::Graphics& g)
                labelFont (9.0f), t.text2);
 }
 
+//==============================================================================
+DynamicsMeter::DynamicsMeter (std::function<float()> inputRmsSource,
+                              std::function<float()> outputRmsSource,
+                              std::function<float()> gainReductionDbSource,
+                              Mode initialMode)
+    : inputRms (std::move (inputRmsSource)), outputRms (std::move (outputRmsSource)),
+      gainReductionDb (std::move (gainReductionDbSource)), mode (initialMode)
+{
+    setMouseCursor (juce::MouseCursor::PointingHandCursor);
+    startTimerHz (30);
+}
+
+void DynamicsMeter::mouseUp (const juce::MouseEvent&)
+{
+    mode = mode == Mode::input ? Mode::output : (mode == Mode::output ? Mode::reduction : Mode::input);
+    displayed = 0.0f;
+    repaint();
+}
+
+void DynamicsMeter::timerCallback()
+{
+    float level = 0.0f;
+
+    switch (mode)
+    {
+        case Mode::input:     level = inputRms         ? inputRms()         : 0.0f; break;
+        case Mode::output:    level = outputRms        ? outputRms()        : 0.0f; break;
+        case Mode::reduction: level = gainReductionDb  ? gainReductionDb()  : 0.0f; break;
+    }
+
+    // Same integration on every mode: VU levels and a dB reduction figure
+    // both read as "how much is happening right now", so one rate serves all
+    // three rather than needing a peak/VU distinction of its own.
+    displayed += 0.28f * (level - displayed);
+    repaint();
+}
+
+void DynamicsMeter::paint (juce::Graphics& g)
+{
+    const auto& t = tokens();
+
+    auto bounds = getLocalBounds();
+    const auto labelArea = bounds.removeFromBottom (12);
+    const auto well = bounds.withSizeKeepingCentre (kBarWidth, bounds.getHeight()).toFloat();
+
+    g.setColour (t.well);
+    g.fillRoundedRectangle (well, 2.0f);
+
+    float norm = 0.0f;
+    bool hot = false, warm = false;
+    juce::Colour barColour;
+    juce::String label;
+
+    if (mode == Mode::reduction)
+    {
+        norm = juce::jlimit (0.0f, 1.0f, displayed / kGrRangeDb);
+        barColour = t.meterGr;
+        label = "GR";
+    }
+    else
+    {
+        const auto db = juce::Decibels::gainToDecibels (displayed, -70.0f);
+        const auto reading = db - kVuReference;
+        norm = juce::jlimit (0.0f, 1.0f, (reading - -20.0f) / (3.0f - -20.0f));
+        hot  = reading > 0.0f;
+        warm = reading > -3.0f;
+        barColour = hot ? t.meterClip : warm ? t.meterHigh : t.meterLow;
+        label = mode == Mode::input ? "IN" : "OUT";
+    }
+
+    if (norm > 0.002f)
+    {
+        auto bar = well.reduced (1.5f);
+        bar = bar.removeFromBottom (bar.getHeight() * norm);
+
+        g.setColour (barColour);
+        g.fillRoundedRectangle (bar, 1.5f);
+    }
+
+    g.setColour (t.outline.withAlpha (0.6f));
+    g.drawRoundedRectangle (well.reduced (0.5f), 2.0f, 1.0f);
+
+    drawLabel (g, label, labelArea.toFloat(), juce::Justification::centred, labelFont (9.0f), t.text2);
+}
+
 } // namespace bmo::ui

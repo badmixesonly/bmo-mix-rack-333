@@ -12,6 +12,10 @@ bmo_add_dsp_tool(util_dsp_tests dsp/UtilDspTests.cpp)
 target_link_libraries(util_dsp_tests PRIVATE bmo_util_dsp)
 add_test(NAME util_dsp COMMAND util_dsp_tests)
 
+bmo_add_dsp_tool(opto_dsp_tests dsp/OptoDspTests.cpp)
+target_link_libraries(opto_dsp_tests PRIVATE bmo_opto_dsp)
+add_test(NAME opto_dsp COMMAND opto_dsp_tests)
+
 if(BMO_DSP_ONLY)
     return()
 endif()
@@ -28,6 +32,10 @@ bmo_add_tool(util_tests plugin/UtilTests.cpp)
 target_link_libraries(util_tests PRIVATE bmo_util)
 add_test(NAME util COMMAND util_tests)
 
+bmo_add_tool(opto_tests plugin/OptoTests.cpp)
+target_link_libraries(opto_tests PRIVATE bmo_opto)
+add_test(NAME opto COMMAND opto_tests)
+
 bmo_add_tool(rack_tests plugin/RackTests.cpp ${BMO_ROOT}/products/rack/Registry.cpp)
-target_link_libraries(rack_tests PRIVATE bmo_eq bmo_sat bmo_util)
+target_link_libraries(rack_tests PRIVATE bmo_eq bmo_sat bmo_util bmo_opto)
 add_test(NAME rack COMMAND rack_tests)

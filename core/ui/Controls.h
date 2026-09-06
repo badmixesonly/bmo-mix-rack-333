@@ -117,6 +117,48 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OutputMeter)
 };
 
+//==============================================================================
+/** Input, output or gain-reduction, one at a time, cycled by clicking --
+    BMO Opto's centre meter, and any dynamics module after it.
+
+    Input and output read as VU, calibrated the same way as OutputMeter (0 VU
+    = -18 dBFS, see its class comment); gain reduction reads the module's own
+    published figure directly, in dB, filling the same well from empty
+    upward rather than the hardware's needle-down convention -- simpler to
+    read at a glance against the other two modes, and an easy flip later
+    (`paint()`) if that turns out to be the wrong call once this is actually
+    running.
+*/
+class DynamicsMeter final : public juce::Component,
+                            private juce::Timer
+{
+public:
+    enum class Mode { input, output, reduction };
+
+    DynamicsMeter (std::function<float()> inputRmsSource,
+                   std::function<float()> outputRmsSource,
+                   std::function<float()> gainReductionDbSource,
+                   Mode initialMode = Mode::output);
+
+    void paint (juce::Graphics&) override;
+    void mouseUp (const juce::MouseEvent&) override;
+
+    Mode getMode() const noexcept { return mode; }
+
+private:
+    void timerCallback() override;
+
+    std::function<float()> inputRms, outputRms, gainReductionDb;
+    Mode mode;
+    float displayed = 0.0f;
+
+    static constexpr float kVuReference = -18.0f;
+    static constexpr float kGrRangeDb   = 24.0f;
+    static constexpr int   kBarWidth    = 14;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DynamicsMeter)
+};
+
 /** "1.6 kHz" -> "1k6", "360 Hz" -> "360", "Off" -> "OFF". A legend has to fit
     around a knob, and this is how the hardware prints it. */
 juce::String compactFrequency (const juce::String& text);
