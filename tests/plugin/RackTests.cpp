@@ -39,7 +39,7 @@ namespace
                     "auto_gain", "oversampling" } },
         { "sat",  { "input_gain", "drive", "mix", "output_level",
                     "sat_in", "phase", "auto_gain", "oversampling", "tone" } },
-        { "opto", { "crush", "level" } },
+        { "opto", { "crush", "level", "mode", "link", "color" } },
     };
 
     std::vector<juce::String> chainIds (RackProcessor& rack)
