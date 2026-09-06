@@ -290,7 +290,17 @@ private:
     (quadratic) term that adds the low-order *even* harmonics a single-ended
     tube stage is known for, DC-blocked afterward since the asymmetry alone
     would offset the signal. Not level/GR-dependent -- Drive is on or off,
-    not a knob, so this is one fixed, tasteful amount. */
+    not a knob, so this is one fixed, tasteful amount.
+
+    `tanh (k * x) / k`, not `tanh (k * x) / tanh (k)`: the latter normalizes
+    full-scale input to exactly unity, which sounds reasonable but means the
+    *small*-signal gain is `k / tanh (k)` -- always greater than one, so a
+    quiet passage comes out louder than it went in before any "warmth" is
+    even audible. `/ k` instead gives unity gain at the origin (a quiet
+    signal passes essentially untouched) and only compresses as level
+    approaches and exceeds where the curve bends -- the shape a passive
+    tube/transformer stage actually has, and the one testQuietSignalIsLeftAlone
+    and testMakeupGainIsExact both hold this to. */
 class La2aDrive
 {
 public:
@@ -298,10 +308,10 @@ public:
 
     float process (float x) noexcept
     {
-        constexpr float g = 1.6f;
+        constexpr float k = 0.6f;
         constexpr float evenAmount = 0.18f;
 
-        const auto shaped = std::tanh (g * x) / std::tanh (g);
+        const auto shaped = std::tanh (k * x) / k;
         const auto biased  = shaped + evenAmount * (shaped * shaped) * (x < 0.0f ? -1.0f : 1.0f);
 
         return dc.process (biased);
@@ -315,9 +325,11 @@ private:
     grittier of its two switchable harmonic options, chosen over the gentler
     Class-A 2nd-harmonic stage as the character this toggle represents) --
     a purely symmetric soft clip, which is what generates odd harmonics
-    (3rd, 5th, ...) without needing a separate DC blocker. Driven a little
-    harder than La2aDrive on purpose: this is meant to read as grittier and
-    further from the LA-2A's own tone. */
+    (3rd, 5th, ...) without needing a separate DC blocker. A larger `k` than
+    La2aDrive's on purpose -- see La2aDrive for why `/ k` and not `/ tanh (k)`
+    -- so it still passes a quiet signal through near enough unchanged but
+    compresses considerably more at the levels it's meant to be heard on,
+    reading as grittier and further from the LA-2A's own tone. */
 class DistressorDrive
 {
 public:
@@ -325,8 +337,8 @@ public:
 
     float process (float x) noexcept
     {
-        constexpr float g = 2.4f;
-        return std::tanh (g * x) / std::tanh (g);
+        constexpr float k = 1.2f;
+        return std::tanh (k * x) / k;
     }
 };
 
