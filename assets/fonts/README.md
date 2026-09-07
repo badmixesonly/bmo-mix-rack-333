@@ -45,21 +45,43 @@ If none of them yields both faces, CMake stops with a message naming the
 missing file and the directory it looked in, rather than quietly falling back
 to whatever face the machine happens to have installed.
 
-### Note for Kevin
+### Note for Kevin, on merging this
 
-Your current setup — the two `.otf` files sitting in this directory — still
-builds, and CI is unchanged, so nothing breaks on your next pull. But CMake
-will now warn when it builds from this directory. To clear the warning and get
-the files out of the working copy:
+Nothing you have to do, and nothing breaks. This is what changes when the
+`local-font-dir` branch lands.
+
+Your current setup — the two `.otf` files sitting in this directory — keeps
+working exactly as it does today. `assets/fonts/` is still the last rung of
+the search, so an existing working copy and an existing build tree both carry
+on. CI is untouched: the secret-restore step writes into this directory and is
+deliberately exempted from the warning below, so the Actions logs stay clean.
+
+The one thing you will notice is a CMake warning on your next configure,
+saying you are building from the in-repo copy. It is a nudge, not an error;
+the build proceeds.
+
+To clear it, and to get the licensed files out of the working copy:
 
     mkdir -p ~/Fonts/TG                       # anywhere outside the repo
     mv assets/fonts/*.otf ~/Fonts/TG/
     scripts/set-font-dir.sh ~/Fonts/TG
 
+Then re-run your configure. The status line should read:
+
+    -- BMO fonts: /Users/<you>/Fonts/TG (.bmo-fontdir)
+
 Treat that folder as a constant: leave it alone except to drop in a newly
-licensed face when we buy one. Both of us doing this means the only copies of
-the licensed files on either machine are in a folder neither git nor any
-script in this repository can reach.
+licensed face when we buy one. Nothing in this repository writes to it.
+
+Why bother, given the gitignore already worked: the licence is held by the two
+of us as individuals, not by the project, and this repository is public. With
+the files inside the tree, the only thing between a licensed font and
+publication was one ignore line — one `git add -f`, one `git archive` of the
+source, one clone handed to somebody helping out. Outside the tree, no git
+operation in this repository can reach them at all. Both of us doing it means
+that is true on both machines.
+
+If you would rather not move anything, do nothing. It will keep building.
 
 ## CI
 
