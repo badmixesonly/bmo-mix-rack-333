@@ -253,7 +253,8 @@ float reductionAfter (double loudSeconds, double silenceSeconds, float crushPerc
 /** Reduction right when a hit ends, and again `silenceSeconds` later, from
     the same run -- so a residual can be read as a *fraction* of where it
     started, rather than an absolute dB figure. */
-std::pair<float, float> reductionAtEndAndAfter (double loudSeconds, double silenceSeconds, float crushPercent, Mode mode)
+std::pair<float, float> reductionAtEndAndAfter (double loudSeconds, double silenceSeconds, float crushPercent, Mode mode,
+                                                float amplitude = 0.178f)
 {
     DspCore core;
     DspCore::Params p;
@@ -262,7 +263,11 @@ std::pair<float, float> reductionAtEndAndAfter (double loudSeconds, double silen
     core.prepare (kSampleRate, 512, 1);
     core.setParams (p);
 
-    auto signal = sine (200.0, loudSeconds, 0.9);
+    // 0.178 is a -18 dBFS RMS sine: the level a track actually arrives at,
+    // per the house convention. The default used to be 0.9, which is a mix
+    // bus slammed, and every release figure read off it was a figure about
+    // behaviour at 14 dB hotter than anything real.
+    auto signal = sine (200.0, loudSeconds, amplitude);
     const std::vector<float> silence ((size_t) (kSampleRate * silenceSeconds), 0.0f);
     signal.insert (signal.end(), silence.begin(), silence.end());
 
@@ -313,25 +318,42 @@ void testReleaseIsProgramDependent()
              + " dB left) still shows more reduction than a short one (" + std::to_string (afterShortStressed) + " dB left)");
 }
 
-/** Stressed's release ceiling (~20 s) is meant to reach further than Tele's
-    (~15 s) for the same very long, heavy hit -- that's the one numeric
-    difference in an otherwise similarly-shaped release model. Checked as a
-    *fraction* of each mode's own starting reduction, not an absolute dB
-    figure: Stressed's fixed 10:1 ratio starts from a much deeper reduction
-    than Tele's fixed 3:1 (already covered by testDistressorRatioExceedsLa2a),
-    so comparing raw dB left over would mostly just re-measure that ratio
-    difference rather than the release timing this test is actually about. */
-void testDistressorReleaseCeilingExceedsLa2a()
+/** A cell must give the gain back. Both bounds are absolute dB at the level a
+    track actually arrives at, because the relative version of this test --
+    "Stressed retains a larger fraction than Tele" -- passed for the whole of
+    0.2.0 while both modes were failing to release at all.
+
+    What it was hiding, measured against a real Distressor and a competitor
+    LA-2A on the same gain-matched vocal: both references recovered
+    *completely* in every phrase gap of 0.3-1.0 s. Ours recovered 63% (Tele)
+    and 23% (ELD), and got worse across the take -- the first gaps recovered
+    112-122%, the last five 32-47%. Ten seconds into pure digital silence,
+    Stressed was still holding 26.7 dB of reduction, and the fraction test
+    called that a pass because Tele was holding 9.2.
+
+    Upper bound: three seconds of silence after a long hit must leave
+    essentially nothing. Old constants left 7.41 dB (Stressed) and 1.62
+    (Tele); both now land on 0.00.
+
+    Lower bound, in the same test so neither can be satisfied alone: one
+    second in, there must still be real reduction standing. Without it the
+    fix for the above is just "make it a fast compressor", which would cost
+    the mode the dosage memory that is the whole point of the model. */
+void testReleaseGivesTheGainBack()
 {
-    const auto [teleEnd, teleAfter]         = reductionAtEndAndAfter (8.0, 10.0, 90.0f, Mode::La2a);
-    const auto [stressedEnd, stressedAfter] = reductionAtEndAndAfter (8.0, 10.0, 90.0f, Mode::Distressor);
+    for (const auto mode : { Mode::La2a, Mode::Distressor })
+    {
+        const auto name = std::string (mode == Mode::La2a ? "Tele" : "Stressed");
 
-    const auto teleFraction     = teleAfter / teleEnd;
-    const auto stressedFraction = stressedAfter / stressedEnd;
+        const auto afterThree = reductionAtEndAndAfter (10.0, 3.0, 60.0f, mode).second;
+        check (afterThree < 1.0f,
+               name + " has released after 3s of silence (" + std::to_string (afterThree) + " dB left)");
 
-    check (stressedFraction > teleFraction + 0.02,
-           "Stressed retains a larger fraction of its starting reduction (" + std::to_string (stressedFraction)
-             + ") than Tele does (" + std::to_string (teleFraction) + ") 10s after the same long, heavy hit");
+        const auto afterOne = reductionAtEndAndAfter (10.0, 1.0, 60.0f, mode).second;
+        check (afterOne > 0.4f,
+               name + " is still holding reduction 1s in, so the release is slow rather than fast ("
+                 + std::to_string (afterOne) + " dB left)");
+    }
 }
 
 /** Stressed's fixed 10:1 ratio should catch harder than Tele's fixed 3:1 at
@@ -603,7 +625,7 @@ int main()
     testReductionRisesWithCrush();
     testMakeupGainIsExact();
     testReleaseIsProgramDependent();
-    testDistressorReleaseCeilingExceedsLa2a();
+    testReleaseGivesTheGainBack();
     testDistressorRatioExceedsLa2a();
     testDeliveredRatioMatchesTheSpec();
     testTeleDriveProducesEvenHarmonics();

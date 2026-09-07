@@ -211,7 +211,30 @@ private:
     static constexpr float kAttackTauSec         = 0.010f;  // ~10 ms, fixed -- no source supports it moving
     static constexpr float kReleaseFastTauSec    = 0.06f;   // ~60 ms to the first 50% of recovery
     static constexpr float kReleaseSlowMinTauSec = 1.0f;    // slow tail floor: a hit just past "sustained"
-    static constexpr float kReleaseSlowMaxTauSec = 15.0f;   // slow tail ceiling: a long, heavy hit
+
+    /** Slow tail ceiling: a long, heavy hit. 15 s until 0.2.1, which measured
+        badly against a real one.
+
+        Rendered against a competitor LA-2A on the same vocal, gain-matched,
+        the reference recovered *completely* in every phrase gap of 0.3-1.0 s
+        -- entering gaps at 1.47 dB and leaving them at -0.07. Ours entered at
+        3.78 and left at 1.39, recovering only 63%, and the shortfall grew
+        across the take: the first gaps recovered 112-122%, the last five
+        32-47%. At a 15 s ceiling a routine 4 dB hit already buys a
+        multi-second tail, and `chargeDb` never falls far enough between
+        phrases to give it back, so the cell ratchets.
+
+        At 4 s the same render reproduces the reference on all four figures --
+        peak 4.26 against 4.15, entering 1.76 against 1.47, leaving 0.00
+        against -0.07, recovering 100% against 105%. It is also inside the
+        0.5-5 s the sources give for the T4 cell's second stage, which 15 s
+        never was.
+
+        The dosage memory this ceiling exists for is untouched: driven hard
+        (CRUSH 85) the cell still only gives back 70% across a gap, against
+        22% before. It recovers between phrases and holds on when leaned on,
+        which is the behaviour the mode was always described as having. */
+    static constexpr float kReleaseSlowMaxTauSec = 4.0f;
     static constexpr float kChargeAttackTauSec   = 0.3f;    // how long a hit has to last to "count"
     static constexpr float kDosageEngageDb       = 1.0f;    // reduction below this doesn't accrue dosage
     static constexpr float kDosageGrowthSec      = 3.0f;    // how long sustained drive takes to matter
@@ -295,7 +318,26 @@ public:
 private:
     static constexpr float kAttackTauSec       = 0.010f; // ~10 ms, static -- confirmed non-adaptive
     static constexpr float kReleaseFastTauSec  = 0.06f;
-    static constexpr float kReleaseSlowTauSec  = 20.0f;  // this mode's own ceiling, vs LA-2A's 15 s
+
+    /** This mode's slow ceiling. 20 s until 0.2.1, for the same reason
+        La2aCell's was 15 -- and measured just as badly.
+
+        Against a real Distressor on the same vocal, gain-matched: the
+        reference peaked at 7.77 dB, entered phrase gaps at 3.60 and left them
+        at -0.51, recovering fully every time. Ours recovered **23%**, leaving
+        2.21 dB of reduction standing when the next phrase arrived, which is
+        what Frosty heard as "it falls slower" -- correctly distinguishing it
+        from a tail that lasts too long, which is a different complaint and
+        was not this one.
+
+        At 3 s, with kChargeReleaseTauSec below, the same render gives peak
+        7.48, entering 3.66, leaving 0.27, recovering 93%. Shorter than
+        La2aCell's ceiling and that is not a mistake: the Distressor is a VCA
+        feedforward unit whose Opto setting is electronically timed, and it
+        measurably recovers faster than the optical unit while reducing more.
+        La2aCell's tau also slides with dosage where this one does not, so at
+        low exposure the LA-2A is nearer 1 s regardless. */
+    static constexpr float kReleaseSlowTauSec  = 3.0f;
     static constexpr float kChargeAttackTauSec = 0.3f;
 
     /** How fast the cell forgets a hit. Until 0.2.0 this reused
@@ -303,12 +345,19 @@ private:
         chargeDb pinned release near 20 s for a long time afterwards, which
         is what "Stressed's release feels too long" was. La2aCell has always
         used a separate, much shorter constant (1 s) for the same job; this
-        gives Stressed its own, still four times slower than Tele's, on top
-        of a ceiling that is already the longer of the two. Deliberately a
-        single constant rather than a duration-gated accumulator: if this
-        alone fixes the complaint without costing the mode its genuinely
-        long ceiling, the bigger redesign isn't needed. */
-    static constexpr float kChargeReleaseTauSec = 4.0f;
+        gives Stressed its own, still slower than Tele's.
+
+        4 s in 0.2.0, which was still longer than the phrase gaps it has to
+        forget across -- 0.25 to 1.0 s on real material -- so charge only ever
+        ratcheted upward through a take and the release it selects never came
+        back down. 0.7 s is shorter than the shortest gap, which is the whole
+        requirement: the cell must be able to forget a phrase before the next
+        one starts, or its memory is of the take rather than of the note.
+
+        Still deliberately a single constant rather than a duration-gated
+        accumulator. The measurement says this and the ceiling together are
+        enough; the bigger redesign stays unnecessary. */
+    static constexpr float kChargeReleaseTauSec = 0.7f;
 
     double rate = 44100.0;
     float envelopeLin = 0.0f;
