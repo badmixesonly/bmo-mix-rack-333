@@ -54,8 +54,10 @@ inline const ParamSpecs& specs()
         // CRUSH <3: how hard the programme drives the cell. Ratio and knee
         // are fixed per mode (neither real unit has a ratio control) --
         // CRUSH only moves the effective threshold, the way the real Peak
-        // Reduction knob does.
-        S::floatParam (kCrush, "Crush", 0.0f, 100.0f, 0.1f, 35.0f, F::Percent),
+        // Reduction knob does. Defaults to 0 (no gain reduction) -- a freshly
+        // inserted instance should be heard doing nothing until the ear asks
+        // for it, not compressing out of the box.
+        S::floatParam (kCrush, "Crush", 0.0f, 100.0f, 0.1f, 0.0f, F::Percent),
 
         // LEVEL: makeup gain after the cell. Not automatic -- the ear sets it.
         S::floatParam (kLevel, "Level", -24.0f, 24.0f, 0.01f, 0.0f, F::Decibels),

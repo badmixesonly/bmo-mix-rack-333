@@ -6,27 +6,76 @@ namespace bmo::opto
 
 namespace
 {
-    constexpr int kKnobWidth   = 70;
-    constexpr int kKnobHeight  = 160;
-    constexpr int kMeterWidth  = 44;
-    constexpr int kSwitchRow   = 28;
+    constexpr int kKnobWidth   = 92;
+    constexpr int kKnobHeight  = 150;
+    constexpr int kMeterWidth  = 190;
+    constexpr int kSwitchRow   = 26;
+    constexpr int kMeterButtonRow = 22;
+
+    // The module's own accent (see modules/opto/Module.cpp) is used for
+    // knob faces and switch glows; labels want a darker, higher-contrast
+    // step of the same hue rather than the shared suite-wide track colour
+    // PlainKnob otherwise defaults to -- per Frosty's 2026-09-06 note.
+    const juce::Colour kLabelColour { 0xff9c71c3 };
+
+    // The meter's 0 VU-and-above zone: a classic VU meter prints this in
+    // red, but Frosty asked for this specific blue instead so the meter
+    // reads as part of the same palette rather than borrowing hardware red.
+    const juce::Colour kMeterHotColour { 0xff97ddff };
 }
 
 OptoPanel::OptoPanel (ui::ModuleContext ctx)
     : ModulePanel (std::move (ctx)),
-      crush (context.params.param (Index::crush), "CRUSH <3",
-             ui::Knob::Style::character, 0.62f, context.def.accent),
-      level (context.params.param (Index::level), "LEVEL",
-             ui::Knob::Style::character, 0.62f, context.def.accent),
-      meter (context.inputRms, context.rms, context.gainReductionDb),
-      mode  (context.params.param (Index::mode),  "STRESSED", context.def.accent),
-      link  (context.params.param (Index::link),  "LINK",     context.def.accent),
-      color (context.params.param (Index::color), "COLOR",    context.def.accent)
+      crush (context.params.param (Index::crush), "COMP",
+             ui::Knob::Style::character, 0.62f, context.def.accent, kLabelColour),
+      level (context.params.param (Index::level), "MAKEUP",
+             ui::Knob::Style::character, 0.62f, context.def.accent, kLabelColour),
+      meter (context.inputRms, context.rms, context.gainReductionDb,
+             ui::DynamicsMeter::Mode::output, context.def.accent, kMeterHotColour),
+      teleButton ("TELE"), eldButton ("ELD"),
+      meterInButton ("IN"), meterOutButton ("OUT"), meterGrButton ("GR"),
+      link  (context.params.param (Index::link),  "LINK",  context.def.accent),
+      color (context.params.param (Index::color), "COLOR", context.def.accent)
 {
-    for (auto* c : std::initializer_list<juce::Component*> { &crush, &meter, &level, &mode, &link, &color })
+    for (auto* b : { &teleButton, &eldButton, &meterInButton, &meterOutButton, &meterGrButton })
+    {
+        b->setClickingTogglesState (false);
+        b->setColour (juce::TextButton::buttonOnColourId, context.def.accent);
+        addAndMakeVisible (b);
+    }
+
+    teleButton.onClick = [this] { setChoice (context.params.param (Index::mode), 0.0f); };
+    eldButton.onClick  = [this] { setChoice (context.params.param (Index::mode), 1.0f); };
+
+    meterInButton.onClick = [this]
+    {
+        meter.setMode (ui::DynamicsMeter::Mode::input);
+        meterInButton.setToggleState (true, juce::dontSendNotification);
+        meterOutButton.setToggleState (false, juce::dontSendNotification);
+        meterGrButton.setToggleState (false, juce::dontSendNotification);
+    };
+    meterOutButton.onClick = [this]
+    {
+        meter.setMode (ui::DynamicsMeter::Mode::output);
+        meterInButton.setToggleState (false, juce::dontSendNotification);
+        meterOutButton.setToggleState (true, juce::dontSendNotification);
+        meterGrButton.setToggleState (false, juce::dontSendNotification);
+    };
+    meterGrButton.onClick = [this]
+    {
+        meter.setMode (ui::DynamicsMeter::Mode::reduction);
+        meterInButton.setToggleState (false, juce::dontSendNotification);
+        meterOutButton.setToggleState (false, juce::dontSendNotification);
+        meterGrButton.setToggleState (true, juce::dontSendNotification);
+    };
+    meterOutButton.setToggleState (true, juce::dontSendNotification);
+
+    for (auto* c : std::initializer_list<juce::Component*> { &crush, &meter, &level, &link, &color })
         addAndMakeVisible (c);
 
     lastModeWasStressed = context.params.param (Index::mode).getValue() > 0.5f;
+    teleButton.setToggleState (! lastModeWasStressed, juce::dontSendNotification);
+    eldButton.setToggleState  (lastModeWasStressed,   juce::dontSendNotification);
     color.setVisible (lastModeWasStressed);
     color.setSwitchEnabled (lastModeWasStressed);
 
@@ -35,6 +84,13 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
 
 OptoPanel::~OptoPanel() { stopTimer(); }
 
+void OptoPanel::setChoice (juce::RangedAudioParameter& param, float normalisedValue)
+{
+    param.beginChangeGesture();
+    param.setValueNotifyingHost (normalisedValue);
+    param.endChangeGesture();
+}
+
 void OptoPanel::timerCallback()
 {
     // Color has no off state in Tele mode (DspCore locks it on regardless
@@ -42,8 +98,13 @@ void OptoPanel::timerCallback()
     // hidden and disabled there rather than left on-screen doing nothing.
     // Polled rather than a parameter listener, same as OutputMeter/
     // DynamicsMeter's own timers -- there's no cross-thread marshaling to
-    // get right for a once-in-a-while UI state change like this one.
+    // get right for a once-in-a-while UI state change like this one. The
+    // TELE/ELD highlight is polled the same way so host automation of Mode
+    // (not just a click on these buttons) still updates which one glows.
     const auto stressed = context.params.param (Index::mode).getValue() > 0.5f;
+
+    teleButton.setToggleState (! stressed, juce::dontSendNotification);
+    eldButton.setToggleState  (stressed,   juce::dontSendNotification);
 
     if (stressed != lastModeWasStressed)
     {
@@ -56,19 +117,37 @@ void OptoPanel::timerCallback()
 void OptoPanel::resized()
 {
     auto area = getLocalBounds().reduced (kPad, 4);
+    const auto rowHeight = area.getHeight() / 3;
 
-    auto switchRow = area.removeFromBottom (kSwitchRow);
-    const auto switchWidth = switchRow.getWidth() / 3;
+    auto topRow    = area.removeFromTop (rowHeight);
+    auto middleRow = area.removeFromTop (rowHeight);
+    auto bottomRow = area;
 
-    mode.setBounds  (switchRow.removeFromLeft (switchWidth).reduced (4, 2));
-    link.setBounds  (switchRow.removeFromLeft (switchWidth).reduced (4, 2));
-    color.setBounds (switchRow.reduced (4, 2));
+    // Top third: COMP, large and alone.
+    crush.setBounds (topRow.withSizeKeepingCentre (kKnobWidth, kKnobHeight));
 
-    const auto centreY = area.getCentreY();
+    // Middle third: the VU meter over its IN/OUT/GR row.
+    auto meterButtonRow = middleRow.removeFromBottom (kMeterButtonRow);
+    meter.setBounds (middleRow.withSizeKeepingCentre (juce::jmin (middleRow.getWidth(), kMeterWidth),
+                                                       middleRow.getHeight()));
 
-    crush.setBounds ({ area.getX(), centreY - kKnobHeight / 2, kKnobWidth, kKnobHeight });
-    level.setBounds ({ area.getRight() - kKnobWidth, centreY - kKnobHeight / 2, kKnobWidth, kKnobHeight });
-    meter.setBounds (area.withSizeKeepingCentre (kMeterWidth, area.getHeight() - 80));
+    const auto meterButtons = meterButtonRow.withSizeKeepingCentre (
+        juce::jmin (meterButtonRow.getWidth(), kMeterWidth), meterButtonRow.getHeight());
+    const auto meterButtonWidth = meterButtons.getWidth() / 3;
+    auto meterButtonArea = meterButtons;
+    meterInButton.setBounds  (meterButtonArea.removeFromLeft (meterButtonWidth).reduced (3, 1));
+    meterOutButton.setBounds (meterButtonArea.removeFromLeft (meterButtonWidth).reduced (3, 1));
+    meterGrButton.setBounds  (meterButtonArea.reduced (3, 1));
+
+    // Bottom third: MAKEUP, then the Mode/Link/Color row underneath it.
+    auto switchRow = bottomRow.removeFromBottom (kSwitchRow);
+    level.setBounds (bottomRow.withSizeKeepingCentre (kKnobWidth, kKnobHeight));
+
+    const auto switchWidth = switchRow.getWidth() / 4; // TELE, ELD, LINK, COLOR
+    teleButton.setBounds (switchRow.removeFromLeft (switchWidth).reduced (3, 2));
+    eldButton.setBounds  (switchRow.removeFromLeft (switchWidth).reduced (3, 2));
+    link.setBounds       (switchRow.removeFromLeft (switchWidth).reduced (3, 2));
+    color.setBounds      (switchRow.reduced (3, 2));
 }
 
 } // namespace bmo::opto

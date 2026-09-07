@@ -13,9 +13,14 @@ namespace bmo::ui
 class PlainKnob final : public juce::Component
 {
 public:
+    /** `captionColour` defaults to the shared track colour every other
+        module's caption uses; BMO Opto passes its own accent (with added
+        contrast) so COMP/MAKEUP read in the module's own colour rather than
+        the suite-wide blue -- see modules/opto/panel/OptoPanel.cpp. */
     PlainKnob (juce::RangedAudioParameter&, const juce::String& caption,
                Knob::Style style = Knob::Style::utility, float faceScale = 0.5f,
-               juce::Colour accent = tokens().accent);
+               juce::Colour accent = tokens().accent,
+               juce::Colour captionColour = tokens().track);
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -27,6 +32,7 @@ private:
     static constexpr int kCaptionRow = 22;
 
     juce::String caption;
+    juce::Colour captionColour;
     Knob knob;
     std::unique_ptr<juce::SliderParameterAttachment> attachment;
 
@@ -118,35 +124,52 @@ private:
 };
 
 //==============================================================================
-/** Input, output or gain-reduction, one at a time, cycled by clicking --
-    BMO Opto's centre meter, and any dynamics module after it.
+/** Input, output or gain-reduction, one at a time -- a horizontal needle VU
+    meter with a printed scale, BMO Opto's centrepiece, and any dynamics
+    module after it.
 
     Input and output read as VU, calibrated the same way as OutputMeter (0 VU
-    = -18 dBFS, see its class comment); gain reduction reads the module's own
-    published figure directly, in dB, filling the same well from empty
-    upward rather than the hardware's needle-down convention -- simpler to
-    read at a glance against the other two modes, and an easy flip later
-    (`paint()`) if that turns out to be the wrong call once this is actually
-    running.
-*/
+    = -18 dBFS, see its class comment), with the needle swept across a scale
+    approximating a classic VU faceplate's non-linear spacing (compressed at
+    the low end, spread out from 0 to +3) -- not derived from any one real
+    meter's calibration data, just close enough to read as the genre. Gain
+    reduction reads the module's own published figure directly, in dB, on a
+    plain linear 0..kGrRangeDb scale.
+
+    Mode is switched externally via setMode() -- the panel owns a row of
+    labelled buttons for that (see modules/opto/panel/OptoPanel.cpp); this
+    class used to cycle modes on click, which tested as unintuitive with
+    nothing on screen to say what clicking would do. */
 class DynamicsMeter final : public juce::Component,
                             private juce::Timer
 {
 public:
     enum class Mode { input, output, reduction };
 
+    /** `hotColour` marks 0 VU and above -- a classic VU meter's red zone,
+        but left up to the caller since a module's own theme may want
+        something other than red there (BMO Opto asks for #97ddff). */
     DynamicsMeter (std::function<float()> inputRmsSource,
                    std::function<float()> outputRmsSource,
                    std::function<float()> gainReductionDbSource,
-                   Mode initialMode = Mode::output);
+                   Mode initialMode = Mode::output,
+                   juce::Colour accent = tokens().accent,
+                   juce::Colour hotColour = tokens().meterClip);
 
     void paint (juce::Graphics&) override;
-    void mouseUp (const juce::MouseEvent&) override;
 
+    void setMode (Mode) noexcept;
     Mode getMode() const noexcept { return mode; }
 
 private:
     void timerCallback() override;
+
+    /** One control point on the printed scale: a value in the mode's own
+        unit (dB relative to the VU reference, or dB of gain reduction) and
+        where it sits across the needle's sweep, 0..1. */
+    struct ScalePoint { float value; float fraction; };
+
+    float fractionFor (float value, juce::Array<ScalePoint> const& scale) const noexcept;
 
     std::function<float()> inputRms, outputRms, gainReductionDb;
     Mode mode;
@@ -154,7 +177,7 @@ private:
 
     static constexpr float kVuReference = -18.0f;
     static constexpr float kGrRangeDb   = 24.0f;
-    static constexpr int   kBarWidth    = 14;
+    juce::Colour accentColour, hotColour;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DynamicsMeter)
 };

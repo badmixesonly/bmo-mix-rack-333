@@ -9,12 +9,12 @@ namespace bmo::opto
 
 const ModuleDef& module()
 {
-    // A warm brass gold: the suite's other accents are Sat's orange and
-    // Util's green, and this needed to read as neither -- something closer
-    // to the vintage-hardware colour this module is modelled on.
+    // Lavender: the suite's other accents are Sat's orange and Util's green,
+    // and this needed to read as neither. Chosen over the earlier brass gold
+    // per Frosty's aesthetic direction (2026-09-06).
     static const ModuleDef def {
         kModuleId, kModuleName, kSchemaVersion,
-        220, juce::Colour (0xffc9a227),
+        220, juce::Colour (0xffd4a4ff),
         specs(), factory(),
         [] { return createDsp(); },
         [] (ui::ModuleContext ctx) -> std::unique_ptr<ui::ModulePanel>
