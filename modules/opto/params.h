@@ -59,7 +59,14 @@ inline const ParamSpecs& specs()
         // for it, not compressing out of the box.
         S::floatParam (kCrush, "Crush", 0.0f, 100.0f, 0.1f, 0.0f, F::Percent), // default 35 -> 0 in 0.2.0
 
-        // LEVEL: makeup gain after the cell. Not automatic -- the ear sets it.
+        // LEVEL: makeup gain after the cell. Not automatic -- the ear sets
+        // it. A source-dependent auto-makeup (compensating the *average*
+        // reduction; compensating the instantaneous reduction would cancel
+        // the compression exactly and leave a wire) was raised and rejected
+        // in 0.2.0: neither the LA-2A's Gain knob nor the Distressor's
+        // Output has one, and this module follows the hardware. Revisit only
+        // if that fidelity call changes -- kLevel's id, range and default all
+        // survive such a change, so it stays possible later.
         S::floatParam (kLevel, "Level", -24.0f, 24.0f, 0.01f, 0.0f, F::Decibels),
 
         S::choiceParam (kMode, "Mode", { "Tele", "Stressed" }, 0),
