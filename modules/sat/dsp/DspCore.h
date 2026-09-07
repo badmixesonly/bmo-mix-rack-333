@@ -175,7 +175,16 @@ public:
         /** A shelf on the sheen generator's output only, tilting the top
             octaves up so 6-18 kHz lifts further than 2.5-6 kHz. It shapes
             distortion the plugin generated, never the programme, which is why
-            it is not a tone control and is not on the panel. */
+            it is not a tone control and is not on the panel.
+
+            Left at 1.30 in 0.5.0 despite the 0.5.0 measurement pass naming it
+            as a suspect for the high end. It is not one: it acts only on the
+            sheen generator's output, and the AUTO-off render at TONE 0 puts
+            the whole waveshaper within 0.5 dB of the dry file above 5 kHz.
+            Whatever this shelf is doing, it is doing it to a signal small
+            enough not to move a band table. Changing it would have been a
+            change that measured as nothing. See bellQ below for what the
+            high end actually was. */
         double sheenHz   = 6000.0;
         float  sheenTilt = 1.30f;
 
@@ -193,9 +202,43 @@ public:
             equaliser. This stage is that equaliser, stated plainly rather than
             hidden inside a curve, and the panel's TONE control scales it from
             nothing to the fitted shape. */
+        /** Re-fitted in 0.5.0 against an AUTO-off render pair, which is the
+            first measurement of this stage that was not confounded.
+
+            The 0.4.0 pass concluded sibilance was a transient/asymmetry
+            problem; the 0.5.0 pass corrected that to band energy above 9 kHz
+            but could not say whether the cause was this bell, the sheen
+            shelf, or the waveshaper, because every render available had AUTO
+            engaged. Rendering the dry file twice -- once at TONE 100, once at
+            TONE 0, both with AUTO off -- separates them completely:
+
+              at TONE 0 the plugin is within 0.5 dB of the dry file
+              everywhere above 5 kHz. At TONE 100 it is +8.8 to +9.6 dB.
+
+            So the waveshaper contributes essentially nothing up here and this
+            stage is the whole high end, which is DspCore's own "97-98% is a
+            linear filter" note arrived at from the other direction.
+
+            Against the reference, ours was not simply hot -- it was the wrong
+            shape. The reference peaks sharply at 7-9 kHz and falls away;
+            ours peaked lower and spilled upward:
+
+              band     reference   ours    ours - reference
+              5-7k       +9.68     +8.79       -0.89
+              7-9k      +11.13     +9.59       -1.54
+              9-12k      +6.53     +7.66       +1.13
+              12-16k     +2.85     +4.67       +1.82
+
+            That is a bell too wide, not a bell too loud, and not the shelf --
+            a shelf set too high would also be hot at 16-20 kHz, where we
+            measure 1.27 dB *under*. The centre was right all along; fitting
+            f0/Q/gain against those four figures leaves f0 at 7 kHz and moves
+            the width, so the lift narrows onto where the reference puts it.
+            Roughly a dB of the 12-16 kHz excess survives, which one bell
+            cannot reach without giving up 7-9 kHz. */
         double bellHz     = 7000.0;
-        double bellQ      = 0.90;
-        float  bellGainDb = 11.0f;
+        double bellQ      = 1.40;
+        float  bellGainDb = 13.5f;
         double highPassHz = 40.0;
     };
 
