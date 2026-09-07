@@ -296,15 +296,15 @@ void DynamicsMeter::timerCallback()
     repaint();
 }
 
-float DynamicsMeter::fractionFor (float value, juce::Array<ScalePoint> const& scale) const noexcept
+float DynamicsMeter::fractionFor (float value, const std::vector<ScalePoint>& scale) const noexcept
 {
-    if (value <= scale.getFirst().value)  return scale.getFirst().fraction;
-    if (value >= scale.getLast().value)   return scale.getLast().fraction;
+    if (value <= scale.front().value)  return scale.front().fraction;
+    if (value >= scale.back().value)   return scale.back().fraction;
 
-    for (int i = 1; i < scale.size(); ++i)
+    for (size_t i = 1; i < scale.size(); ++i)
     {
-        const auto& a = scale.getReference (i - 1);
-        const auto& b = scale.getReference (i);
+        const auto& a = scale[i - 1];
+        const auto& b = scale[i];
 
         if (value <= b.value)
         {
@@ -313,7 +313,7 @@ float DynamicsMeter::fractionFor (float value, juce::Array<ScalePoint> const& sc
         }
     }
 
-    return scale.getLast().fraction;
+    return scale.back().fraction;
 }
 
 void DynamicsMeter::paint (juce::Graphics& g)
@@ -324,12 +324,12 @@ void DynamicsMeter::paint (juce::Graphics& g)
     // from 0 to +3, where 0 VU sits noticeably right of centre rather than
     // in the middle of the sweep. Not one real meter's calibration data --
     // just close enough to read as the genre (see class comment).
-    static const juce::Array<ScalePoint> vuScale {
+    static const std::vector<ScalePoint> vuScale {
         { -20.0f, 0.00f }, { -10.0f, 0.34f }, { -7.0f, 0.44f }, { -5.0f, 0.53f },
         { -3.0f, 0.63f },  { -2.0f, 0.69f },  { -1.0f, 0.76f }, { 0.0f, 0.83f },
         { 1.0f, 0.89f },   { 2.0f, 0.94f },   { 3.0f, 1.00f },
     };
-    static const juce::Array<ScalePoint> grScale {
+    static const std::vector<ScalePoint> grScale {
         { 0.0f, 0.0f }, { 4.0f, 1.0f / 6.0f }, { 8.0f, 2.0f / 6.0f }, { 12.0f, 0.5f },
         { 16.0f, 4.0f / 6.0f }, { 20.0f, 5.0f / 6.0f }, { kGrRangeDb, 1.0f },
     };
@@ -344,7 +344,7 @@ void DynamicsMeter::paint (juce::Graphics& g)
     const auto pivot     = bounds.getBottomLeft().translated (bounds.getWidth() * 0.5f, 0.0f);
     const auto radius    = juce::jmin (bounds.getWidth() * 0.5f, bounds.getHeight()) - 6.0f;
     const auto sweep     = juce::degreesToRadians (100.0f);
-    const auto startAngle = -sweep * 0.5f, endAngle = sweep * 0.5f;
+    const auto startAngle = -sweep * 0.5f;
     const auto angleFor  = [&] (float fraction) { return startAngle + fraction * sweep; };
 
     // Face plate.
@@ -393,7 +393,12 @@ void DynamicsMeter::paint (juce::Graphics& g)
     g.fillEllipse (juce::Rectangle<float> (7.0f, 7.0f).withCentre (pivot));
 
     const auto readoutLabel = isReduction ? "GR" : (mode == Mode::input ? "IN" : "OUT");
-    drawLabel (g, juce::String ("VU  •  ") + readoutLabel, modeLabelArea,
+    // Spelled as an escape rather than a literal bullet: MSVC without /utf-8
+    // reads a BOM-less source file in the system codepage, which would mangle
+    // the character on Windows only. This is the one non-ASCII glyph in the
+    // suite's sources -- keep it that way, or set the flag.
+    drawLabel (g, juce::String (juce::CharPointer_UTF8 ("VU  \xe2\x80\xa2  ")) + readoutLabel,
+               modeLabelArea,
                juce::Justification::centred, labelFont (9.0f), t.text2);
 }
 

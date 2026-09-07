@@ -4,6 +4,7 @@
 #include "core/state/ParamSpec.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <functional>
+#include <vector>
 
 namespace bmo::ui
 {
@@ -169,7 +170,12 @@ private:
         where it sits across the needle's sweep, 0..1. */
     struct ScalePoint { float value; float fraction; };
 
-    float fractionFor (float value, juce::Array<ScalePoint> const& scale) const noexcept;
+    /** A std::vector rather than a juce::Array because the scales are written
+        out as a braced list of braced pairs, and juce::Array's initialiser-list
+        constructor is a template whose element type cannot be deduced from
+        nested braces -- std::vector's is not, so `{ { -20.0f, 0.0f }, ... }`
+        just works. */
+    float fractionFor (float value, const std::vector<ScalePoint>& scale) const noexcept;
 
     std::function<float()> inputRms, outputRms, gainReductionDb;
     Mode mode;

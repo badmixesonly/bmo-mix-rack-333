@@ -5,7 +5,10 @@
 namespace bmo::opto
 {
 
-/** COMP on top, the VU meter (with its own IN/OUT/GR button row) in the
+/** Laid out this way in 0.2.0, replacing 0.1.0's two knobs squeezed either
+    side of the meter with their captions clipped.
+
+    COMP on top, the VU meter (with its own IN/OUT/GR button row) in the
     middle, MAKEUP and the Mode/Link/Color switches on the bottom -- three
     even rows, per Frosty's 2026-09-06 layout note. Mode is TELE/ELD, a
     two-way segmented pair rather than a single on/off switch, so both

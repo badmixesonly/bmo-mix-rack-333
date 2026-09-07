@@ -57,7 +57,7 @@ inline const ParamSpecs& specs()
         // Reduction knob does. Defaults to 0 (no gain reduction) -- a freshly
         // inserted instance should be heard doing nothing until the ear asks
         // for it, not compressing out of the box.
-        S::floatParam (kCrush, "Crush", 0.0f, 100.0f, 0.1f, 0.0f, F::Percent),
+        S::floatParam (kCrush, "Crush", 0.0f, 100.0f, 0.1f, 0.0f, F::Percent), // default 35 -> 0 in 0.2.0
 
         // LEVEL: makeup gain after the cell. Not automatic -- the ear sets it.
         S::floatParam (kLevel, "Level", -24.0f, 24.0f, 0.01f, 0.0f, F::Decibels),

@@ -14,7 +14,7 @@ const ModuleDef& module()
     // per Frosty's aesthetic direction (2026-09-06).
     static const ModuleDef def {
         kModuleId, kModuleName, kSchemaVersion,
-        220, juce::Colour (0xffd4a4ff),
+        220, juce::Colour (0xffd4a4ff),   // brass gold -> lavender in 0.2.0
         specs(), factory(),
         [] { return createDsp(); },
         [] (ui::ModuleContext ctx) -> std::unique_ptr<ui::ModulePanel>

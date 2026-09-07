@@ -14,7 +14,7 @@ namespace
 {
     const Expected kSchema[]
     {
-        { P::kCrush, "Crush",   0.0f, 100.0f,  35.0f, 0 },
+        { P::kCrush, "Crush",   0.0f, 100.0f,   0.0f, 0 },
         { P::kLevel, "Level", -24.0f,  24.0f,   0.0f, 0 },
         { P::kMode,  "Mode",    0.0f,   1.0f,   0.0f, 2 },
         { P::kLink,  "Link",    0.0f,   1.0f,   1.0f, 2 },
