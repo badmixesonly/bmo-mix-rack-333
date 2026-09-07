@@ -14,8 +14,13 @@ namespace
     constexpr int kKnobWidth   = 136;
     constexpr int kKnobHeight  = 150;
     constexpr int kMeterWidth  = 190;
-    constexpr int kSwitchRow   = 26;
     constexpr int kMeterButtonRow = 22;
+
+    // Lifted from BMO Util so the switches are literally the same control at
+    // the same size across the suite -- see modules/util/panel/UtilPanel.cpp.
+    constexpr int kSwitchWidth  = 70;
+    constexpr int kSwitchHeight = 26;
+    constexpr int kSwitchGap    = 8;
 
     // The module's own accent (see modules/opto/Module.cpp) is used for
     // knob faces and switch glows; labels want a darker, higher-contrast
@@ -30,10 +35,12 @@ namespace
     // 1.02:1 on the old light face and could not be seen at all.
     const juce::Colour kMeterHotColour = ui::faceOf (juce::Colour (0xffd4a4ff));
 
-    // The face the scale is printed on. Dark, matching Util's disengaged
-    // switches, so the white needle and white numbers have something to
-    // read against -- Frosty's 2026-09-06 direction.
-    const juce::Colour kMeterFaceColour = juce::Colour (0xffa6a6a6);
+    // The face the scale is printed on. Dark, so the white needle and white
+    // numbers have something to read against: 11.4:1 for the needle, 8.2:1
+    // for the hot zone. Frosty's cream-face/black-needle mockup inverted --
+    // same idea, which is that a needle meter needs one very light element
+    // and one very dark one, and 0.2.0 had neither.
+    const juce::Colour kMeterFaceColour = juce::Colour (0xff3a3a3a);
 }
 
 OptoPanel::OptoPanel (ui::ModuleContext ctx)
@@ -45,20 +52,30 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
       meter (context.inputRms, context.rms, context.gainReductionDb,
              ui::DynamicsMeter::Mode::output, context.def.accent, kMeterHotColour,
              kMeterFaceColour),
-      teleButton ("TELE"), eldButton ("ELD"),
+      modeButton ("TELE"),
       meterInButton ("IN"), meterOutButton ("OUT"), meterGrButton ("GR"),
-      link  (context.params.param (Index::link),  "LINK",  context.def.accent),
-      color (context.params.param (Index::color), "COLOR", context.def.accent)
+      link  (context.params.param (Index::link),  "LINK",  kLabelColour),
+      color (context.params.param (Index::color), "COLOR", kLabelColour)
 {
-    for (auto* b : { &teleButton, &eldButton, &meterInButton, &meterOutButton, &meterGrButton })
+    // Every switch lights in kLabelColour rather than the raw accent: the
+    // accent is a pale lavender chosen for knob caps, and white text on it
+    // is unreadable. This is the same darker step COMP and MAKEUP are set
+    // in, so an engaged switch matches the captions above it.
+    for (auto* b : { &modeButton, &meterInButton, &meterOutButton, &meterGrButton })
     {
         b->setClickingTogglesState (false);
-        b->setColour (juce::TextButton::buttonOnColourId, context.def.accent);
+        b->setColour (juce::ToggleButton::tickColourId, kLabelColour);
         addAndMakeVisible (b);
     }
 
-    teleButton.onClick = [this] { setChoice (context.params.param (Index::mode), 0.0f); };
-    eldButton.onClick  = [this] { setChoice (context.params.param (Index::mode), 1.0f); };
+    // One button, carrying whichever mode it is in. Toggling is done through
+    // the parameter rather than the button's own state so host automation and
+    // a click land in the same place; timerCallback() is what reads it back.
+    modeButton.onClick = [this]
+    {
+        const auto stressed = context.params.param (Index::mode).getValue() > 0.5f;
+        setChoice (context.params.param (Index::mode), stressed ? 0.0f : 1.0f);
+    };
 
     meterInButton.onClick = [this]
     {
@@ -90,9 +107,8 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
         addAndMakeVisible (c);
 
     lastModeWasStressed = context.params.param (Index::mode).getValue() > 0.5f;
-    teleButton.setToggleState (! lastModeWasStressed, juce::dontSendNotification);
-    eldButton.setToggleState  (lastModeWasStressed,   juce::dontSendNotification);
-    color.setVisible (lastModeWasStressed);
+    modeButton.setButtonText (lastModeWasStressed ? "ELD" : "TELE");
+    modeButton.setToggleState (lastModeWasStressed, juce::dontSendNotification);
     color.setSwitchEnabled (lastModeWasStressed);
 
     startTimerHz (15);
@@ -109,23 +125,25 @@ void OptoPanel::setChoice (juce::RangedAudioParameter& param, float normalisedVa
 
 void OptoPanel::timerCallback()
 {
-    // Color has no off state in Tele mode (DspCore locks it on regardless
-    // of the parameter -- see DspCore::process()), so the switch itself is
-    // hidden and disabled there rather than left on-screen doing nothing.
+    // Color has no off state in Tele mode (DspCore locks it on regardless of
+    // the parameter -- see DspCore::process()), so the switch is disabled
+    // there. Disabled and not hidden: hiding it moved LINK up the panel every
+    // time the mode changed, and a control that jumps around is worse than a
+    // dimmed one that stays put.
+    //
     // Polled rather than a parameter listener, same as OutputMeter/
-    // DynamicsMeter's own timers -- there's no cross-thread marshaling to
-    // get right for a once-in-a-while UI state change like this one. The
-    // TELE/ELD highlight is polled the same way so host automation of Mode
-    // (not just a click on these buttons) still updates which one glows.
+    // DynamicsMeter's own timers -- there's no cross-thread marshaling to get
+    // right for a once-in-a-while UI state change like this one. The mode
+    // button's own label and glow are polled the same way, so host automation
+    // of Mode (not just a click) still updates it.
     const auto stressed = context.params.param (Index::mode).getValue() > 0.5f;
 
-    teleButton.setToggleState (! stressed, juce::dontSendNotification);
-    eldButton.setToggleState  (stressed,   juce::dontSendNotification);
+    modeButton.setToggleState (stressed, juce::dontSendNotification);
 
     if (stressed != lastModeWasStressed)
     {
         lastModeWasStressed = stressed;
-        color.setVisible (stressed);
+        modeButton.setButtonText (stressed ? "ELD" : "TELE");
         color.setSwitchEnabled (stressed);
     }
 }
@@ -133,6 +151,24 @@ void OptoPanel::timerCallback()
 void OptoPanel::resized()
 {
     auto area = getLocalBounds().reduced (kPad, 4);
+
+    const auto centredSwitch = [] (juce::Rectangle<int> row)
+    {
+        return row.withSizeKeepingCentre (kSwitchWidth, kSwitchHeight);
+    };
+
+    // Mode above everything: it decides what COMP and MAKEUP mean.
+    modeButton.setBounds (centredSwitch (area.removeFromTop (kSwitchHeight)));
+    area.removeFromTop (kSwitchGap * 2);
+
+    // LINK and COLOR stacked at the foot, under the MAKEUP caption. Taken off
+    // the bottom before the three rows are measured so the rows stay even.
+    auto footer = area.removeFromBottom (kSwitchHeight * 2 + kSwitchGap);
+    link.setBounds  (centredSwitch (footer.removeFromTop (kSwitchHeight)));
+    footer.removeFromTop (kSwitchGap);
+    color.setBounds (centredSwitch (footer.removeFromTop (kSwitchHeight)));
+    area.removeFromBottom (kSwitchGap);
+
     const auto rowHeight = area.getHeight() / 3;
 
     auto topRow    = area.removeFromTop (rowHeight);
@@ -158,15 +194,9 @@ void OptoPanel::resized()
     meterGrButton.setBounds  (meterButtonArea.removeFromLeft (meterButtonWidth).reduced (3, 1));
     meterOutButton.setBounds (meterButtonArea.reduced (3, 1));
 
-    // Bottom third: MAKEUP, then the Mode/Link/Color row underneath it.
-    auto switchRow = bottomRow.removeFromBottom (kSwitchRow);
+    // Bottom third: MAKEUP. Its LINK/COLOR stack was placed above, before the
+    // rows were measured.
     level.setBounds (bottomRow.withSizeKeepingCentre (kKnobWidth, kKnobHeight));
-
-    const auto switchWidth = switchRow.getWidth() / 4; // TELE, ELD, LINK, COLOR
-    teleButton.setBounds (switchRow.removeFromLeft (switchWidth).reduced (3, 2));
-    eldButton.setBounds  (switchRow.removeFromLeft (switchWidth).reduced (3, 2));
-    link.setBounds       (switchRow.removeFromLeft (switchWidth).reduced (3, 2));
-    color.setBounds      (switchRow.reduced (3, 2));
 }
 
 } // namespace bmo::opto

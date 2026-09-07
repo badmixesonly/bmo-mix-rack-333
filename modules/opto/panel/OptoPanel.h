@@ -5,20 +5,28 @@
 namespace bmo::opto
 {
 
-/** Laid out this way in 0.2.0, replacing 0.1.0's two knobs squeezed either
-    side of the meter with their captions clipped.
+/** Mode on top, then three even rows -- COMP, the VU meter with its own
+    IN/GR/OUT row, and MAKEUP -- with LINK and COLOR stacked underneath.
 
-    COMP on top, the VU meter (with its own IN/OUT/GR button row) in the
-    middle, MAKEUP and the Mode/Link/Color switches on the bottom -- three
-    even rows, per Frosty's 2026-09-06 layout note. Mode is TELE/ELD, a
-    two-way segmented pair rather than a single on/off switch, so both
-    states read on screen at once instead of one label standing in for
-    "off" the way a boolean SwitchButton would.
+    Mode sits above everything because it is the one control that changes
+    what the other two knobs mean; it reads as the module's character
+    switch rather than as one more option in a row of them. It is a single
+    button that says which mode it is in, not the TELE/ELD pair 0.2.0 had:
+    two buttons for one either/or spent twice the width saying it, and the
+    pair was the only place in the suite where a choice was drawn that way.
 
-    Color's switch is disabled and hidden in Tele mode, since Tele has no
-    off state for it (DspCore locks it on regardless of the parameter) --
-    see timerCallback(). "TELE"/"ELD"/"COLOR" are the module's working
-    names, not necessarily final -- see modules/opto/params.h. */
+    Every switch here is a juce::ToggleButton so BmoLookAndFeel draws it,
+    which is what makes these read as the same control as BMO Util's
+    polarity switches -- grey with white text disengaged, the module's
+    dark purple with a faint glow engaged. The meter's IN/GR/OUT row is
+    the same button in radio behaviour: clicking does not toggle, the
+    handlers set the trio's states.
+
+    Color is disabled but left in place in Tele mode, since Tele has no off
+    state for it (DspCore locks it on regardless of the parameter) -- see
+    timerCallback(). 0.2.0 hid it, which moved LINK every time the mode
+    changed. "TELE"/"ELD"/"COLOR" are the module's working names, not
+    necessarily final -- see modules/opto/params.h. */
 class OptoPanel final : public ui::ModulePanel,
                         private juce::Timer
 {
@@ -41,8 +49,8 @@ private:
     ui::PlainKnob crush, level;
     ui::DynamicsMeter meter;
 
-    juce::TextButton teleButton, eldButton;
-    juce::TextButton meterInButton, meterOutButton, meterGrButton;
+    juce::ToggleButton modeButton;
+    juce::ToggleButton meterInButton, meterOutButton, meterGrButton;
 
     ui::SwitchButton link, color;
 
