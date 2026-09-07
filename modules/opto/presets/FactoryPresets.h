@@ -19,34 +19,45 @@ namespace bmo::opto
     Gentle was still inside tolerance and is untouched. LEVEL is a plain
     gain, so these are arithmetic, not estimates.
 
-    **Crushed <3 cannot be fully matched any more.** It wants 26.21dB of
-    makeup and kLevel's range stops at 24 -- a range that is permanent per
-    the repo's AGENTS.md, so it is the preset that has to give, not the
+    **Through 0.2.0, Crushed <3 could not be fully matched** -- history now,
+    but it explains the shape of everything below. It wanted 26.21dB of
+    makeup where kLevel's range stops at 24 -- a range that is permanent per
+    the repo's AGENTS.md, so it was the preset that had to give, not the
     parameter. It sat at the 24.0 rail and landed 2.2dB quiet, inside the
     level-matching test's +/-3dB but with under 1dB of headroom.
 
-    **0.2.1 eased that rather than solving it.** The release fix (see
+    **0.2.1 did not ease that -- it dissolved it.** The release fix (see
     Detector.h) means the cells hold far less sustained reduction, so every
-    preset here needs *less* makeup than it did -- Crushed's shortfall drops
-    to roughly 1dB. The rail is no longer one change away from breaking.
+    preset needs *less* makeup than it did, and CI measured how much: with
+    LEVEL still at the old 24.0, Crushed came out **3.64dB loud** on both
+    platforms. It needs **20.36dB**, not 26.21. The +24 rail it has been
+    pinned against for two sessions now has 3.6dB of clear headroom, and it
+    got there as a side effect of fixing the release rather than from
+    anything aimed at the level.
 
-    Frosty asked for it to crush harder, at 12-15dB, and then chose not to
-    once the arithmetic was straight: **depth and the rail pull in opposite
-    directions.** Deeper reduction is a quieter output and therefore *more*
-    makeup, not less. 12-15dB on real material needs CRUSH near 100, which
-    lands the preset ~4.5dB quiet and fails the level-match check outright.
-    So CRUSH stays at 85 and the preset banks the headroom instead. If it
-    ever needs to be genuinely deeper, the honest routes are ELD mode (the
-    10:1 reaches the same depth for ~1.7dB less makeup, but it is a
-    different unit's character) or reopening kLevel's range -- not nudging
-    this number.
+    The estimate that preceded that measurement was badly wrong -- the local
+    solver put the saving at ~1.15dB against an actual ~5.9dB. Treat
+    tools/measure/renders' preset mode as a way to rank options and nothing
+    more; the value comes from CI.
 
-    **All three LEVEL values below still need re-solving**, because the
-    release change moved every one of them. They come from CI with
-    BMO_PRINT_PRESET_LEVELS set; the local solver in tools/measure/renders
-    ports voice() faithfully but omits the drive and Color stages and lands
-    ~8dB out at deep settings, so it can rank options and must not set a
-    value.
+    **Depth is still a real decision, and it is now affordable.** Deeper
+    reduction is a quieter output and therefore *more* makeup, not less --
+    depth and the rail pull in opposite directions, which is the arithmetic
+    that ruled 12-15dB out while the preset needed 26dB. At 20.36dB there is
+    room again. CRUSH stays at 85 for now because that was decided when the
+    headroom was thought to be 1dB, not 3.6, and the release fix has changed
+    how crushed this preset *feels* independently of how deep it goes -- so
+    it deserves an ear pass before another number is chosen. If it is wanted
+    deeper, CRUSH 100 is the direct route, ELD mode reaches the same depth
+    for ~1.7dB less makeup at the cost of being a different unit's
+    character, and kLevel's range no longer needs reopening.
+
+    **Gentle and Vocal Glue drifted too** and are still carrying values
+    solved against the old release. They pass the +/-3dB check, so CI never
+    said by how much -- BMO_PRINT_PRESET_LEVELS is set on the workflow's
+    Test step to find out. Their values come from that, never from the local
+    solver, which ports voice() faithfully but omits the drive and Color
+    stages and lands ~8dB out at deep settings.
 
     A source-dependent auto-makeup was considered here in 0.2.0 and
     **rejected**: it would have made all of this moot, but neither the LA-2A
@@ -66,7 +77,7 @@ inline const std::vector<FactoryPreset>& factory()
 
         { "Gentle",     { { kCrush, 15.0f }, { kLevel, 3.2f } } },
         { "Vocal Glue", { { kCrush, 45.0f }, { kLevel, 11.53f } } },
-        { "Crushed <3", { { kCrush, 85.0f }, { kLevel, 24.0f } } },   // needs re-solving from CI -- see above
+        { "Crushed <3", { { kCrush, 85.0f }, { kLevel, 20.36f } } },  // measured on CI, run 34084188862
     };
 
     return presets;

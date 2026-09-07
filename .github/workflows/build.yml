@@ -108,8 +108,27 @@ jobs:
         id: build
         run: cmake --build build --parallel
 
+      # BMO_PRINT_PRESET_LEVELS makes the preset level-matching tests print
+      # each preset's measured delta instead of only reporting the ones that
+      # fall outside tolerance. Preset LEVEL values are hand-set makeup
+      # figures solved against a real run -- when a DSP change moves how much
+      # reduction a preset holds, it moves every one of them, and the ones
+      # still inside +/-3 dB are exactly the ones a pass/fail result hides.
+      # 0.2.1's release fix moved all three of BMO Opto's; only Crushed <3
+      # broke the tolerance, so only Crushed <3 reported a number.
+      #
+      # -V rather than --output-on-failure, because --output-on-failure shows
+      # a test's stdout only when it fails: if the fix works and everything
+      # passes, the printed levels are exactly what gets suppressed. Verbose
+      # is noisier but it is a CI log, and the whole point of this step is to
+      # read output from tests that pass.
+      #
+      # Temporary, like the packaging carve-out below. Remove both before this
+      # workflow file reaches main.
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        env:
+          BMO_PRINT_PRESET_LEVELS: 1
+        run: ctest --test-dir build -V
 
       # Everywhere else, Package only runs if Test also passed (the default
       # `if: success()` every step gets implicitly). add-bmo-opto is still
