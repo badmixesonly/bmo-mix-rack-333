@@ -229,13 +229,29 @@ public:
               9-12k      +6.53     +7.66       +1.13
               12-16k     +2.85     +4.67       +1.82
 
-            That is a bell too wide, not a bell too loud, and not the shelf --
-            a shelf set too high would also be hot at 16-20 kHz, where we
-            measure 1.27 dB *under*. The centre was right all along; fitting
-            f0/Q/gain against those four figures leaves f0 at 7 kHz and moves
-            the width, so the lift narrows onto where the reference puts it.
-            Roughly a dB of the 12-16 kHz excess survives, which one bell
-            cannot reach without giving up 7-9 kHz. */
+            That is a bell too wide, not a bell too loud, and not the shelf:
+            a shelf error is monotonic above its corner, and this one changes
+            sign -- under the reference at 5-9 kHz, over it at 9-16 kHz. No
+            single shelf setting does that.
+
+            The centre was right all along; fitting f0/Q/gain against those
+            four figures leaves f0 at 7 kHz and moves the width, so the lift
+            narrows onto where the reference puts it. Roughly a dB of the
+            12-16 kHz excess survives, which one bell cannot reach without
+            giving up 7-9 kHz.
+
+            **Deliberately fitted on four bands, not five.** A 16-20 kHz row
+            exists and is not used, because it cannot be trusted here: the
+            reference vocals are 44.1 kHz and the renders are 48 kHz Ableton
+            bounces, and running the *same* audio through both paths costs
+            1.29 dB in 16-20 kHz while costing at most 0.29 dB in every band
+            below it. Our 16-20 kHz figure was -1.27 dB, which is the
+            artifact and nothing else. An earlier version of this note argued
+            from that band that the error could not be the shelf; the
+            argument above replaces it, and the fit is unchanged either way
+            because the band was already weighted near zero. The frequency
+            axes themselves are fine -- the bounces align with the originals
+            to a scale factor of 1.00000, so nothing is pitch-shifted. */
         double bellHz     = 7000.0;
         double bellQ      = 1.40;
         float  bellGainDb = 13.5f;
