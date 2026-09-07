@@ -134,12 +134,30 @@ private:
 };
 
 //==============================================================================
-/** A peaking bell: the dry signal with a scaled band-pass added to it.
+/** A peaking bell: the dry signal with a scaled, soft-limited band-pass added
+    to it.
 
-    y = x + (gain - 1) * bandpass(x)
+    y = x + threshold * tanh((gain - 1) * bandpass(x) / threshold)
 
-    which is unity everywhere the band-pass is not, and `gain` at the centre,
-    with no separate coefficient set to keep in step.
+    A purely linear bell -- y = x + (gain - 1) * bandpass(x) -- is what this
+    was until the 0.4.0 test pass measured BMO's crest factor 0.6 dB above the
+    Fuji target (22.81 vs 22.19 dB) while its energy in the same band matched
+    or trailed the target. Isolating each stage of the chain (`measure_sat
+    compare` against the actual Fuji before/after pair, with each generator
+    zeroed in turn) found the +11 dB, Q 0.9 bell entirely responsible: silence
+    it and the crest change on the real reference file flips from +2.82 dB to
+    -2.38 dB, while the other stages barely move it. A high-Q boost sitting
+    after the waveshaper passes sibilant transients through at full gain, so
+    the same average band energy arrives peakier than the target's -- read
+    back as "more sibilant" without an EQ or de-esser having anything to fix,
+    which matches the test doc's finding almost exactly.
+
+    Soft-limiting only the boost this filter adds -- never the dry signal --
+    tames those transient spikes without touching the steady-state band gain
+    the average-energy measurement depends on. `threshold` was fitted the same
+    way as everything else in this file: swept against the real Fuji pair
+    until the crest-factor change matched (+1.69 vs the target's +1.70 dB),
+    which cost the band deltas at most 0.4 dB versus the unclipped version.
 */
 class Bell
 {
@@ -156,8 +174,13 @@ public:
     {
         float bp = 0.0f, hp = 0.0f;
         svf.process (x, bp, hp);
-        return x + amount * bp;
+        const auto boost = amount * bp;
+        const auto tamed = threshold * std::tanh (boost / threshold);
+        return x + tamed;
     }
+
+    /** Fitted against the real Fuji before/after pair; see the class comment. */
+    static constexpr float threshold = 0.42f;
 
 private:
     Svf   svf;

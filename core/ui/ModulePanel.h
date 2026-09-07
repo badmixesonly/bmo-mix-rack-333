@@ -19,6 +19,14 @@ struct ModuleContext
     const ModuleDef& def;
     std::function<float()> peak;    ///< output level, linear, both channels
     std::function<float()> rms;
+
+    // Optional: empty for every module that does not ask for one. Only a
+    // dynamics module's panel (BMO Opto's DynamicsMeter) reads these today --
+    // see core/product/ModuleEngine.h. Check before calling: a
+    // default-constructed std::function throws if invoked.
+    std::function<float()> inputPeak;         ///< input level, linear, before the DSP
+    std::function<float()> inputRms;
+    std::function<float()> gainReductionDb;   ///< always >= 0
 };
 
 /** Base of every module panel: a fixed-size faceplate of the module's design

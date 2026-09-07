@@ -24,7 +24,7 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 rm -rf "$out"
 mkdir -p "$out/VST3" "$out/Standalone"
 
-products=("BMO EQ" "BMO Saturator" "BMO Util" "BMO Mix Rack")
+products=("BMO EQ" "BMO Saturator" "BMO Util" "BMO Opto" "BMO Mix Rack")
 found=0
 
 for name in "${products[@]}"; do
@@ -53,7 +53,7 @@ cat > "$out/README.txt" <<'TXT'
 BMO (Bad Mixes Only) by LT3a -- tester build
 
 Contents
-  VST3/         BMO EQ, BMO Saturator, BMO Util, BMO Mix Rack
+  VST3/         BMO EQ, BMO Saturator, BMO Util, BMO Opto, BMO Mix Rack
   AU/           the same, as Audio Units (macOS only)
   Standalone/   each product as an app, for a quick look without a DAW
 

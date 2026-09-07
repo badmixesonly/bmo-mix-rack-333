@@ -57,4 +57,23 @@ private:
     std::array<std::atomic<float>, 2> peak { }, rms { };
 };
 
+//==============================================================================
+/** Gain reduction, published from the audio thread and polled by a panel on
+    a timer -- same publish-and-sample rule as Meter, but for a single scalar
+    a module's own DSP computes rather than something derivable from a
+    buffer. Only a dynamics module has anything to report; see
+    ModuleDsp::currentGainReductionDb() and ModuleEngine. */
+class GainReductionMeter
+{
+public:
+    void reset() noexcept { value.store (0.0f, std::memory_order_relaxed); }
+
+    void publish (float reductionDb) noexcept { value.store (reductionDb, std::memory_order_relaxed); }
+
+    float get() const noexcept { return value.load (std::memory_order_relaxed); }
+
+private:
+    std::atomic<float> value { 0.0f };
+};
+
 } // namespace bmo

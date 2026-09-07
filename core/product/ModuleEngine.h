@@ -7,12 +7,18 @@
 namespace bmo
 {
 
-/** A module running: its DSP, the parameters it reads, and its output meter.
+/** A module running: its DSP, the parameters it reads, and its meters.
 
     The standalone product owns one; the rack owns one per occupied slot.
     Parameter values are read once per block from the ParamSet, in spec
     order, into a pre-sized array, so the audio thread does no allocation and
     does not care whose parameter objects they are.
+
+    Input and gain-reduction metering cost nothing for a module that never
+    reads them -- `inputMeter` is measured unconditionally the same way
+    `outputMeter` always was, and `gainReduction` is a single atomic float
+    fed from `ModuleDsp::currentGainReductionDb()`, whose default is silence.
+    Only BMO Opto's panel reads either today.
 */
 class ModuleEngine
 {
@@ -28,6 +34,8 @@ public:
     ParamSet& params() noexcept              { return paramSet; }
     const ParamSet& params() const noexcept  { return paramSet; }
     const Meter& meter() const noexcept      { return outputMeter; }
+    const Meter& inputMeter() const noexcept { return inMeter; }
+    const GainReductionMeter& gainReduction() const noexcept { return grMeter; }
 
     void prepare (double sampleRate, int maxBlockSize, int numChannels)
     {
@@ -36,20 +44,26 @@ public:
         dsp->setParams (values.data(), (int) values.size());
         dsp->prepare (sampleRate, maxBlockSize, numChannels);
         outputMeter.reset();
+        inMeter.reset();
+        grMeter.reset();
     }
 
     void reset()
     {
         dsp->reset();
         outputMeter.reset();
+        inMeter.reset();
+        grMeter.reset();
     }
 
     void process (float* const* channels, int numChannels, int numSamples)
     {
         read();
         dsp->setParams (values.data(), (int) values.size());
+        inMeter.measure (channels, numChannels, numSamples);
         dsp->process (channels, numChannels, numSamples);
         outputMeter.measure (channels, numChannels, numSamples);
+        grMeter.publish (dsp->currentGainReductionDb());
     }
 
     /** Latency for the parameters as they are now. Safe from any thread. */
@@ -68,6 +82,8 @@ private:
     std::unique_ptr<ModuleDsp> dsp;
     std::vector<float> values;
     Meter outputMeter;
+    Meter inMeter;
+    GainReductionMeter grMeter;
 };
 
 } // namespace bmo

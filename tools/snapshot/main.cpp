@@ -1,12 +1,13 @@
 // Renders a product's editor to a PNG without a display, so a layout change
 // can be reviewed in a pull request rather than described in one.
 //
-//   snapshot <eq|sat|util|rack> out.png [width height] [param=value ...]
+//   snapshot <eq|sat|util|opto|rack> out.png [width height] [param=value ...]
 //
-// For the rack, "chain=util,eq,sat" sets the modules and "N.id=value" sets a
-// parameter of the module in slot N (1-based), e.g. 2.mid_gain=4.
+// For the rack, "chain=util,eq,sat,opto" sets the modules and "N.id=value"
+// sets a parameter of the module in slot N (1-based), e.g. 2.mid_gain=4.
 
 #include "products/eq/Product.h"
+#include "products/opto/Product.h"
 #include "products/sat/Product.h"
 #include "products/util/Product.h"
 #include "products/rack/Product.h"
@@ -23,6 +24,7 @@ namespace
         if (product == "eq")   return createEq();
         if (product == "sat")  return createSat();
         if (product == "util") return createUtil();
+        if (product == "opto") return createOpto();
         if (product == "rack") return createRack();
         return nullptr;
     }
@@ -82,7 +84,7 @@ int main (int argc, char** argv)
 
     if (argc < 3)
     {
-        std::cerr << "usage: snapshot <eq|sat|util|rack> out.png [width height] [param=value ...]\n";
+        std::cerr << "usage: snapshot <eq|sat|util|opto|rack> out.png [width height] [param=value ...]\n";
         return 2;
     }
 

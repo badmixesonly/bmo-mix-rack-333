@@ -23,5 +23,6 @@ if [[ ${1:-} == --snapshots ]]; then
     ./build/tools/snapshot eq   snapshots/eq.png
     ./build/tools/snapshot sat  snapshots/sat.png
     ./build/tools/snapshot util snapshots/util.png
-    ./build/tools/snapshot rack snapshots/rack.png chain=util,eq,sat
+    ./build/tools/snapshot opto snapshots/opto.png
+    ./build/tools/snapshot rack snapshots/rack.png chain=util,eq,sat,opto
 fi

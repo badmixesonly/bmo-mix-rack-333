@@ -15,6 +15,7 @@
 #include "products/eq/Product.h"
 #include "products/sat/Product.h"
 #include "modules/eq/params.h"
+#include "modules/opto/params.h"
 #include "modules/sat/params.h"
 #include "modules/util/params.h"
 
@@ -38,6 +39,7 @@ namespace
                     "auto_gain", "oversampling" } },
         { "sat",  { "input_gain", "drive", "mix", "output_level",
                     "sat_in", "phase", "auto_gain", "oversampling", "tone" } },
+        { "opto", { "crush", "level", "mode", "link", "color" } },
     };
 
     std::vector<juce::String> chainIds (RackProcessor& rack)
@@ -73,7 +75,7 @@ int main()
         auto rack = createRack();
         const auto& registry = rack->getRegistry();
 
-        check (registry.size() == 3, "the registry holds util, eq and sat");
+        check (registry.size() == 4, "the registry holds util, eq, sat and opto");
 
         for (auto* def : registry)
         {

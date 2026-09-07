@@ -27,8 +27,8 @@ juce::String compactFrequency (const juce::String& text)
 
 //==============================================================================
 PlainKnob::PlainKnob (juce::RangedAudioParameter& parameter, const juce::String& captionText,
-                      Knob::Style style, float faceScale, juce::Colour accent)
-    : caption (captionText)
+                      Knob::Style style, float faceScale, juce::Colour accent, juce::Colour captionColourIn)
+    : caption (captionText), captionColour (captionColourIn)
 {
     knob.setStyle (style);
     knob.setAccent (accent);
@@ -40,18 +40,31 @@ PlainKnob::PlainKnob (juce::RangedAudioParameter& parameter, const juce::String&
 
 void PlainKnob::paint (juce::Graphics& g)
 {
-    const auto& t = tokens();
-
-    // The name sits under the knob, in the caption face, in the track colour.
+    // The name sits under the knob, in the caption face, in captionColour
+    // (the shared track colour unless the module asked for its own).
     drawLabel (g, caption,
                getLocalBounds().removeFromBottom (kCaptionRow).withTrimmedBottom (4).toFloat(),
                juce::Justification::centred, captionFont (15.0f),
-               knob.isEnabled() ? t.track : t.track.withAlpha (0.4f));
+               knob.isEnabled() ? captionColour : captionColour.withAlpha (0.4f));
 }
 
 void PlainKnob::resized()
 {
-    knob.setBounds (getLocalBounds().withTrimmedBottom (kCaptionRow));
+    // Square and centred, capped at knobSide. jmin(width, height) is what the
+    // rotary's radius comes from, so squaring an already-narrower-than-tall
+    // area leaves the drawn knob exactly where it was -- what it buys is the
+    // freedom to make the component wider than the knob, so a long caption
+    // has somewhere to go. See setKnobSide().
+    const auto area = getLocalBounds().withTrimmedBottom (kCaptionRow);
+    const auto side = juce::jmin (area.getWidth(), area.getHeight(), knobSide);
+
+    knob.setBounds (area.withSizeKeepingCentre (side, side));
+}
+
+void PlainKnob::setKnobSide (int maxSide)
+{
+    knobSide = maxSide;
+    resized();
 }
 
 void PlainKnob::setKnobEnabled (bool shouldBeEnabled)
@@ -251,6 +264,174 @@ void OutputMeter::paint (juce::Graphics& g)
 
     drawLabel (g, vuMode ? "VU" : "dBFS", labelArea.toFloat(), juce::Justification::centred,
                labelFont (9.0f), t.text2);
+}
+
+//==============================================================================
+DynamicsMeter::DynamicsMeter (std::function<float()> inputRmsSource,
+                              std::function<float()> outputRmsSource,
+                              std::function<float()> gainReductionDbSource,
+                              Mode initialMode, juce::Colour accent, juce::Colour hot,
+                              juce::Colour face)
+    : inputRms (std::move (inputRmsSource)), outputRms (std::move (outputRmsSource)),
+      gainReductionDb (std::move (gainReductionDbSource)), mode (initialMode),
+      accentColour (accent), hotColour (hot), faceColour (face)
+{
+    startTimerHz (30);
+}
+
+void DynamicsMeter::setMode (Mode newMode) noexcept
+{
+    if (newMode == mode)
+        return;
+
+    mode = newMode;
+    // The two VU sources are linear RMS, the reduction source is already in
+    // dB -- `displayed` is whichever unit the current mode reads in, so a
+    // stale value from the old mode would paint a nonsense deflection for
+    // one frame if it weren't reset here.
+    displayed = 0.0f;
+    repaint();
+}
+
+void DynamicsMeter::timerCallback()
+{
+    float level = 0.0f;
+
+    switch (mode)
+    {
+        case Mode::input:     level = inputRms         ? inputRms()         : 0.0f; break;
+        case Mode::output:    level = outputRms        ? outputRms()        : 0.0f; break;
+        case Mode::reduction: level = gainReductionDb  ? gainReductionDb()  : 0.0f; break;
+    }
+
+    // Same integration on every mode: VU levels and a dB reduction figure
+    // both read as "how much is happening right now", so one rate serves all
+    // three rather than needing a peak/VU distinction of its own.
+    displayed += 0.28f * (level - displayed);
+    repaint();
+}
+
+float DynamicsMeter::fractionFor (float value, const std::vector<ScalePoint>& scale) const noexcept
+{
+    if (value <= scale.front().value)  return scale.front().fraction;
+    if (value >= scale.back().value)   return scale.back().fraction;
+
+    for (size_t i = 1; i < scale.size(); ++i)
+    {
+        const auto& a = scale[i - 1];
+        const auto& b = scale[i];
+
+        if (value <= b.value)
+        {
+            const auto t = (value - a.value) / (b.value - a.value);
+            return a.fraction + t * (b.fraction - a.fraction);
+        }
+    }
+
+    return scale.back().fraction;
+}
+
+void DynamicsMeter::paint (juce::Graphics& g)
+{
+    const auto& t = tokens();
+
+    // Approximates a classic VU faceplate: compressed toward -20, spread out
+    // from 0 to +3, where 0 VU sits noticeably right of centre rather than
+    // in the middle of the sweep. Not one real meter's calibration data --
+    // just close enough to read as the genre (see class comment).
+    // -2, -1, +1 and +2 are struck but not numbered: from -3 up the scale
+    // crowds into the last third of the sweep, and inking every one of them
+    // is what left the numbers illegibly small and touching. The numbered
+    // ones are the figures a VU is actually read against.
+    static const std::vector<ScalePoint> vuScale {
+        { -20.0f, 0.00f }, { -10.0f, 0.34f }, { -7.0f, 0.44f }, { -5.0f, 0.53f },
+        { -3.0f, 0.63f },  { -2.0f, 0.69f, false }, { -1.0f, 0.76f, false }, { 0.0f, 0.83f },
+        { 1.0f, 0.89f, false }, { 2.0f, 0.94f, false }, { 3.0f, 1.00f },
+    };
+    static const std::vector<ScalePoint> grScale {
+        { 0.0f, 0.0f }, { 4.0f, 1.0f / 6.0f }, { 8.0f, 2.0f / 6.0f }, { 12.0f, 0.5f },
+        { 16.0f, 4.0f / 6.0f }, { 20.0f, 5.0f / 6.0f }, { kGrRangeDb, 1.0f },
+    };
+
+    const auto isReduction = mode == Mode::reduction;
+
+    auto bounds = getLocalBounds().toFloat();
+    const auto modeLabelArea = bounds.removeFromBottom (14.0f);
+
+    // Sweep geometry: needle pivots at bottom-centre, arcs upward. 100
+    // degrees total, split evenly either side of straight up.
+    const auto pivot     = bounds.getBottomLeft().translated (bounds.getWidth() * 0.5f, 0.0f);
+    const auto radius    = juce::jmin (bounds.getWidth() * 0.5f, bounds.getHeight()) - 6.0f;
+    // 124 rather than 100 degrees: the numbers are set larger now, and the
+    // extra arc is what keeps them apart at the crowded top of the scale.
+    const auto sweep     = juce::degreesToRadians (124.0f);
+    const auto startAngle = -sweep * 0.5f;
+    const auto angleFor  = [&] (float fraction) { return startAngle + fraction * sweep; };
+
+    // Face plate: dark, so the light ink on it reads. The bezel stays the
+    // module's accent -- semantic colour on the frame, luminance contrast on
+    // everything that has to be read.
+    g.setColour (faceColour);
+    g.fillRoundedRectangle (bounds, 4.0f);
+    g.setColour (accentColour.withAlpha (0.7f));
+    g.drawRoundedRectangle (bounds.reduced (0.75f), 4.0f, 1.5f);
+
+    // Scale ticks and numbers. Split into two paths so the 0 VU and above
+    // zone -- hotColour, a classic VU meter's red printed in the module's
+    // own colour instead -- strokes separately from the rest of the scale.
+    const auto& scale = isReduction ? grScale : vuScale;
+    juce::Path ticks, hotTicks;
+
+    for (const auto& p : scale)
+    {
+        const auto angle = angleFor (p.fraction);
+        const auto inner = pivot.getPointOnCircumference (radius - 7.0f, angle);
+        const auto outer = pivot.getPointOnCircumference (radius, angle);
+        const auto hot = ! isReduction && p.value >= 0.0f;
+
+        auto& path = hot ? hotTicks : ticks;
+        path.startNewSubPath (inner);
+        path.lineTo (outer);
+
+        if (! p.numbered)
+            continue;
+
+        // The scale is printed in white, the hot zone in the module's own
+        // colour. Colour marks the zone; contrast does the reading.
+        const auto labelCentre = pivot.getPointOnCircumference (radius - 19.0f, angle);
+        drawLabel (g, juce::String ((int) p.value),
+                   juce::Rectangle<float> (28.0f, 15.0f).withCentre (labelCentre),
+                   juce::Justification::centred, labelFont (11.5f),
+                   hot ? hotColour : t.pointer);
+    }
+
+    g.setColour (t.pointer);
+    g.strokePath (ticks, juce::PathStrokeType (1.4f));
+    g.setColour (hotColour);
+    g.strokePath (hotTicks, juce::PathStrokeType (1.4f));
+
+    // Needle.
+    const auto valueForNeedle = isReduction ? juce::jlimit (0.0f, kGrRangeDb, displayed)
+                                              : juce::Decibels::gainToDecibels (displayed, -70.0f) - kVuReference;
+    const auto needleAngle = angleFor (fractionFor (valueForNeedle, scale));
+    const auto tip = pivot.getPointOnCircumference (radius - 4.0f, needleAngle);
+
+    // White in every mode. The needle is the one thing on this panel that has
+    // to be legible before you look at it, so it gets the maximum contrast
+    // against the face rather than a colour that says which mode is up --
+    // the button row underneath already says that.
+    g.setColour (t.pointer);
+    g.drawLine (juce::Line<float> (pivot, tip), 2.4f);
+    g.fillEllipse (juce::Rectangle<float> (7.0f, 7.0f).withCentre (pivot));
+
+    const auto readoutLabel = isReduction ? "GR" : (mode == Mode::input ? "IN" : "OUT");
+    // Spelled as an escape rather than a literal bullet: MSVC without /utf-8
+    // reads a BOM-less source file in the system codepage, which would mangle
+    // the character on Windows only. This is the one non-ASCII glyph in the
+    // suite's sources -- keep it that way, or set the flag.
+    drawLabel (g, juce::String (juce::CharPointer_UTF8 ("VU  \xe2\x80\xa2  ")) + readoutLabel,
+               modeLabelArea,
+               juce::Justification::centred, labelFont (9.0f), t.text2);
 }
 
 } // namespace bmo::ui

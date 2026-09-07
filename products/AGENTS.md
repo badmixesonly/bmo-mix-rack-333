@@ -15,14 +15,22 @@ Permanent. Allocate here before the first build of anything new.
 | BMO EQ | `eq` | `Fsty` | `com.lt3audio.frostyeq` | `.bmoeq` (reads `.frostyeq`) |
 | BMO Saturator | `sat` | `Bsat` | `com.lt3audio.bmosaturator` | `.bmosat` |
 | BMO Util | `util` | `Butl` | `com.lt3audio.bmoutil` | `.bmoutil` |
+| BMO Opto | `opto` | `Bopt` | `com.lt3audio.bmoopto` | `.bmoopto` |
 | BMO Mix Rack | -- | `Brck` | `com.lt3audio.bmomixrack` | `.bmorack` |
 
 Manufacturer code `LT3a`, company "LT3 Audio", preset root `LT3 Audio/`.
 BMO EQ keeps FrostyEQ's code and bundle id on purpose: that is what makes
 existing sessions open.
 
+BMO Opto is a two-knob opto-style leveling compressor (CRUSH, LEVEL): a
+feedback-topology detector (the sidechain reads the signal after gain
+reduction, as on a real opto cell, not before it) with a program-dependent
+release time -- the harder and longer it has been driven, the slower it lets
+go -- and a knee that hardens as CRUSH increases. See `modules/opto/AGENTS`
+notes at the top of `modules/opto/dsp/DspCore.h` for the model.
+
 Reserved for later products (not built, do not reuse): `Bfet` FET comp,
-`Bopt` opto comp, `Bdyn` dynamics, `Bdes` de-esser, `Bovr` overdrive,
+`Bdyn` dynamics, `Bdes` de-esser, `Bovr` overdrive,
 `Bcmp` compressor, `Bdly` delay, `Brvb` reverb.
 
 ## Rules
