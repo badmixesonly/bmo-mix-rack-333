@@ -4,6 +4,7 @@
 #include "core/state/ParamSpec.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <functional>
+#include <limits>
 #include <vector>
 
 namespace bmo::ui
@@ -28,12 +29,24 @@ public:
 
     void setKnobEnabled (bool);
 
+    /** Caps how wide the knob itself may draw, leaving the rest of the
+        component's width to the caption underneath.
+
+        Without this a long caption can only be given room by widening the
+        whole control, which widens the knob with it. BMO Opto's "MAKEUP" is
+        the case that forced it: at the 92 px the knob wants, the caption
+        clipped to "MAKEU". The knob is laid out square and centred, so the
+        drawn radius -- jmin(width, height) -- is unchanged by a wider
+        component once the side is capped. */
+    void setKnobSide (int maxSide);
+
 private:
     /** Room under the knob for its name. */
     static constexpr int kCaptionRow = 22;
 
     juce::String caption;
     juce::Colour captionColour;
+    int knobSide = std::numeric_limits<int>::max();
     Knob knob;
     std::unique_ptr<juce::SliderParameterAttachment> attachment;
 
@@ -149,13 +162,21 @@ public:
 
     /** `hotColour` marks 0 VU and above -- a classic VU meter's red zone,
         but left up to the caller since a module's own theme may want
-        something other than red there (BMO Opto asks for #97ddff). */
+        something other than red there.
+
+        `faceColour` is the plate the scale is printed on. It is a caller's
+        choice rather than always `well` because the two are what decide
+        whether the meter can be read at all: the first cut drew a #97ddff hot
+        zone on `well` #d6d6d6, which measures 1.02:1 and is invisible. A
+        needle meter wants a dark face and light ink, the way the hardware
+        does it. */
     DynamicsMeter (std::function<float()> inputRmsSource,
                    std::function<float()> outputRmsSource,
                    std::function<float()> gainReductionDbSource,
                    Mode initialMode = Mode::output,
                    juce::Colour accent = tokens().accent,
-                   juce::Colour hotColour = tokens().meterClip);
+                   juce::Colour hotColour = tokens().meterClip,
+                   juce::Colour faceColour = tokens().well);
 
     void paint (juce::Graphics&) override;
 
@@ -166,9 +187,15 @@ private:
     void timerCallback() override;
 
     /** One control point on the printed scale: a value in the mode's own
-        unit (dB relative to the VU reference, or dB of gain reduction) and
-        where it sits across the needle's sweep, 0..1. */
-    struct ScalePoint { float value; float fraction; };
+        unit (dB relative to the VU reference, or dB of gain reduction),
+        where it sits across the needle's sweep, 0..1, and whether it is
+        numbered.
+
+        Not every tick is numbered, because a VU scale crowds hard from -3
+        upwards and printing all of it there is what made the numbers
+        unreadable. Hardware faceplates do the same: every tick is struck,
+        only the round ones are inked. */
+    struct ScalePoint { float value; float fraction; bool numbered = true; };
 
     /** A std::vector rather than a juce::Array because the scales are written
         out as a braced list of braced pairs, and juce::Array's initialiser-list
@@ -183,7 +210,7 @@ private:
 
     static constexpr float kVuReference = -18.0f;
     static constexpr float kGrRangeDb   = 24.0f;
-    juce::Colour accentColour, hotColour;
+    juce::Colour accentColour, hotColour, faceColour;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DynamicsMeter)
 };

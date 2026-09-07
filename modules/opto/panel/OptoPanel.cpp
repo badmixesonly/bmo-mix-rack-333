@@ -6,7 +6,12 @@ namespace bmo::opto
 
 namespace
 {
-    constexpr int kKnobWidth   = 92;
+    // The knob draws at kKnobSide; the control is laid out kKnobWidth wide so
+    // that the caption underneath has room. "MAKEUP" set at 15 pt is wider
+    // than the 92 px the knob itself wants, and clipped to "MAKEU" when the
+    // two were the same number.
+    constexpr int kKnobSide    = 92;
+    constexpr int kKnobWidth   = 136;
     constexpr int kKnobHeight  = 150;
     constexpr int kMeterWidth  = 190;
     constexpr int kSwitchRow   = 26;
@@ -19,9 +24,16 @@ namespace
     const juce::Colour kLabelColour { 0xff9c71c3 };
 
     // The meter's 0 VU-and-above zone: a classic VU meter prints this in
-    // red, but Frosty asked for this specific blue instead so the meter
-    // reads as part of the same palette rather than borrowing hardware red.
-    const juce::Colour kMeterHotColour { 0xff97ddff };
+    // red, but the meter reads as part of the module's own palette instead,
+    // so the zone is the lavender of the knob caps -- faceOf(accent), the
+    // accent halfway to white. It was #97ddff in 0.2.0, which measured
+    // 1.02:1 on the old light face and could not be seen at all.
+    const juce::Colour kMeterHotColour = ui::faceOf (juce::Colour (0xffd4a4ff));
+
+    // The face the scale is printed on. Dark, matching Util's disengaged
+    // switches, so the white needle and white numbers have something to
+    // read against -- Frosty's 2026-09-06 direction.
+    const juce::Colour kMeterFaceColour = juce::Colour (0xffa6a6a6);
 }
 
 OptoPanel::OptoPanel (ui::ModuleContext ctx)
@@ -31,7 +43,8 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
       level (context.params.param (Index::level), "MAKEUP",
              ui::Knob::Style::character, 0.62f, context.def.accent, kLabelColour),
       meter (context.inputRms, context.rms, context.gainReductionDb,
-             ui::DynamicsMeter::Mode::output, context.def.accent, kMeterHotColour),
+             ui::DynamicsMeter::Mode::output, context.def.accent, kMeterHotColour,
+             kMeterFaceColour),
       teleButton ("TELE"), eldButton ("ELD"),
       meterInButton ("IN"), meterOutButton ("OUT"), meterGrButton ("GR"),
       link  (context.params.param (Index::link),  "LINK",  context.def.accent),
@@ -69,6 +82,9 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
         meterGrButton.setToggleState (true, juce::dontSendNotification);
     };
     meterOutButton.setToggleState (true, juce::dontSendNotification);
+
+    for (auto* k : { &crush, &level })
+        k->setKnobSide (kKnobSide);
 
     for (auto* c : std::initializer_list<juce::Component*> { &crush, &meter, &level, &link, &color })
         addAndMakeVisible (c);

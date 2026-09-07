@@ -50,7 +50,21 @@ void PlainKnob::paint (juce::Graphics& g)
 
 void PlainKnob::resized()
 {
-    knob.setBounds (getLocalBounds().withTrimmedBottom (kCaptionRow));
+    // Square and centred, capped at knobSide. jmin(width, height) is what the
+    // rotary's radius comes from, so squaring an already-narrower-than-tall
+    // area leaves the drawn knob exactly where it was -- what it buys is the
+    // freedom to make the component wider than the knob, so a long caption
+    // has somewhere to go. See setKnobSide().
+    const auto area = getLocalBounds().withTrimmedBottom (kCaptionRow);
+    const auto side = juce::jmin (area.getWidth(), area.getHeight(), knobSide);
+
+    knob.setBounds (area.withSizeKeepingCentre (side, side));
+}
+
+void PlainKnob::setKnobSide (int maxSide)
+{
+    knobSide = maxSide;
+    resized();
 }
 
 void PlainKnob::setKnobEnabled (bool shouldBeEnabled)
@@ -256,10 +270,11 @@ void OutputMeter::paint (juce::Graphics& g)
 DynamicsMeter::DynamicsMeter (std::function<float()> inputRmsSource,
                               std::function<float()> outputRmsSource,
                               std::function<float()> gainReductionDbSource,
-                              Mode initialMode, juce::Colour accent, juce::Colour hot)
+                              Mode initialMode, juce::Colour accent, juce::Colour hot,
+                              juce::Colour face)
     : inputRms (std::move (inputRmsSource)), outputRms (std::move (outputRmsSource)),
       gainReductionDb (std::move (gainReductionDbSource)), mode (initialMode),
-      accentColour (accent), hotColour (hot)
+      accentColour (accent), hotColour (hot), faceColour (face)
 {
     startTimerHz (30);
 }
@@ -324,10 +339,14 @@ void DynamicsMeter::paint (juce::Graphics& g)
     // from 0 to +3, where 0 VU sits noticeably right of centre rather than
     // in the middle of the sweep. Not one real meter's calibration data --
     // just close enough to read as the genre (see class comment).
+    // -2, -1, +1 and +2 are struck but not numbered: from -3 up the scale
+    // crowds into the last third of the sweep, and inking every one of them
+    // is what left the numbers illegibly small and touching. The numbered
+    // ones are the figures a VU is actually read against.
     static const std::vector<ScalePoint> vuScale {
         { -20.0f, 0.00f }, { -10.0f, 0.34f }, { -7.0f, 0.44f }, { -5.0f, 0.53f },
-        { -3.0f, 0.63f },  { -2.0f, 0.69f },  { -1.0f, 0.76f }, { 0.0f, 0.83f },
-        { 1.0f, 0.89f },   { 2.0f, 0.94f },   { 3.0f, 1.00f },
+        { -3.0f, 0.63f },  { -2.0f, 0.69f, false }, { -1.0f, 0.76f, false }, { 0.0f, 0.83f },
+        { 1.0f, 0.89f, false }, { 2.0f, 0.94f, false }, { 3.0f, 1.00f },
     };
     static const std::vector<ScalePoint> grScale {
         { 0.0f, 0.0f }, { 4.0f, 1.0f / 6.0f }, { 8.0f, 2.0f / 6.0f }, { 12.0f, 0.5f },
@@ -343,12 +362,16 @@ void DynamicsMeter::paint (juce::Graphics& g)
     // degrees total, split evenly either side of straight up.
     const auto pivot     = bounds.getBottomLeft().translated (bounds.getWidth() * 0.5f, 0.0f);
     const auto radius    = juce::jmin (bounds.getWidth() * 0.5f, bounds.getHeight()) - 6.0f;
-    const auto sweep     = juce::degreesToRadians (100.0f);
+    // 124 rather than 100 degrees: the numbers are set larger now, and the
+    // extra arc is what keeps them apart at the crowded top of the scale.
+    const auto sweep     = juce::degreesToRadians (124.0f);
     const auto startAngle = -sweep * 0.5f;
     const auto angleFor  = [&] (float fraction) { return startAngle + fraction * sweep; };
 
-    // Face plate.
-    g.setColour (t.well);
+    // Face plate: dark, so the light ink on it reads. The bezel stays the
+    // module's accent -- semantic colour on the frame, luminance contrast on
+    // everything that has to be read.
+    g.setColour (faceColour);
     g.fillRoundedRectangle (bounds, 4.0f);
     g.setColour (accentColour.withAlpha (0.7f));
     g.drawRoundedRectangle (bounds.reduced (0.75f), 4.0f, 1.5f);
@@ -370,17 +393,22 @@ void DynamicsMeter::paint (juce::Graphics& g)
         path.startNewSubPath (inner);
         path.lineTo (outer);
 
-        const auto labelCentre = pivot.getPointOnCircumference (radius - 15.0f, angle);
+        if (! p.numbered)
+            continue;
+
+        // The scale is printed in white, the hot zone in the module's own
+        // colour. Colour marks the zone; contrast does the reading.
+        const auto labelCentre = pivot.getPointOnCircumference (radius - 19.0f, angle);
         drawLabel (g, juce::String ((int) p.value),
-                   juce::Rectangle<float> (22.0f, 12.0f).withCentre (labelCentre),
-                   juce::Justification::centred, labelFont (8.5f),
-                   hot ? hotColour : accentColour);
+                   juce::Rectangle<float> (28.0f, 15.0f).withCentre (labelCentre),
+                   juce::Justification::centred, labelFont (11.5f),
+                   hot ? hotColour : t.pointer);
     }
 
-    g.setColour (accentColour);
-    g.strokePath (ticks, juce::PathStrokeType (1.2f));
+    g.setColour (t.pointer);
+    g.strokePath (ticks, juce::PathStrokeType (1.4f));
     g.setColour (hotColour);
-    g.strokePath (hotTicks, juce::PathStrokeType (1.2f));
+    g.strokePath (hotTicks, juce::PathStrokeType (1.4f));
 
     // Needle.
     const auto valueForNeedle = isReduction ? juce::jlimit (0.0f, kGrRangeDb, displayed)
@@ -388,8 +416,12 @@ void DynamicsMeter::paint (juce::Graphics& g)
     const auto needleAngle = angleFor (fractionFor (valueForNeedle, scale));
     const auto tip = pivot.getPointOnCircumference (radius - 4.0f, needleAngle);
 
-    g.setColour (isReduction ? t.meterGr : accentColour);
-    g.drawLine (juce::Line<float> (pivot, tip), 2.2f);
+    // White in every mode. The needle is the one thing on this panel that has
+    // to be legible before you look at it, so it gets the maximum contrast
+    // against the face rather than a colour that says which mode is up --
+    // the button row underneath already says that.
+    g.setColour (t.pointer);
+    g.drawLine (juce::Line<float> (pivot, tip), 2.4f);
     g.fillEllipse (juce::Rectangle<float> (7.0f, 7.0f).withCentre (pivot));
 
     const auto readoutLabel = isReduction ? "GR" : (mode == Mode::input ? "IN" : "OUT");
