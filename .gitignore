@@ -4,9 +4,11 @@ build-*/
 build-*.log
 cmake-build-*/
 
-# Licensed typefaces: see assets/fonts/README.md
+# Licensed typefaces: see assets/fonts/README.md. The .otf files live outside
+# the repo entirely; .bmo-fontdir records where, and is per-machine.
 assets/fonts/*.otf
 assets/fonts/*.ttf
+.bmo-fontdir
 
 # Planning documents and tester packages stay local
 plans/
