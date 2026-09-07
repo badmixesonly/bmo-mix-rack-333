@@ -15,6 +15,7 @@ namespace
     constexpr int kKnobHeight  = 150;
     constexpr int kMeterWidth  = 190;
     constexpr int kMeterButtonRow = 22;
+    constexpr int kMeterButtonGap = 4;   ///< meter face to its IN/GR/OUT row
 
     // A needle meter is a landscape window: at this width the arc stands about
     // 91 px tall, and the 14 px mode caption sits under it. Handing DynamicsMeter
@@ -163,46 +164,62 @@ void OptoPanel::resized()
         return row.withSizeKeepingCentre (kSwitchWidth, kSwitchHeight);
     };
 
+    // One rhythm down the panel, rather than three equal thirds with each
+    // block centred inside its own. The blocks are 150, 142 and 150 tall in
+    // rows of 190, so the thirds spent 132 px of slack as uneven centring: a
+    // 36 px band under TELE, 46 px above the meter, 28 px above LINK -- and
+    // nothing at all under COLOR, which sat on the bottom edge of the panel.
+    //
+    // Every block is placed from the top and the remainder falls below COLOR
+    // as the bottom margin, so the spacing stays even if a block's height
+    // changes later.
+    const auto meterBlock  = kMeterHeight + kMeterButtonGap + kMeterButtonRow;
+    const auto footerBlock = kSwitchHeight * 2 + kSwitchGap;
+    const auto content     = kSwitchHeight + kKnobHeight + meterBlock + kKnobHeight + footerBlock;
+
+    // Four gaps between the five blocks, and one more of the same under the
+    // last of them so the panel does not end flush.
+    const auto gap = juce::jmax (kSwitchGap, (area.getHeight() - content) / 5);
+
     // Mode above everything: it decides what COMP and MAKEUP mean.
     modeButton.setBounds (centredSwitch (area.removeFromTop (kSwitchHeight)));
-    area.removeFromTop (kSwitchGap * 2);
+    area.removeFromTop (gap);
 
-    // LINK and COLOR stacked at the foot, under the MAKEUP caption. Taken off
-    // the bottom before the three rows are measured so the rows stay even.
-    auto footer = area.removeFromBottom (kSwitchHeight * 2 + kSwitchGap);
+    crush.setBounds (area.removeFromTop (kKnobHeight)
+                         .withSizeKeepingCentre (kKnobWidth, kKnobHeight));
+    area.removeFromTop (gap);
+
+    // The VU meter over its IN/GR/OUT row -- GR in the middle because it is
+    // the reading this module is actually for, and IN/OUT then read
+    // left-to-right as signal flow either side of it. Frosty asked for this
+    // order specifically, 2026-09-06.
+    {
+        auto block = area.removeFromTop (meterBlock);
+        const auto meterWidth = juce::jmin (block.getWidth(), kMeterWidth);
+
+        meter.setBounds (block.removeFromTop (kMeterHeight)
+                              .withSizeKeepingCentre (meterWidth, kMeterHeight));
+        block.removeFromTop (kMeterButtonGap);
+
+        auto buttons = block.withSizeKeepingCentre (meterWidth, block.getHeight());
+        const auto buttonWidth = buttons.getWidth() / 3;
+
+        meterInButton.setBounds  (buttons.removeFromLeft (buttonWidth).reduced (3, 1));
+        meterGrButton.setBounds  (buttons.removeFromLeft (buttonWidth).reduced (3, 1));
+        meterOutButton.setBounds (buttons.reduced (3, 1));
+    }
+    area.removeFromTop (gap);
+
+    level.setBounds (area.removeFromTop (kKnobHeight)
+                         .withSizeKeepingCentre (kKnobWidth, kKnobHeight));
+    area.removeFromTop (gap);
+
+    // LINK and COLOR at the foot, under the MAKEUP caption. Placed from the
+    // top like everything else, so what is left over stays underneath them.
+    auto footer = area.removeFromTop (footerBlock);
     link.setBounds  (centredSwitch (footer.removeFromTop (kSwitchHeight)));
     footer.removeFromTop (kSwitchGap);
     color.setBounds (centredSwitch (footer.removeFromTop (kSwitchHeight)));
-    area.removeFromBottom (kSwitchGap);
-
-    const auto rowHeight = area.getHeight() / 3;
-
-    auto topRow    = area.removeFromTop (rowHeight);
-    auto middleRow = area.removeFromTop (rowHeight);
-    auto bottomRow = area;
-
-    // Top third: COMP, large and alone.
-    crush.setBounds (topRow.withSizeKeepingCentre (kKnobWidth, kKnobHeight));
-
-    // Middle third: the VU meter over its IN/GR/OUT row -- GR in the
-    // middle because it is the reading this module is actually for, and
-    // IN/OUT then read left-to-right as signal flow either side of it.
-    // Frosty asked for this order specifically, 2026-09-06.
-    auto meterButtonRow = middleRow.removeFromBottom (kMeterButtonRow);
-    meter.setBounds (middleRow.withSizeKeepingCentre (juce::jmin (middleRow.getWidth(), kMeterWidth),
-                                                       juce::jmin (middleRow.getHeight(), kMeterHeight)));
-
-    const auto meterButtons = meterButtonRow.withSizeKeepingCentre (
-        juce::jmin (meterButtonRow.getWidth(), kMeterWidth), meterButtonRow.getHeight());
-    const auto meterButtonWidth = meterButtons.getWidth() / 3;
-    auto meterButtonArea = meterButtons;
-    meterInButton.setBounds  (meterButtonArea.removeFromLeft (meterButtonWidth).reduced (3, 1));
-    meterGrButton.setBounds  (meterButtonArea.removeFromLeft (meterButtonWidth).reduced (3, 1));
-    meterOutButton.setBounds (meterButtonArea.reduced (3, 1));
-
-    // Bottom third: MAKEUP. Its LINK/COLOR stack was placed above, before the
-    // rows were measured.
-    level.setBounds (bottomRow.withSizeKeepingCentre (kKnobWidth, kKnobHeight));
 }
 
 } // namespace bmo::opto
