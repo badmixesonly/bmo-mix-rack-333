@@ -147,16 +147,32 @@ per-module `accentText`.
 | Text on switchOff | 2.43:1 | **4.94:1** — one grey darkened |
 | Surfaces | — | unchanged |
 
-### Derived `accentText`, per module
+### Derived `accentText`, per module — as shipped
 
-| Module | Accent | `accentText` | on plate | white on it |
-|---|---|---|---|---|
-| BMO EQ | `#f08cb4` | `#975871` | 4.62:1 | 5.32:1 |
-| BMO Saturator | `#efa552` | `#8f6331` | 4.57:1 | 5.25:1 |
-| BMO Util | `#7fc98a` | `#4b7751` | 4.50:1 | 5.18:1 |
-| BMO Opto | `#d4a4ff` | `#7d6196` | 4.54:1 | 5.22:1 |
+These are the values `ui::accentTextOn` actually produces, read out of a
+running panel rather than predicted. They differ by a step or two from the
+first pass of this document, which walked the accent's RGB down by 1 % at a
+time; the implementation interpolates toward black in 2 % steps instead. Same
+intent, same floor, slightly different landing point.
 
-`#7d6196` supersedes the hardcoded `#9c71c3` in `OptoPanel.cpp`.
+| Module | Accent | `accentText` | on plate |
+|---|---|---|---|
+| BMO EQ | `#f08cb4` | `#975871` | 4.62:1 |
+| BMO Saturator | `#efa552` | `#8f6331` | 4.57:1 |
+| BMO Util | `#7fc98a` | `#497450` | 4.69:1 |
+| BMO Opto | `#d4a4ff` | `#7b5f94` | 4.67:1 |
+| *utility knobs* | `#4fb8e8` `track` | `#317290` | 4.64:1 |
+
+`#7b5f94` supersedes the hardcoded `#9c71c3` in `OptoPanel.cpp`.
+
+The last row is a distinction the first pass of this document missed. A
+caption follows **its knob's own colour system**, not the module accent
+regardless: character knobs — drive, tone, a band's gain — are drawn in the
+module's colour and their captions go with them, but a utility knob is
+deliberately the same pale blue in every module, so INPUT and OUTPUT read as
+the same control wherever they appear. Setting those in the accent put pink
+text on BMO EQ's blue cap and orange on the Saturator's — the same mistake
+this section exists to fix, only inverted.
 
 ### Option B, "Re-value", declined for now
 
@@ -214,7 +230,7 @@ editor, standalone and rack, within a second.
 
 ---
 
-## 6. Done so far on this branch
+## 6. Done on this branch
 
 - **VU meter geometry** (`c4f4440`). The radius came from
   `jmin(width/2, height)`, but a 124° sweep is limited by width alone, so on
@@ -225,20 +241,59 @@ editor, standalone and rack, within a second.
   the needle rests in silence, so an idle meter left the needle lying across
   its own leftmost numeral; it now opens on an unprinted point at −30. −7 and
   −3 lost their numbers, and an unnumbered tick at −15 fills the low-end
-  stretch. All nine ctest suites pass.
+  stretch.
+
+- **The token split and Option A's ink** (`3d743d9`). `pointer` was one token
+  doing five jobs; it is now `pointer` (dark, on a knob cap), `ringFace` and
+  `meterInk`, with the other two rewritten as derivations — `accentTextOn`
+  and `onAccentOf`. Measured on the result:
+
+  | | was | now |
+  |---|---|---|
+  | knob captions | 1.95:1 | 4.57–4.69:1 |
+  | section rule legends | 1.72:1 | 4.57–4.69:1 |
+  | knob pointer | 1.39:1 | ~9.5:1 |
+  | selected band legend | 2.22:1 | 4.62:1 |
+  | band selector marker | 1.49:1 | derived against the ring |
+  | text on a switch | 1.98:1 | derived from its fill |
+  | text on `switchOff` | 2.43:1 | 4.94:1 |
+
+  BMO Opto no longer names a colour anywhere and follows a theme change with
+  the rest of the suite.
+
+- **Opto's panel rhythm** (`0e633ac`). Three equal thirds with a block centred
+  in each spent 132 px of slack as uneven centring. Blocks are now placed from
+  the top on one derived gap. Measured off the render: 30 px between blocks
+  and 32 px under COLOR, where they were 36 / 46 / 28 / 0 — COLOR had been
+  sitting on the panel's bottom edge. The meter and its IN/GR/OUT row are one
+  block, 9 px apart rather than 26.
+
+All nine ctest suites pass at each of the three. No parameter, spec, preset
+or DSP file has been touched on this branch.
 
 ## 7. Still open
 
+- **Opto's two remaining optical bands** — 58 px under TELE, 54 px under the
+  meter buttons. Even by construction, but a `PlainKnob` block is 150 px tall
+  around about 105 px of ink: `faceScale` 0.62 draws a 57 px circle inside a
+  92 px component. Closing them means deciding how large COMP and MAKEUP
+  should be beside the other three modules, which is weight, not spacing.
+- **Dark mode.** The token split is the prerequisite and it has landed, so
+  what is left is the second binding, the moon icon, and a machine-wide
+  preference file beside the theme JSON.
 - **Rule alignment across modules.** Some should, some should not; needs a
   module-by-module pass before the row grid moves.
-- **Opto's panel rhythm.** Three dead bands remain — TELE→COMP, meter→MAKEUP,
-  and below LINK. The 52 px reclaimed from the meter is not yet redistributed.
 - **The reusable VU meter base**, with swappable colour and its own ruleset,
-  so a dynamics module six does not inherit a bespoke class.
+  so a dynamics module six does not inherit a bespoke class. Cheaper now:
+  `DynamicsMeter` takes three callbacks and three colours and no longer holds
+  a hardcoded hex.
 - **EQ legend crowding** — the MID rest-dot collision and the five-legend
   low-cut selector on a 13 px face radius.
 - **Switch geometry**, 56 / 62 / 70 / 70 across four adjacent modules.
 - **Rack module separation**, and the three placements of the dBFS meter.
+- **Meter modes cannot be snapshotted.** IN and GR are UI state rather than
+  parameters, so `tools/snapshot` can only ever render OUT. The VU fixes above
+  were verified in OUT only. `docs/ui-workflow-brief.md` §2 is the fix.
 
 ---
 
