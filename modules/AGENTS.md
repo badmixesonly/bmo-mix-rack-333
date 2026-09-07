@@ -30,6 +30,26 @@ modules/<id>/
    `kContentHeight` (688); lay out at design size in `resized()`. Use
    `PlainKnob`, `ConcentricBand`, `SwitchButton`, `OutputMeter` and the
    rule helpers; do not draw text with an outline.
+
+   **What a switch lights up in** is not a free choice:
+
+   | switch | colour |
+   |---|---|
+   | the module's bypass | the module's accent |
+   | **polarity** | **`tokens().polarity`, always** |
+   | anything else | `tokens().switchAlt` |
+
+   Polarity is the strict one. It means the same thing on every panel and
+   is hunted for by sight rather than read, so it has to look identical
+   everywhere; it spent three releases wearing each module's own accent
+   before that was fixed. A module whose colour depends on its own state
+   rather than on which module it is -- BMO Opto -- sets these at runtime
+   instead, but follows the same table.
+
+   Do not write a hex in a panel. If you need "the accent, but legible",
+   that is `ui::accentTextOn`; for ink on a filled control it is
+   `ui::onAccentOf`. Both derive against the current plate, which is what
+   lets a theme change reach your module without it knowing.
 6. Write factory presets. Init is index 0 and must be all defaults.
    Every preset should come out at the level it went in; the plugin tests
    check that.

@@ -50,22 +50,32 @@ struct Tokens
     juce::Colour switchOff  { 0xff6f7076 };
     juce::Colour switchOn   { 0xfff08eb5 };   ///< an engaged switch, when not the accent
 
-    /** Every switch that is not the module's own bypass.
+    /** Secondary switches: Hi-Q, Auto, Mono. Module-specific functions, but
+        none of them is the module's bypass, so none takes the module's colour.
 
-        The rule the suite follows: a module's bypass -- EQL, SAT -- lights in
-        the module's colour, because that is the switch that turns the module
-        itself on and off. Everything else lights in this one blue, because
-        everything else does the same job wherever it appears. Polarity is the
-        clearest case and was the last to arrive: it flipped in EQ's pink, the
-        Saturator's orange and Util's green until 0.2.2, so the one control on
-        the panel whose meaning never changes between modules was the one drawn
-        differently in each of them.
+        Was #4cacdc until 0.2.2, which sat 1.13:1 from `track` -- the same blue
+        by any measure that matters, arrived at twice. It now carries track's
+        value outright. Kept as its own token rather than folded into `track`
+        because the two mean different things and a theme may want to separate
+        them again; equal here by intent, which is not the case for `switchOn`
+        and BMO EQ's accent, still two names for one pink by accident. */
+    juce::Colour switchAlt  { 0xff4fb8e8 };
 
-        Hi-Q, Auto and Mono are here too. They are module-specific functions
-        rather than universal ones, but they are all secondary switches, and
-        one blue for "not the bypass" is a rule you can see rather than a
-        rule you have to be told. */
-    juce::Colour switchAlt  { 0xff4cacdc };
+    /** Polarity inversion, wherever it appears.
+
+        **The rule, for any module added later: a polarity switch is this
+        colour.** Not the module's accent, not switchAlt. It flips phase and
+        nothing else, it means exactly the same thing on every panel in the
+        suite, and it is the one control a person hunts for by sight rather
+        than by reading -- so it is the one that most has to look identical
+        everywhere. Until 0.2.2 it lit in BMO EQ's pink, the Saturator's
+        orange and Util's green, and briefly in switchAlt's blue after that.
+
+        The colour is BMO Opto's old lavender, freed when that module's panel
+        went greyscale. As a switch fill it is 2.48:1 against `switchOff`, so
+        lit and unlit separate by lightness as well as hue, and it takes a
+        dark label at 4.77:1. */
+    juce::Colour polarity   { 0xffd4a4ff };
 
     juce::Colour accent     { 0xfff08cb4 };   ///< the module's own colour; see ModuleDef
 

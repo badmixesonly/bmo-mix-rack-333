@@ -29,6 +29,7 @@ namespace
         { "switchOff",  &Tokens::switchOff },
         { "switchOn",   &Tokens::switchOn },
         { "switchAlt",  &Tokens::switchAlt },
+        { "polarity",   &Tokens::polarity },
         { "accent",     &Tokens::accent },
         { "neutral",    &Tokens::neutral },
         { "meterLow",   &Tokens::meterLow },
