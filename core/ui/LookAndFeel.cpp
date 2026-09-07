@@ -24,14 +24,14 @@ void BmoLookAndFeel::refreshColours()
     setColour (juce::PopupMenu::backgroundColourId,       t.plateEdge);
     setColour (juce::PopupMenu::textColourId,             t.text1);
     setColour (juce::PopupMenu::highlightedBackgroundColourId, t.trackFill);
-    setColour (juce::PopupMenu::highlightedTextColourId,  t.pointer);
+    setColour (juce::PopupMenu::highlightedTextColourId,  onAccentOf (t.trackFill));
 
     // The preset strip is built from TextButtons, which otherwise come out in
     // JUCE's default blue and fight the scheme.
     setColour (juce::TextButton::buttonColourId,   t.plate);
     setColour (juce::TextButton::buttonOnColourId, t.trackFill);
     setColour (juce::TextButton::textColourOffId,  t.text1);
-    setColour (juce::TextButton::textColourOnId,   t.pointer);
+    setColour (juce::TextButton::textColourOnId,   onAccentOf (t.trackFill));
 
     setColour (juce::AlertWindow::backgroundColourId, t.plateEdge);
     setColour (juce::AlertWindow::textColourId,       t.text1);
@@ -107,7 +107,7 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         ring.addCentredArc (centre.x, centre.y, mid, mid, 0.0f, 0.0f,
                             juce::MathConstants<float>::twoPi, true);
 
-        g.setColour (dim (t.pointer));
+        g.setColour (dim (t.ringFace));
         g.strokePath (ring, juce::PathStrokeType (thickness));
 
         g.setColour (dim (t.knobEdge));
@@ -120,7 +120,11 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         marker.addCentredArc (centre.x, centre.y, mid, mid, 0.0f,
                               angle - 0.10f, angle + 0.10f, true);
 
-        g.setColour (dim (t.knobFace));
+        // Which position the band is switched to. Derived against the ring it
+        // is drawn on, not the plate: as the shared knobFace azure it measured
+        // 1.49:1 on the white annulus, and this marker is the only thing on a
+        // band that says what frequency is selected.
+        g.setColour (dim (accentTextOn (moduleAccent, t.ringFace)));
         g.strokePath (marker, juce::PathStrokeType (thickness));
         return;
     }
@@ -225,7 +229,11 @@ void BmoLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& bu
     g.setColour (fill);
     g.fillRoundedRectangle (bounds, Tokens::corner);
 
-    const auto ink = t.pointer.withAlpha (button.isEnabled() ? 1.0f : 0.4f);
+    // Ink derived from the fill it sits on rather than always white: white
+    // measured 1.98-2.55:1 on the four accents, and 2.43:1 on the old pale
+    // switchOff, so a switch's label was equally hard to read in both states
+    // and on/off was carried by hue alone.
+    const auto ink = onAccentOf (fill).withAlpha (button.isEnabled() ? 1.0f : 0.4f);
 
     // The polarity switch is drawn, not set: typing the slashed O gives back
     // whatever the machine maps it to, which on several faces is a plain O and

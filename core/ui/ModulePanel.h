@@ -66,10 +66,16 @@ protected:
                                             (float) (getWidth() - kPad * 2), Tokens::hairlineWeight));
     }
 
-    /** A section name drawn on a rule, in the module's accent. */
+    /** A section name drawn on a rule, in the module's own colour.
+
+        Pass the raw accent: it is stepped to a legible contrast against the
+        plate here, so a panel never has to know how. As the raw accent these
+        measured 1.72-2.00:1 -- the panel's navigation was the second least
+        readable thing on it. */
     void drawRuleLegend (juce::Graphics& g, juce::Rectangle<int> row,
-                         const juce::String& text, juce::Colour colour) const
+                         const juce::String& text, juce::Colour accent) const
     {
+        const auto colour = accentTextOn (accent, tokens().plate);
         drawRule (g, row);
 
         const auto font = labelFont (11.0f, true);

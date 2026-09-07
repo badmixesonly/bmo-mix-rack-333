@@ -28,7 +28,7 @@ juce::String compactFrequency (const juce::String& text)
 //==============================================================================
 PlainKnob::PlainKnob (juce::RangedAudioParameter& parameter, const juce::String& captionText,
                       Knob::Style style, float faceScale, juce::Colour accent, juce::Colour captionColourIn)
-    : caption (captionText), captionColour (captionColourIn)
+    : caption (captionText), captionColour (captionColourIn), accentColour (accent)
 {
     knob.setStyle (style);
     knob.setAccent (accent);
@@ -40,12 +40,31 @@ PlainKnob::PlainKnob (juce::RangedAudioParameter& parameter, const juce::String&
 
 void PlainKnob::paint (juce::Graphics& g)
 {
-    // The name sits under the knob, in the caption face, in captionColour
-    // (the shared track colour unless the module asked for its own).
+    // The name sits under the knob, in the caption face. Derived here rather
+    // than cached in the constructor so that editing the theme file recolours
+    // an open panel -- the editors repaint on a theme change but do not
+    // rebuild their controls.
+    //
+    // A caption is a legible step of whichever colour system its knob belongs
+    // to, not of the module's accent regardless. A character knob -- drive,
+    // tone, a band's gain -- is drawn in the module's colour and its caption
+    // follows it. A utility knob is deliberately the same pale blue in every
+    // module, with a blue track and blue plus and minus, so INPUT and OUTPUT
+    // read as the same control wherever they are; setting those captions in
+    // the accent put pink text on BMO EQ's blue cap and orange on the
+    // Saturator's.
+    const auto system = knob.getStyle() == Knob::Style::character ? accentColour
+                                                                 : tokens().track;
+
+    const auto ink = captionColour.isTransparent()
+                       ? accentTextOn (system, tokens().plate)
+                       : captionColour;
+
+
     drawLabel (g, caption,
                getLocalBounds().removeFromBottom (kCaptionRow).withTrimmedBottom (4).toFloat(),
                juce::Justification::centred, captionFont (15.0f),
-               knob.isEnabled() ? captionColour : captionColour.withAlpha (0.4f));
+               knob.isEnabled() ? ink : ink.withAlpha (0.4f));
 }
 
 void PlainKnob::resized()
@@ -76,7 +95,7 @@ void PlainKnob::setKnobEnabled (bool shouldBeEnabled)
 //==============================================================================
 ConcentricBand::ConcentricBand (juce::RangedAudioParameter& selector, const ParamSpec& selectorSpec,
                                 juce::RangedAudioParameter* gain, juce::Colour accent)
-    : hasCentre (gain != nullptr)
+    : accentColour (accent), hasCentre (gain != nullptr)
 {
     ring.setDetents (selectorSpec.numChoices());
     ring.setSliderSnapsToMousePosition (false);
@@ -161,9 +180,12 @@ void ConcentricBand::paint (juce::Graphics& g)
 
         const auto isSelected = (i == selected);
 
-        // Grey for a position you could switch to, azure for the one you are
-        // on. With no outline, white would vanish on the plate.
-        auto fill = isSelected ? t.switchAlt : t.text2;
+        // The module's own colour for the position you are on, neutral for one
+        // you could switch to. Until 0.2.2 selected was the shared azure at
+        // 2.22:1 and unselected was text2 at 2.45:1 -- so the *unselected*
+        // legends had more contrast than the selected one, on the control this
+        // module is mostly used through.
+        auto fill = isSelected ? accentTextOn (accentColour, t.plate) : t.text1;
 
         if (! ringEnabled)
             fill = fill.withAlpha (0.35f);
@@ -430,10 +452,10 @@ void DynamicsMeter::paint (juce::Graphics& g)
         drawLabel (g, juce::String ((int) p.value),
                    juce::Rectangle<float> (28.0f, 15.0f).withCentre (labelCentre),
                    juce::Justification::centred, labelFont (11.5f),
-                   hot ? hotColour : t.pointer);
+                   hot ? hotColour : t.meterInk);
     }
 
-    g.setColour (t.pointer);
+    g.setColour (t.meterInk);
     g.strokePath (ticks, juce::PathStrokeType (1.4f));
     g.setColour (hotColour);
     g.strokePath (hotTicks, juce::PathStrokeType (1.4f));
@@ -448,7 +470,7 @@ void DynamicsMeter::paint (juce::Graphics& g)
     // to be legible before you look at it, so it gets the maximum contrast
     // against the face rather than a colour that says which mode is up --
     // the button row underneath already says that.
-    g.setColour (t.pointer);
+    g.setColour (t.meterInk);
     g.drawLine (juce::Line<float> (pivot, tip), 2.4f);
     g.fillEllipse (juce::Rectangle<float> (kHubRadius * 2.0f, kHubRadius * 2.0f).withCentre (pivot));
 

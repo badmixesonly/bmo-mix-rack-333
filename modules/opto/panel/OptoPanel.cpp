@@ -29,18 +29,17 @@ namespace
     constexpr int kSwitchHeight = 26;
     constexpr int kSwitchGap    = 8;
 
-    // The module's own accent (see modules/opto/Module.cpp) is used for
-    // knob faces and switch glows; labels want a darker, higher-contrast
-    // step of the same hue rather than the shared suite-wide track colour
-    // PlainKnob otherwise defaults to -- per Frosty's 2026-09-06 note.
-    const juce::Colour kLabelColour { 0xff9c71c3 };
+    // 0.2.1 also carried #9c71c3 here, for the captions and the switches,
+    // because the accent is a pale lavender chosen for knob caps and there
+    // was no token for "the accent, stepped until it is legible". There is
+    // now -- ui::accentTextOn -- so nothing on this panel names a colour any
+    // more: every one of them comes from context.def.accent, which means a
+    // theme change reaches this module the same way it reaches the others.
 
-    // The meter's 0 VU-and-above zone: a classic VU meter prints this in
-    // red, but the meter reads as part of the module's own palette instead,
-    // so the zone is the lavender of the knob caps -- faceOf(accent), the
-    // accent halfway to white. It was #97ddff in 0.2.0, which measured
-    // 1.02:1 on the old light face and could not be seen at all.
-    const juce::Colour kMeterHotColour = ui::faceOf (juce::Colour (0xffd4a4ff));
+    // The meter's hot zone -- 0 VU and above -- is passed at the constructor
+    // as faceOf(accent), the accent halfway to white: a classic VU prints it
+    // red, and this one prints it in the module's own colour instead. It was
+    // #97ddff in 0.2.0, which measured 1.02:1 on the old light face.
 
     // The face the scale is printed on. Dark, so the white needle and white
     // numbers have something to read against: 11.4:1 for the needle, 8.2:1
@@ -53,25 +52,25 @@ namespace
 OptoPanel::OptoPanel (ui::ModuleContext ctx)
     : ModulePanel (std::move (ctx)),
       crush (context.params.param (Index::crush), "COMP",
-             ui::Knob::Style::character, 0.62f, context.def.accent, kLabelColour),
+             ui::Knob::Style::character, 0.62f, context.def.accent),
       level (context.params.param (Index::level), "MAKEUP",
-             ui::Knob::Style::character, 0.62f, context.def.accent, kLabelColour),
+             ui::Knob::Style::character, 0.62f, context.def.accent),
       meter (context.inputRms, context.rms, context.gainReductionDb,
-             ui::DynamicsMeter::Mode::output, context.def.accent, kMeterHotColour,
-             kMeterFaceColour),
+             ui::DynamicsMeter::Mode::output, context.def.accent,
+             ui::faceOf (context.def.accent), kMeterFaceColour),
       modeButton ("TELE"),
       meterInButton ("IN"), meterOutButton ("OUT"), meterGrButton ("GR"),
-      link  (context.params.param (Index::link),  "LINK",  kLabelColour),
-      color (context.params.param (Index::color), "COLOR", kLabelColour)
+      link  (context.params.param (Index::link),  "LINK",  context.def.accent),
+      color (context.params.param (Index::color), "COLOR", context.def.accent)
 {
-    // Every switch lights in kLabelColour rather than the raw accent: the
-    // accent is a pale lavender chosen for knob caps, and white text on it
-    // is unreadable. This is the same darker step COMP and MAKEUP are set
-    // in, so an engaged switch matches the captions above it.
+    // The switches take the raw accent as their fill, the same as every other
+    // module's. What made that unreadable before was the ink: white on this
+    // lavender is 1.99:1. BmoLookAndFeel now derives the label from whatever
+    // fill it is drawing, so the accent can be used here directly.
     for (auto* b : { &modeButton, &meterInButton, &meterOutButton, &meterGrButton })
     {
         b->setClickingTogglesState (false);
-        b->setColour (juce::ToggleButton::tickColourId, kLabelColour);
+        b->setColour (juce::ToggleButton::tickColourId, context.def.accent);
         addAndMakeVisible (b);
     }
 

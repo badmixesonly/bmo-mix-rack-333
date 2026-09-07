@@ -28,13 +28,26 @@ struct Tokens
     juce::Colour text1      { 0xff6f6f6f };   ///< legends, values
     juce::Colour text2      { 0xff9a9a9a };   ///< secondary, dimmed, disabled
 
-    juce::Colour knobFace   { 0xff97ddff };   ///< utility knob caps, the selected legend
+    juce::Colour knobFace   { 0xff97ddff };   ///< utility knob caps
     juce::Colour knobEdge   { 0xffa6a6a6 };   ///< single-element rings, disengaged switches
-    juce::Colour pointer    { 0xffffffff };   ///< pointers, rings, unselected legends
+
+    // These three were one `pointer` token, #ffffff, until 0.2.2. It was
+    // doing five jobs at once, and they stopped agreeing the moment the
+    // plate was allowed to go dark: a needle wants maximum contrast against
+    // its own face, an annulus wants to read as a raised ring on the plate,
+    // and a knob's pointer wants to be legible on a pale cap -- which white
+    // never was. It measured 1.39:1 on BMO Opto's cap.
+    juce::Colour pointer    { 0xff2b2b2e };   ///< the pointer on a knob cap
+    juce::Colour ringFace   { 0xffffffff };   ///< the selector-ring annulus
+    juce::Colour meterInk   { 0xffffffff };   ///< VU needle, ticks and printed scale
+
     juce::Colour track      { 0xff4fb8e8 };   ///< dotted gain tracks and their plus/minus
     juce::Colour trackFill  { 0xff7fd0f2 };   ///< highlights derived from the track colour
 
-    juce::Colour switchOff  { 0xffa6a6a6 };
+    // Darkened from #a6a6a6 in 0.2.2: at the old value a disengaged switch
+    // put its white label at 2.43:1, which is close enough to the 1.98-2.55:1
+    // of an *engaged* one that on and off were told apart by hue alone.
+    juce::Colour switchOff  { 0xff6f7076 };
     juce::Colour switchOn   { 0xfff08eb5 };   ///< an engaged switch, when not the accent
     juce::Colour switchAlt  { 0xff4cacdc };   ///< the deeper azure of the Hi-Q switch
 
@@ -59,6 +72,38 @@ inline juce::Colour faceOf (juce::Colour accent) noexcept
 {
     return accent.interpolatedWith (juce::Colours::white, 0.5f);
 }
+
+//== Derived colours ==========================================================
+//
+// A module states one colour, its accent, and everything else it needs is
+// computed from that colour and the plate underneath it. BMO Opto is why:
+// its lavender is unreadable as ink and unreadable under white text, so the
+// panel hardcoded #9c71c3 for its captions -- against the rule in
+// core/AGENTS.md that tokens are the only place colours live. It broke the
+// rule because the token it needed did not exist. Module six would have
+// hand-rolled its own hex for the same reason.
+//
+// Deriving against the *current* plate rather than a fixed one is also what
+// makes a dark theme nearly free: on #efefef the accents have to be darkened
+// hard to be legible, and on a dark plate all four already clear 7:1, so the
+// same call returns the accent untouched.
+
+/** WCAG 2.x contrast ratio, 1.0 to 21.0. Order does not matter. */
+float contrastRatio (juce::Colour, juce::Colour) noexcept;
+
+/** The accent, moved away from `ground` until it clears `minRatio` against
+    it -- darkened on a pale plate, lightened on a dark one. Hue is preserved,
+    so the result still reads as the module's own colour.
+
+    This is what a caption, a section legend and a selected legend are set in.
+    4.5:1 is the floor for text this size. */
+juce::Colour accentTextOn (juce::Colour accent, juce::Colour ground,
+                           float minRatio = 4.5f) noexcept;
+
+/** Ink for text drawn *on* a filled accent -- an engaged switch. A darkened
+    step of the fill's own hue rather than flat black, so the switch stays
+    monochromatic. White was 1.98-2.55:1 on the four accents. */
+juce::Colour onAccentOf (juce::Colour fill, float minRatio = 4.5f) noexcept;
 
 /** The current tokens. The built-in set, with whatever the user's theme file
     overrides on top. */

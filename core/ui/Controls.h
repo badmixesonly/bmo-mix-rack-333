@@ -15,14 +15,18 @@ namespace bmo::ui
 class PlainKnob final : public juce::Component
 {
 public:
-    /** `captionColour` defaults to the shared track colour every other
-        module's caption uses; BMO Opto passes its own accent (with added
-        contrast) so COMP/MAKEUP read in the module's own colour rather than
-        the suite-wide blue -- see modules/opto/panel/OptoPanel.cpp. */
+    /** Leave `captionColour` alone and the caption is derived from `accent`
+        against the current plate -- `accentTextOn`, so it reads at 4.5:1 and
+        it is the module's own colour.
+
+        Until 0.2.2 it defaulted to the shared track azure, which put every
+        caption in the suite at 1.95:1 and, worse, put INPUT and DRIVE in blue
+        underneath an orange knob. BMO Opto had already worked around both by
+        hardcoding its own hex. Pass a colour here only to override that. */
     PlainKnob (juce::RangedAudioParameter&, const juce::String& caption,
                Knob::Style style = Knob::Style::utility, float faceScale = 0.5f,
                juce::Colour accent = tokens().accent,
-               juce::Colour captionColour = tokens().track);
+               juce::Colour captionColour = {});
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -45,7 +49,8 @@ private:
     static constexpr int kCaptionRow = 22;
 
     juce::String caption;
-    juce::Colour captionColour;
+    juce::Colour captionColour;   ///< transparent means "derive from accentColour"
+    juce::Colour accentColour;
     int knobSide = std::numeric_limits<int>::max();
     Knob knob;
     std::unique_ptr<juce::SliderParameterAttachment> attachment;
@@ -84,6 +89,7 @@ private:
     std::unique_ptr<juce::SliderParameterAttachment> ringAttachment, centreAttachment;
 
     juce::StringArray legend;
+    juce::Colour accentColour;
     bool hasCentre = false, ringEnabled = true;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ConcentricBand)
