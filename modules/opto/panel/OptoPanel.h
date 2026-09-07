@@ -18,10 +18,18 @@ namespace bmo::opto
     it does not. It also mirrors the LINK/COLOR stack at the foot, and it
     fills the dead band that sat under a lone mode button.
 
-    The two modes are coloured, not just labelled. Tele runs the whole panel
-    in greyscale with a red hot zone on the meter; Stressed is the module's
-    lavender with the hot zone in the pale lavender of the knob caps. So which
-    circuit is in play reads from across the room, before any label does.
+    The faceplate is greyscale in both modes. Colour appears on exactly two
+    kinds of thing -- a switch that is engaged, and the meter's 0 VU-and-above
+    zone -- so on this panel colour means "on" and nothing else, and which
+    colour it is says which circuit is running: Tele lights red, Stressed
+    amber.
+
+    The first cut of this ran Stressed in the module's lavender and Tele in
+    greyscale, which read well as two modes but left the greyscale one unable
+    to say which of its own switches was engaged: lit was `neutral` and
+    unlit `switchOff`, two greys 2.15:1 apart with nothing but lightness
+    between them. Giving each mode a lit colour fixes that and makes the two
+    modes differ by the one thing the eye goes to first.
 
     Every switch here is a juce::ToggleButton so BmoLookAndFeel draws it,
     which is what makes these read as the same control as BMO Util's
@@ -54,10 +62,11 @@ private:
         directly on the underlying parameter. */
     void setChoice (juce::RangedAudioParameter& param, float normalisedValue);
 
-    /** The palette for a mode. Tele runs the panel in greyscale with a red
-        hot zone on the meter; Stressed is the module's lavender throughout,
-        with the hot zone in the pale lavender of the knob caps. */
+    /** The faceplate is greyscale in both modes, so the one colour on it means
+        "this is on" and nothing else. Which colour is the mode: Tele lights in
+        the suite's red, Stressed in its amber. */
     juce::Colour accentFor (bool stressed) const;
+    juce::Colour activeFor (bool stressed) const;
     juce::Colour hotColourFor (bool stressed) const;
 
     /** Pushes that palette into every control. Cheap, and only called when the

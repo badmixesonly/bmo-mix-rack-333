@@ -30,17 +30,12 @@ namespace
     constexpr int kSwitchHeight = 26;
     constexpr int kSwitchGap    = 8;
 
-    // 0.2.1 also carried #9c71c3 here, for the captions and the switches,
-    // because the accent is a pale lavender chosen for knob caps and there
-    // was no token for "the accent, stepped until it is legible". There is
-    // now -- ui::accentTextOn -- so nothing on this panel names a colour any
-    // more: every one of them comes from context.def.accent, which means a
-    // theme change reaches this module the same way it reaches the others.
-
-    // The meter's hot zone -- 0 VU and above -- is passed at the constructor
-    // as faceOf(accent), the accent halfway to white: a classic VU prints it
-    // red, and this one prints it in the module's own colour instead. It was
-    // #97ddff in 0.2.0, which measured 1.02:1 on the old light face.
+    // 0.2.1 carried #9c71c3 here for the captions and the switches, because
+    // the accent was a pale lavender chosen for knob caps and there was no
+    // token for "the accent, stepped until it is legible". There is now --
+    // ui::accentTextOn -- and this panel's colours all come from tokens, so a
+    // theme change reaches this module the way it reaches the others. See
+    // accentFor / activeFor for which token does what.
 
     // The face the scale is printed on. Dark, so the white needle and white
     // numbers have something to read against: 11.4:1 for the needle, 8.2:1
@@ -52,27 +47,32 @@ namespace
 
 OptoPanel::OptoPanel (ui::ModuleContext ctx)
     : ModulePanel (std::move (ctx)),
+      // Colours here are placeholders that applyModeColours() overwrites at
+      // the end of this constructor, and again whenever the mode changes.
+      // context.def.accent is deliberately not among them: BMO Opto's
+      // lavender identifies the module on its header and in a rack slot bar,
+      // but the panel itself is greyscale in both modes.
       crush (context.params.param (Index::crush), "COMP",
-             ui::Knob::Style::character, 0.62f, context.def.accent),
+             ui::Knob::Style::character, 0.62f, ui::tokens().neutral),
       level (context.params.param (Index::level), "MAKEUP",
-             ui::Knob::Style::character, 0.62f, context.def.accent),
+             ui::Knob::Style::character, 0.62f, ui::tokens().neutral),
       meter (context.inputRms, context.rms, context.gainReductionDb,
-             ui::DynamicsMeter::Mode::output, context.def.accent,
-             ui::faceOf (context.def.accent), kMeterFaceColour),
+             ui::DynamicsMeter::Mode::output, ui::tokens().neutral,
+             ui::tokens().meterClip, kMeterFaceColour),
       teleButton ("TELE"), eldButton ("ELD"),
       meterInButton ("IN"), meterOutButton ("OUT"), meterGrButton ("GR"),
-      link  (context.params.param (Index::link),  "LINK",  context.def.accent),
-      color (context.params.param (Index::color), "COLOR", context.def.accent)
+      link  (context.params.param (Index::link),  "LINK",  ui::tokens().meterClip),
+      color (context.params.param (Index::color), "COLOR", ui::tokens().meterClip)
 {
-    // The switches take the raw accent as their fill, the same as every other
-    // module's. What made that unreadable before was the ink: white on this
-    // lavender is 1.99:1. BmoLookAndFeel now derives the label from whatever
-    // fill it is drawing, so the accent can be used here directly.
+    // Fill set here only so the buttons exist in a valid state; applyModeColours
+    // owns it from the end of this constructor onwards. BmoLookAndFeel derives
+    // each label from whatever fill it is drawing, so a lit switch reads dark
+    // on colour and an unlit one light on grey without either being stated.
     for (auto* b : { &teleButton, &eldButton,
                      &meterInButton, &meterOutButton, &meterGrButton })
     {
         b->setClickingTogglesState (false);
-        b->setColour (juce::ToggleButton::tickColourId, context.def.accent);
+        b->setColour (juce::ToggleButton::tickColourId, ui::tokens().meterClip);
         addAndMakeVisible (b);
     }
 
@@ -124,42 +124,56 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
 OptoPanel::~OptoPanel() { stopTimer(); }
 
 //==============================================================================
-juce::Colour OptoPanel::accentFor (bool stressed) const
+juce::Colour OptoPanel::accentFor (bool) const
 {
-    // Greyscale in Tele. `neutral` rather than a hex of its own: see the token
-    // for why it is not simply the accent's lightness in grey.
-    return stressed ? context.def.accent : ui::tokens().neutral;
+    // Greyscale in both modes: the faceplate carries no colour, so what colour
+    // there is can mean one thing. `neutral` rather than a hex of this panel's
+    // own -- see the token for why it is not the accent's lightness in grey.
+    return ui::tokens().neutral;
+}
+
+juce::Colour OptoPanel::activeFor (bool stressed) const
+{
+    // The suite's own hot and warm meter colours, not two new hexes. They
+    // already mean this, they are already themable, and they measure as well
+    // as anything invented for the job: against switchOff, which is what an
+    // unlit switch is filled with, amber separates by 2.46:1 and red by
+    // 1.48:1, and both take a dark label where an unlit switch takes a light
+    // one -- so lit and unlit differ in hue, in lightness and in the polarity
+    // of their own text.
+    return stressed ? ui::tokens().meterHigh : ui::tokens().meterClip;
 }
 
 juce::Colour OptoPanel::hotColourFor (bool stressed) const
 {
-    // Stressed prints 0 VU and above in the pale lavender of the knob caps --
-    // a classic VU's red zone, in the module's own colour. Tele prints it in
-    // an actual red, stepped off the suite's own meterClip until it clears
-    // 4.5:1 on this dark face rather than being typed in: meterClip as it
-    // stands is 3.41:1 there, which is the same mistake the 0.2.0 hot zone
-    // made at 1.02:1, only smaller.
-    return stressed ? ui::faceOf (context.def.accent)
-                    : ui::accentTextOn (ui::tokens().meterClip, kMeterFaceColour);
+    // 0 VU and above, in the mode's own colour, stepped off it until it clears
+    // 4.5:1 on this dark face rather than being trusted to. Amber already
+    // clears at 5.66:1 and comes back untouched; red is 3.41:1 raw and is
+    // lightened to 4.59:1. That difference is why the meter keeps the mode's
+    // colour in both modes instead of falling back to red in Stressed -- the
+    // amber is the more readable of the two, not the less.
+    return ui::accentTextOn (activeFor (stressed), kMeterFaceColour);
 }
 
 void OptoPanel::applyModeColours (bool stressed)
 {
     const auto accent = accentFor (stressed);
+    const auto active = activeFor (stressed);
 
-    // Every derived colour on the panel -- knob caps, captions, dotted tracks,
-    // the plus and minus, switch fills and their ink -- comes off this one
-    // value, so a mode change is four calls rather than a second palette.
+    // Knobs, and the meter's bezel, take the neutral: caps, captions, dotted
+    // tracks and the plus and minus all derive from that one value. Anything
+    // that can be switched on takes the mode's lit colour, and its label is
+    // derived from whichever of the two it is currently filled with.
     for (auto* k : { &crush, &level })
         k->setAccent (accent);
 
     for (auto* s : { &link, &color })
-        s->setTint (accent);
+        s->setTint (active);
 
     for (auto* b : { &teleButton, &eldButton,
                      &meterInButton, &meterOutButton, &meterGrButton })
     {
-        b->setColour (juce::ToggleButton::tickColourId, accent);
+        b->setColour (juce::ToggleButton::tickColourId, active);
         b->repaint();
     }
 
