@@ -30,7 +30,7 @@ namespace bmo::opto
     Detector.h) means the cells hold far less sustained reduction, so every
     preset needs *less* makeup than it did, and CI measured how much: with
     LEVEL still at the old 24.0, Crushed came out **3.64dB loud** on both
-    platforms. It needs **20.36dB**, not 26.21. The +24 rail it has been
+    platforms. It needs about **20.1dB**, not 26.21. The +24 rail it has been
     pinned against for two sessions now has 3.6dB of clear headroom, and it
     got there as a side effect of fixing the release rather than from
     anything aimed at the level.
@@ -43,7 +43,7 @@ namespace bmo::opto
     **Depth is still a real decision, and it is now affordable.** Deeper
     reduction is a quieter output and therefore *more* makeup, not less --
     depth and the rail pull in opposite directions, which is the arithmetic
-    that ruled 12-15dB out while the preset needed 26dB. At 20.36dB there is
+    that ruled 12-15dB out while the preset needed 26dB. At ~20.1dB there is
     room again. CRUSH stays at 85 for now because that was decided when the
     headroom was thought to be 1dB, not 3.6, and the release fix has changed
     how crushed this preset *feels* independently of how deep it goes -- so
@@ -52,12 +52,23 @@ namespace bmo::opto
     for ~1.7dB less makeup at the cost of being a different unit's
     character, and kLevel's range no longer needs reopening.
 
-    **Gentle and Vocal Glue drifted too** and are still carrying values
-    solved against the old release. They pass the +/-3dB check, so CI never
-    said by how much -- BMO_PRINT_PRESET_LEVELS is set on the workflow's
-    Test step to find out. Their values come from that, never from the local
-    solver, which ports voice() faithfully but omits the drive and Color
-    stages and lands ~8dB out at deep settings.
+    **All three are now solved from one measurement.** Gentle and Vocal Glue
+    had drifted too, and passing the +/-3dB check is exactly what kept them
+    invisible -- a pass reports no number. BMO_PRINT_PRESET_LEVELS on the
+    workflow's Test step prints every preset's delta whether it passes or
+    not, which is how run 34085918240 gave all three at once:
+
+        Gentle      -1.86dB  ->  LEVEL 3.20 becomes 5.06
+        Vocal Glue  +0.67dB  ->  LEVEL 11.53 becomes 10.86
+        Crushed <3  +0.23dB  ->  LEVEL 20.36 becomes 20.13
+
+    Gentle was the one worth catching: 1.86dB is audible when auditioning
+    presets against each other, and it had been that way since 0.2.0, when
+    it was left alone for being "inside tolerance".
+
+    These come from CI, never from the local solver in
+    tools/measure/renders, which ports voice() faithfully but omits the
+    drive and Color stages and lands ~8dB out at deep settings.
 
     A source-dependent auto-makeup was considered here in 0.2.0 and
     **rejected**: it would have made all of this moot, but neither the LA-2A
@@ -75,9 +86,9 @@ inline const std::vector<FactoryPreset>& factory()
     static const std::vector<FactoryPreset> presets {
         { "Init", {} },
 
-        { "Gentle",     { { kCrush, 15.0f }, { kLevel, 3.2f } } },
-        { "Vocal Glue", { { kCrush, 45.0f }, { kLevel, 11.53f } } },
-        { "Crushed <3", { { kCrush, 85.0f }, { kLevel, 20.36f } } },  // measured on CI, run 34084188862
+        { "Gentle",     { { kCrush, 15.0f }, { kLevel, 5.06f } } },
+        { "Vocal Glue", { { kCrush, 45.0f }, { kLevel, 10.86f } } },
+        { "Crushed <3", { { kCrush, 85.0f }, { kLevel, 20.13f } } },  // all three measured on CI, run 34085918240
     };
 
     return presets;
