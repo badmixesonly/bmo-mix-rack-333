@@ -343,10 +343,21 @@ void DynamicsMeter::paint (juce::Graphics& g)
     // crowds into the last third of the sweep, and inking every one of them
     // is what left the numbers illegibly small and touching. The numbered
     // ones are the figures a VU is actually read against.
+    // The first point is struck but never printed, and it is where the needle
+    // parks in silence. 0.2.1 started the scale at -20, so an idle meter left
+    // the needle lying across its own leftmost numeral -- the rest state, and
+    // therefore the state the meter is in most of the time.
+    //
+    // -7 and -3 lost their numbers as well. Five printed figures is what fits:
+    // at this radius the -10 to -5 gap is the tightest pair on the scale and
+    // clears by about 6 px, and every figure added between them takes that
+    // back. Hardware faceplates ink only the round figures for the same
+    // reason, and every tick is still struck here.
     static const std::vector<ScalePoint> vuScale {
-        { -20.0f, 0.00f }, { -10.0f, 0.34f }, { -7.0f, 0.44f }, { -5.0f, 0.53f },
-        { -3.0f, 0.63f },  { -2.0f, 0.69f, false }, { -1.0f, 0.76f, false }, { 0.0f, 0.83f },
-        { 1.0f, 0.89f, false }, { 2.0f, 0.94f, false }, { 3.0f, 1.00f },
+        { -30.0f, 0.00f, false },
+        { -20.0f, 0.10f }, { -15.0f, 0.27f, false }, { -10.0f, 0.41f }, { -7.0f, 0.50f, false }, { -5.0f, 0.58f },
+        { -3.0f, 0.67f, false }, { -2.0f, 0.72f, false }, { -1.0f, 0.78f, false }, { 0.0f, 0.85f },
+        { 1.0f, 0.90f, false }, { 2.0f, 0.95f, false }, { 3.0f, 1.00f },
     };
     static const std::vector<ScalePoint> grScale {
         { 0.0f, 0.0f }, { 4.0f, 1.0f / 6.0f }, { 8.0f, 2.0f / 6.0f }, { 12.0f, 0.5f },
@@ -360,8 +371,25 @@ void DynamicsMeter::paint (juce::Graphics& g)
 
     // Sweep geometry: needle pivots at bottom-centre, arcs upward. 100
     // degrees total, split evenly either side of straight up.
-    const auto pivot     = bounds.getBottomLeft().translated (bounds.getWidth() * 0.5f, 0.0f);
-    const auto radius    = juce::jmin (bounds.getWidth() * 0.5f, bounds.getHeight()) - 6.0f;
+    // Half the width of the hub the needle turns on.
+    constexpr float kHubRadius = 3.5f;
+
+    // A 124 degree sweep is limited by width, never by height: the arc ends
+    // reach sin(62) = 0.88 of the radius sideways but only 0.47 of it
+    // downwards. Taking the radius from jmin(width/2, height) therefore sized
+    // the arc to the wrong dimension whenever the face was taller than half
+    // its width, which is every face this has been given -- 0.2.1 shipped with
+    // roughly 40% of the meter empty above the needle.
+    const auto radius = bounds.getWidth() * 0.5f - 8.0f;
+
+    // What actually gets drawn runs from the apex, one radius above the pivot,
+    // down to the hub. Centre that block in whatever face the panel hands over
+    // rather than pinning the pivot to the bottom edge, so a taller box can
+    // never bring the dead band back. A box shorter than the block puts the
+    // pivot below the face, which is where the hardware hides it anyway.
+    const auto drawnHeight = radius + kHubRadius;
+    const auto pivot = juce::Point<float> (bounds.getCentreX(),
+                                           bounds.getY() + (bounds.getHeight() + drawnHeight) * 0.5f);
     // 124 rather than 100 degrees: the numbers are set larger now, and the
     // extra arc is what keeps them apart at the crowded top of the scale.
     const auto sweep     = juce::degreesToRadians (124.0f);
@@ -422,7 +450,7 @@ void DynamicsMeter::paint (juce::Graphics& g)
     // the button row underneath already says that.
     g.setColour (t.pointer);
     g.drawLine (juce::Line<float> (pivot, tip), 2.4f);
-    g.fillEllipse (juce::Rectangle<float> (7.0f, 7.0f).withCentre (pivot));
+    g.fillEllipse (juce::Rectangle<float> (kHubRadius * 2.0f, kHubRadius * 2.0f).withCentre (pivot));
 
     const auto readoutLabel = isReduction ? "GR" : (mode == Mode::input ? "IN" : "OUT");
     // Spelled as an escape rather than a literal bullet: MSVC without /utf-8

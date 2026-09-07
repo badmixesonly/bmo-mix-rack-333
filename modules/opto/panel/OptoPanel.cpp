@@ -16,6 +16,13 @@ namespace
     constexpr int kMeterWidth  = 190;
     constexpr int kMeterButtonRow = 22;
 
+    // A needle meter is a landscape window: at this width the arc stands about
+    // 91 px tall, and the 14 px mode caption sits under it. Handing DynamicsMeter
+    // the whole 168 px of the middle third, as 0.2.1 did, only bought empty
+    // face -- the meter centres its arc in whatever box it is given, so the
+    // height it does not need is better spent by the panel.
+    constexpr int kMeterHeight = 116;
+
     // Lifted from BMO Util so the switches are literally the same control at
     // the same size across the suite -- see modules/util/panel/UtilPanel.cpp.
     constexpr int kSwitchWidth  = 70;
@@ -184,7 +191,7 @@ void OptoPanel::resized()
     // Frosty asked for this order specifically, 2026-09-06.
     auto meterButtonRow = middleRow.removeFromBottom (kMeterButtonRow);
     meter.setBounds (middleRow.withSizeKeepingCentre (juce::jmin (middleRow.getWidth(), kMeterWidth),
-                                                       middleRow.getHeight()));
+                                                       juce::jmin (middleRow.getHeight(), kMeterHeight)));
 
     const auto meterButtons = meterButtonRow.withSizeKeepingCentre (
         juce::jmin (meterButtonRow.getWidth(), kMeterWidth), meterButtonRow.getHeight());
