@@ -68,14 +68,15 @@ struct Tokens
         nothing else, it means exactly the same thing on every panel in the
         suite, and it is the one control a person hunts for by sight rather
         than by reading -- so it is the one that most has to look identical
-        everywhere. Until 0.2.2 it lit in BMO EQ's pink, the Saturator's
-        orange and Util's green, and briefly in switchAlt's blue after that.
+        everywhere. Before 0.2.2 it lit in BMO EQ's pink, the Saturator's
+        orange and Util's green.
 
-        The colour is BMO Opto's old lavender, freed when that module's panel
-        went greyscale. As a switch fill it is 2.48:1 against `switchOff`, so
-        lit and unlit separate by lightness as well as hue, and it takes a
-        dark label at 4.77:1. */
-    juce::Colour polarity   { 0xffd4a4ff };
+        White, so an engaged polarity switch is the brightest thing in a row
+        of switches and the state reads as an inversion: dark fill with a
+        light label off, light fill with a dark one on. It is the only lit
+        colour in the suite that carries no hue, which suits the only control
+        in the suite that is not an amount of anything. */
+    juce::Colour polarity   { 0xffffffff };
 
     juce::Colour accent     { 0xfff08cb4 };   ///< the module's own colour; see ModuleDef
 

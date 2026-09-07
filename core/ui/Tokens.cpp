@@ -154,6 +154,15 @@ juce::Colour onAccentOf (juce::Colour fill, float minRatio) noexcept
     const auto target = relativeLuminance (fill) > 0.18f ? juce::Colours::black
                                                          : juce::Colours::white;
 
+    // The search stops at the first value that clears, which keeps as much of
+    // the fill's own hue in its label as the ratio allows. On a fill that has
+    // no hue there is nothing to keep, and stopping early only costs contrast:
+    // white polarity switches came out with a #757575 label at exactly 4.5:1
+    // where black was free and reads at 21:1. So an achromatic fill goes
+    // straight to the end of the range.
+    if (fill.getSaturation() < 0.12f)
+        return target;
+
     return searchCached (fill, fill, minRatio, target);
 }
 

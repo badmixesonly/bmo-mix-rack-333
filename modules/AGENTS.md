@@ -36,15 +36,22 @@ modules/<id>/
    | switch | colour |
    |---|---|
    | the module's bypass | the module's accent |
+   | **mono** | **the module's accent**, so it matches the header bar |
    | **polarity** | **`tokens().polarity`, always** |
    | anything else | `tokens().switchAlt` |
 
-   Polarity is the strict one. It means the same thing on every panel and
-   is hunted for by sight rather than read, so it has to look identical
-   everywhere; it spent three releases wearing each module's own accent
-   before that was fixed. A module whose colour depends on its own state
-   rather than on which module it is -- BMO Opto -- sets these at runtime
-   instead, but follows the same table.
+   The two named rows are the strict ones, and they pull opposite ways on
+   purpose. Polarity means the same thing on every panel and is hunted for
+   by sight rather than read, so it looks identical everywhere and takes no
+   module colour at all; it spent three releases wearing each module's own
+   accent before that was fixed. Mono is also the same function everywhere,
+   but it is a summing decision rather than a per-channel one, and it reads
+   as something the module does -- so it carries the module's colour and
+   lines up with the bar across the top of the panel.
+
+   A module whose colour depends on its own state rather than on which
+   module it is -- BMO Opto -- sets these at runtime instead, but follows
+   the same table.
 
    Do not write a hex in a panel. If you need "the accent, but legible",
    that is `ui::accentTextOn`; for ink on a filled control it is

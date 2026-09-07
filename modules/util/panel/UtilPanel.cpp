@@ -22,7 +22,7 @@ UtilPanel::UtilPanel (ui::ModuleContext ctx)
       width (context.params.param (Index::width), "WIDTH", ui::Knob::Style::character, 0.5f, context.def.accent),
       phaseL (context.params.param (Index::phaseL), ui::BmoLookAndFeel::phaseGlyph() + " L", ui::tokens().polarity),
       phaseR (context.params.param (Index::phaseR), ui::BmoLookAndFeel::phaseGlyph() + " R", ui::tokens().polarity),
-      mono   (context.params.param (Index::mono),   "MONO", ui::tokens().switchAlt),
+      mono   (context.params.param (Index::mono),   "MONO", context.def.accent),
       meter  (context.peak, context.rms)
 {
     for (auto* c : std::initializer_list<juce::Component*> {
