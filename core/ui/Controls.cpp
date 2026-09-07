@@ -239,6 +239,19 @@ void SwitchButton::setTint (juce::Colour tint)
     button.repaint();
 }
 
+void SwitchButton::setActiveInkFrom (juce::Colour accent)
+{
+    // Derived against the fill the ink will sit on rather than against the
+    // plate. On the pale plate the two land within a step of each other, so
+    // the label matches the module's captions; on a dark one, deriving
+    // against the plate would *lighten* the accent and put pale green on a
+    // white switch.
+    const auto fill = button.findColour (juce::ToggleButton::tickColourId);
+
+    button.setColour (juce::ToggleButton::textColourId, accentTextOn (accent, fill));
+    button.repaint();
+}
+
 //==============================================================================
 OutputMeter::OutputMeter (std::function<float()> peakSource, std::function<float()> rmsSource)
     : peak (std::move (peakSource)), rms (std::move (rmsSource))

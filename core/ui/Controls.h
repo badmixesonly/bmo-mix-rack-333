@@ -116,6 +116,15 @@ public:
     /** What the switch lights up in. See PlainKnob::setAccent. */
     void setTint (juce::Colour);
 
+    /** The label to use while engaged, instead of one derived from the fill.
+
+        For a switch whose fill is the same in every module -- polarity, which
+        is always white -- so the label is what says which module it belongs
+        to. Pass the module's accent: it is stepped against the fill here, not
+        against the plate, so it stays dark on a white switch whatever the
+        plate underneath is doing. */
+    void setActiveInkFrom (juce::Colour accent);
+
 private:
     juce::ToggleButton button;
     std::unique_ptr<juce::ButtonParameterAttachment> attachment;

@@ -28,6 +28,10 @@ UtilPanel::UtilPanel (ui::ModuleContext ctx)
     for (auto* c : std::initializer_list<juce::Component*> {
              &gain, &pan, &width, &phaseL, &phaseR, &mono, &meter })
         addAndMakeVisible (c);
+
+    // Polarity is white in every module; its label is what says which module.
+    for (auto* p : { &phaseL, &phaseR })
+        p->setActiveInkFrom (context.def.accent);
 }
 
 void UtilPanel::paintPanel (juce::Graphics& g)

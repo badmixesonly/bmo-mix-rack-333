@@ -32,6 +32,9 @@ SatPanel::SatPanel (ui::ModuleContext ctx)
     for (auto* c : std::initializer_list<juce::Component*> {
              &inputGain, &drive, &tone, &mix, &satIn, &phase, &autoGain, &outputLevel, &meter })
         addAndMakeVisible (c);
+
+    // Polarity is white in every module; its label is what says which module.
+    phase.setActiveInkFrom (context.def.accent);
 }
 
 void SatPanel::paintPanel (juce::Graphics& g)

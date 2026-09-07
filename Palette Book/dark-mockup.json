@@ -1,0 +1,32 @@
+{
+  "plate":      "#202024",
+  "plateEdge":  "#2a2a30",
+  "well":       "#141418",
+  "hairline":   "#3c3d43",
+  "outline":    "#62636e",
+
+  "text1":      "#e6e6ea",
+  "text2":      "#9a9aa4",
+
+  "knobFace":   "#97ddff",
+  "knobEdge":   "#8d8d98",
+  "pointer":    "#2b2b2e",
+  "ringFace":   "#ffffff",
+  "meterInk":   "#ffffff",
+
+  "track":      "#4fb8e8",
+  "trackFill":  "#7fd0f2",
+
+  "switchOff":  "#6f7076",
+  "switchOn":   "#f08eb5",
+  "switchAlt":  "#4fb8e8",
+  "polarity":   "#ffffff",
+
+  "accent":     "#f08cb4",
+  "neutral":    "#ababab",
+
+  "meterLow":   "#6bbf7a",
+  "meterHigh":  "#e0b040",
+  "meterClip":  "#e0685a",
+  "meterGr":    "#4fb8e8"
+}

@@ -34,6 +34,9 @@ EqPanel::EqPanel (ui::ModuleContext ctx)
     for (auto* c : std::initializer_list<juce::Component*> {
              &inputGain, &high, &mid, &low, &highPass, &eqIn, &phase, &midHiQ, &outputLevel, &meter })
         addAndMakeVisible (c);
+
+    // Polarity is white in every module; its label is what says which module.
+    phase.setActiveInkFrom (context.def.accent);
 }
 
 void EqPanel::paintPanel (juce::Graphics& g)

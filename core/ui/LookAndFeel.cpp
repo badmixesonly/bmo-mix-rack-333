@@ -33,6 +33,12 @@ void BmoLookAndFeel::refreshColours()
     setColour (juce::TextButton::textColourOffId,  t.text1);
     setColour (juce::TextButton::textColourOnId,   onAccentOf (t.trackFill));
 
+    // Left transparent so that "unset" is the common case: drawToggleButton
+    // derives an engaged switch's label from its own fill unless the switch
+    // names one. JUCE's own default here is opaque, which would have made
+    // every switch look like it had asked for something.
+    setColour (juce::ToggleButton::textColourId, juce::Colours::transparentBlack);
+
     setColour (juce::AlertWindow::backgroundColourId, t.plateEdge);
     setColour (juce::AlertWindow::textColourId,       t.text1);
     setColour (juce::AlertWindow::outlineColourId,    t.outline);
@@ -233,7 +239,15 @@ void BmoLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& bu
     // measured 1.98-2.55:1 on the four accents, and 2.43:1 on the old pale
     // switchOff, so a switch's label was equally hard to read in both states
     // and on/off was carried by hue alone.
-    const auto ink = onAccentOf (fill).withAlpha (button.isEnabled() ? 1.0f : 0.4f);
+    //
+    // A switch may name its own engaged ink through textColourId, which
+    // refreshColours() clears so that "unset" is transparent and means
+    // "derive it". Polarity is why: its fill is white in every module, so
+    // deriving gives black in every module, and the label is the one part of
+    // that switch left free to say which module it belongs to.
+    const auto named = button.findColour (juce::ToggleButton::textColourId);
+    const auto ink = ((on && ! named.isTransparent()) ? named : onAccentOf (fill))
+                         .withAlpha (button.isEnabled() ? 1.0f : 0.4f);
 
     // The polarity switch is drawn, not set: typing the slashed O gives back
     // whatever the machine maps it to, which on several faces is a plain O and
