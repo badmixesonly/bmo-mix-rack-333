@@ -5,6 +5,9 @@ target_link_libraries(measure_eq PRIVATE bmo_eq_dsp)
 bmo_add_dsp_tool(measure_sat ${CMAKE_CURRENT_SOURCE_DIR}/measure/sat/main.cpp)
 target_link_libraries(measure_sat PRIVATE bmo_sat_dsp)
 
+bmo_add_dsp_tool(measure_opto ${CMAKE_CURRENT_SOURCE_DIR}/measure/opto/main.cpp)
+target_link_libraries(measure_opto PRIVATE bmo_opto_dsp)
+
 if(NOT BMO_DSP_ONLY)
     bmo_add_tool(snapshot
         ${CMAKE_CURRENT_SOURCE_DIR}/snapshot/main.cpp
