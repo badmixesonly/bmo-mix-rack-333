@@ -27,7 +27,7 @@ EqPanel::EqPanel (ui::ModuleContext ctx)
       low      (context.params.param (Index::lfFreq),  context.params.spec (Index::lfFreq),  &context.params.param (Index::lfGain),  context.def.accent),
       highPass (context.params.param (Index::hpfFreq), context.params.spec (Index::hpfFreq), nullptr, context.def.accent),
       eqIn   (context.params.param (Index::eqIn),   "EQL", context.def.accent),
-      phase  (context.params.param (Index::phase),  ui::BmoLookAndFeel::phaseGlyph(), context.def.accent),
+      phase  (context.params.param (Index::phase),  ui::BmoLookAndFeel::phaseGlyph(), ui::tokens().switchAlt),
       midHiQ (context.params.param (Index::midHiQ), "HI-Q", ui::tokens().switchAlt),
       meter  (context.peak, context.rms)
 {

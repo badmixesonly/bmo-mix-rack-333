@@ -49,7 +49,23 @@ struct Tokens
     // of an *engaged* one that on and off were told apart by hue alone.
     juce::Colour switchOff  { 0xff6f7076 };
     juce::Colour switchOn   { 0xfff08eb5 };   ///< an engaged switch, when not the accent
-    juce::Colour switchAlt  { 0xff4cacdc };   ///< the deeper azure of the Hi-Q switch
+
+    /** Every switch that is not the module's own bypass.
+
+        The rule the suite follows: a module's bypass -- EQL, SAT -- lights in
+        the module's colour, because that is the switch that turns the module
+        itself on and off. Everything else lights in this one blue, because
+        everything else does the same job wherever it appears. Polarity is the
+        clearest case and was the last to arrive: it flipped in EQ's pink, the
+        Saturator's orange and Util's green until 0.2.2, so the one control on
+        the panel whose meaning never changes between modules was the one drawn
+        differently in each of them.
+
+        Hi-Q, Auto and Mono are here too. They are module-specific functions
+        rather than universal ones, but they are all secondary switches, and
+        one blue for "not the bypass" is a rule you can see rather than a
+        rule you have to be told. */
+    juce::Colour switchAlt  { 0xff4cacdc };
 
     juce::Colour accent     { 0xfff08cb4 };   ///< the module's own colour; see ModuleDef
 

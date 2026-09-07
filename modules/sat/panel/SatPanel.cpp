@@ -25,7 +25,7 @@ SatPanel::SatPanel (ui::ModuleContext ctx)
       mix         (context.params.param (Index::mix),         "MIX",   ui::Knob::Style::character, 0.46f, context.def.accent),
       outputLevel (context.params.param (Index::outputLevel), "OUTPUT"),
       satIn    (context.params.param (Index::satIn),    "SAT", context.def.accent),
-      phase    (context.params.param (Index::phase),    ui::BmoLookAndFeel::phaseGlyph(), context.def.accent),
+      phase    (context.params.param (Index::phase),    ui::BmoLookAndFeel::phaseGlyph(), ui::tokens().switchAlt),
       autoGain (context.params.param (Index::autoGain), "AUTO", ui::tokens().switchAlt),
       meter    (context.peak, context.rms)
 {
