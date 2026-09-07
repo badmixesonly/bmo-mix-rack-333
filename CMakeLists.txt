@@ -47,17 +47,73 @@ if(NOT BMO_DSP_ONLY)
 
     add_subdirectory(libs/JUCE)
 
-    # The typefaces are licensed and not in the repository. See
-    # assets/fonts/README.md; CI restores them from secrets.
+    # The typefaces are licensed to individuals, not to the project, so the
+    # .otf files live outside this repository and are never committed. The
+    # build is pointed at wherever you keep them. First hit wins:
+    #
+    #   1. -DBMO_FONT_DIR=<path>  one-off; it then sticks in that build cache
+    #   2. $ENV{BMO_FONT_DIR}     a shell or a CI environment
+    #   3. .bmo-fontdir           this working copy's constant, gitignored,
+    #                             written by scripts/set-font-dir.sh
+    #   4. assets/fonts/          what CI decodes from repository secrets
+    #
+    # See assets/fonts/README.md.
+    set(BMO_FONT_DIR "" CACHE PATH "Directory holding the licensed .otf files")
+
+    if(BMO_FONT_DIR)
+        set(bmo_font_dir "${BMO_FONT_DIR}")
+        set(bmo_font_from "-DBMO_FONT_DIR")
+    elseif(DEFINED ENV{BMO_FONT_DIR})
+        set(bmo_font_dir "$ENV{BMO_FONT_DIR}")
+        set(bmo_font_from "environment BMO_FONT_DIR")
+    elseif(EXISTS ${BMO_ROOT}/.bmo-fontdir)
+        file(READ ${BMO_ROOT}/.bmo-fontdir bmo_font_dir)
+        string(STRIP "${bmo_font_dir}" bmo_font_dir)
+        set(bmo_font_from ".bmo-fontdir")
+    else()
+        set(bmo_font_dir "${BMO_ROOT}/assets/fonts")
+        set(bmo_font_from "default, no local font folder recorded")
+    endif()
+
+    # Accept a Windows path with backslashes, and resolve a relative one
+    # against the repository root rather than against the build directory.
+    file(TO_CMAKE_PATH "${bmo_font_dir}" bmo_font_dir)
+    get_filename_component(bmo_font_dir "${bmo_font_dir}" ABSOLUTE BASE_DIR ${BMO_ROOT})
+
     set(BMO_FONTS
-        ${BMO_ROOT}/assets/fonts/TG-MinervaBlack-Black.otf
-        ${BMO_ROOT}/assets/fonts/TG-Blender.otf)
+        ${bmo_font_dir}/TG-MinervaBlack-Black.otf
+        ${bmo_font_dir}/TG-Blender.otf)
 
     foreach(font ${BMO_FONTS})
         if(NOT EXISTS ${font})
-            message(FATAL_ERROR "Missing font ${font} -- see assets/fonts/README.md")
+            get_filename_component(missing ${font} NAME)
+            message(FATAL_ERROR
+                "Missing licensed font: ${missing}\n"
+                "  looked in:  ${bmo_font_dir}\n"
+                "  chosen by:  ${bmo_font_from}\n"
+                "The .otf files are not in this repository and never will be. "
+                "Point this working copy at your own licensed-font folder, once:\n"
+                "    scripts/set-font-dir.sh <path-to-your-font-folder>\n"
+                "See assets/fonts/README.md.")
         endif()
     endforeach()
+
+    message(STATUS "BMO fonts: ${bmo_font_dir} (${bmo_font_from})")
+
+    # A local folder outside the repository is the supported route now. The
+    # in-repo assets/fonts/ path still works, so CI is unaffected and is not
+    # nagged about it.
+    if(bmo_font_from STREQUAL "default, no local font folder recorded"
+       AND NOT DEFINED ENV{CI})
+        message(WARNING
+            "Building from the in-repo assets/fonts/ copy.\n"
+            "Keep your licensed faces in a folder of their own outside this "
+            "repository, and record it once with:\n"
+            "    scripts/set-font-dir.sh <path-to-your-font-folder>\n"
+            "Nothing in this repository ever writes to that folder. The only "
+            "reason to open it is to add a newly licensed face for a future "
+            "build. See assets/fonts/README.md.")
+    endif()
 
     juce_add_binary_data(BmoAssets SOURCES ${BMO_FONTS})
     set_target_properties(BmoAssets PROPERTIES POSITION_INDEPENDENT_CODE ON)
