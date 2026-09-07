@@ -14,9 +14,45 @@ namespace bmo::opto
 struct Curve
 {
     float thresholdDb;
-    float ratio;
+    /** dB of reduction per dB over threshold, *not* a ratio -- see
+        feedforwardSlope()/feedbackSlope() for why a feedback cell can't
+        express what it needs as one. */
+    float slope;
     float kneeDb;
 };
+
+/** The reduction slope a **feedforward** cell needs to deliver `ratio`.
+    Output is input minus the reduction, so a slope of `1 - 1/R` leaves a
+    residual slope of `1/R` -- the ratio, straightforwardly. */
+constexpr float feedforwardSlope (float ratio) noexcept
+{
+    return 1.0f - 1.0f / ratio;
+}
+
+/** The reduction slope a **feedback** cell needs to deliver `ratio`, which
+    is a different number, because the detector reads the already-reduced
+    output rather than the input. In steady state, with slope `a`:
+
+        y = x - a(y - T)  ->  y = (x + aT)/(1 + a)  ->  dy/dx = 1/(1 + a)
+
+    so the delivered ratio is `1 + a`, and `a = ratio - 1`.
+
+    This is why `Curve` carries a slope and not a ratio. Feeding a feedback
+    cell `1 - 1/R` (the feedforward figure, which is what this module did
+    until 0.2.0) delivers `1/(2 - 1/R)` instead: 3:1 came out as 1.67:1, and
+    since `1 - 1/R < 1` for every finite R, **no ratio value could ever ask
+    a feedback cell for more than 2:1**. Expressed as a slope there is no
+    such ceiling -- 3:1 is simply a = 2.
+
+    Loop stability is not a concern at these attack times even though a > 1:
+    the envelope follower's own coefficient `c` sets the per-sample loop
+    gain, and the recursion multiplier is `1 - c(1 + a)`, stable while
+    `c(1 + a) < 2`. A 10 ms attack gives c ~= 0.0023 at 44.1 kHz, three
+    orders of magnitude inside that. */
+constexpr float feedbackSlope (float ratio) noexcept
+{
+    return ratio - 1.0f;
+}
 
 /** The soft-knee gain computer from Reiss & McPherson's compressor tutorial,
     restated to return the reduction directly: for a ratio R and knee width W
@@ -35,10 +71,10 @@ inline float kneeReductionDb (float levelDb, const Curve& curve) noexcept
     if (diff < half)
     {
         const auto t = diff + half;
-        return (1.0f - 1.0f / curve.ratio) * (t * t) / (2.0f * curve.kneeDb);
+        return curve.slope * (t * t) / (2.0f * curve.kneeDb);
     }
 
-    return (1.0f - 1.0f / curve.ratio) * diff;
+    return curve.slope * diff;
 }
 
 inline float coeffFor (float tauSec, double rate) noexcept
@@ -48,11 +84,16 @@ inline float coeffFor (float tauSec, double rate) noexcept
 
 /** CRUSH, 0-100 on the panel, mapped to threshold only. LA-2A: ~3:1, a soft
     16 dB knee -- both fixed, per the digest's "effectively fixed/soft-knee,
-    not a user ratio control." */
+    not a user ratio control."
+
+    The 3:1 goes through feedbackSlope() because La2aCell is a feedback cell
+    and this is the figure it must be handed to actually *deliver* 3:1 --
+    corrected in 0.2.0, where passing the feedforward figure was quietly
+    delivering 1.67:1. */
 inline Curve curveForLa2a (float crushPercent) noexcept
 {
     const auto c = std::clamp (crushPercent, 0.0f, 100.0f) / 100.0f;
-    return { -8.0f + c * -30.0f, 3.0f, 16.0f };
+    return { -8.0f + c * -30.0f, feedbackSlope (3.0f), 16.0f };
 }
 
 /** Distressor's 10:1 "Opto" ratio setting: fixed 10:1, a harder/shorter 6 dB
@@ -64,7 +105,7 @@ inline Curve curveForLa2a (float crushPercent) noexcept
 inline Curve curveForDistressor (float crushPercent) noexcept
 {
     const auto c = std::clamp (crushPercent, 0.0f, 100.0f) / 100.0f;
-    return { -8.0f + c * -30.0f, 10.0f, 6.0f };
+    return { -8.0f + c * -30.0f, feedforwardSlope (10.0f), 6.0f };
 }
 
 //==============================================================================
@@ -244,7 +285,7 @@ public:
         gainLin     = std::pow (10.0f, -reductionDb / 20.0f);
 
         const auto chargeCoeff = reductionDb > chargeDb ? coeffFor (kChargeAttackTauSec, rate)
-                                                         : coeffFor (kReleaseSlowTauSec, rate);
+                                                         : coeffFor (kChargeReleaseTauSec, rate);
         chargeDb += chargeCoeff * (reductionDb - chargeDb);
     }
 
@@ -256,6 +297,18 @@ private:
     static constexpr float kReleaseFastTauSec  = 0.06f;
     static constexpr float kReleaseSlowTauSec  = 20.0f;  // this mode's own ceiling, vs LA-2A's 15 s
     static constexpr float kChargeAttackTauSec = 0.3f;
+
+    /** How fast the cell forgets a hit. Until 0.2.0 this reused
+        kReleaseSlowTauSec -- the *ceiling* -- so any hit deep enough to move
+        chargeDb pinned release near 20 s for a long time afterwards, which
+        is what "Stressed's release feels too long" was. La2aCell has always
+        used a separate, much shorter constant (1 s) for the same job; this
+        gives Stressed its own, still four times slower than Tele's, on top
+        of a ceiling that is already the longer of the two. Deliberately a
+        single constant rather than a duration-gated accumulator: if this
+        alone fixes the complaint without costing the mode its genuinely
+        long ceiling, the bigger redesign isn't needed. */
+    static constexpr float kChargeReleaseTauSec = 4.0f;
 
     double rate = 44100.0;
     float envelopeLin = 0.0f;
@@ -270,17 +323,32 @@ private:
 class DcBlocker
 {
 public:
+    /** The pole has to be derived from the sample rate, not hard-coded: a
+        fixed coefficient is a fixed fraction of the *sample* rate, so its
+        corner frequency rises with it. The old hard-coded 0.995 put the
+        corner at ~35 Hz at 44.1 kHz but ~76 Hz at 96 kHz and ~153 Hz at
+        192 kHz -- and Tele runs this stage unconditionally, so a 96 kHz
+        session was quietly high-passing the source at 76 Hz. Fixed in
+        0.2.0; kCornerHz is now the same corner at every rate. */
+    void prepare (double sampleRate) noexcept
+    {
+        r = (float) std::exp (-2.0 * 3.14159265358979 * kCornerHz / std::max (sampleRate, 1.0));
+        reset();
+    }
+
     void reset() noexcept { x1 = y1 = 0.0f; }
 
     float process (float x) noexcept
     {
-        constexpr float r = 0.995f;
         const auto y = x - x1 + r * y1;
         x1 = x; y1 = y;
         return y;
     }
 
 private:
+    static constexpr double kCornerHz = 20.0;
+
+    float r  = 0.9971f;   // kCornerHz at 44.1 kHz, until prepare() says otherwise
     float x1 = 0.0f, y1 = 0.0f;
 };
 
@@ -304,6 +372,7 @@ private:
 class La2aDrive
 {
 public:
+    void prepare (double sampleRate) noexcept { dc.prepare (sampleRate); }
     void reset() noexcept { dc.reset(); }
 
     float process (float x) noexcept
@@ -311,8 +380,17 @@ public:
         constexpr float k = 0.6f;
         constexpr float evenAmount = 0.18f;
 
+        // `shaped * shaped` and nothing else. Until 0.2.0 this term was
+        // multiplied by sgn(x), which was the whole bug: `shaped` is odd, so
+        // `shaped * shaped` is even, and multiplying an even term by an odd
+        // one makes it odd again. The stage was odd end to end, and an odd
+        // memoryless nonlinearity produces *only odd* harmonics -- so the
+        // "even harmonic" term generated no even harmonics at all, and the
+        // DC blocker below had no DC to block. Without the sgn the curve is
+        // genuinely asymmetric: 2nd harmonic, plus the DC offset that
+        // asymmetry implies, which is what dc is actually for.
         const auto shaped = std::tanh (k * x) / k;
-        const auto biased  = shaped + evenAmount * (shaped * shaped) * (x < 0.0f ? -1.0f : 1.0f);
+        const auto biased = shaped + evenAmount * shaped * shaped;
 
         return dc.process (biased);
     }

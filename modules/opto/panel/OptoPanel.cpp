@@ -126,7 +126,10 @@ void OptoPanel::resized()
     // Top third: COMP, large and alone.
     crush.setBounds (topRow.withSizeKeepingCentre (kKnobWidth, kKnobHeight));
 
-    // Middle third: the VU meter over its IN/OUT/GR row.
+    // Middle third: the VU meter over its IN/GR/OUT row -- GR in the
+    // middle because it is the reading this module is actually for, and
+    // IN/OUT then read left-to-right as signal flow either side of it.
+    // Frosty asked for this order specifically, 2026-09-06.
     auto meterButtonRow = middleRow.removeFromBottom (kMeterButtonRow);
     meter.setBounds (middleRow.withSizeKeepingCentre (juce::jmin (middleRow.getWidth(), kMeterWidth),
                                                        middleRow.getHeight()));
@@ -136,8 +139,8 @@ void OptoPanel::resized()
     const auto meterButtonWidth = meterButtons.getWidth() / 3;
     auto meterButtonArea = meterButtons;
     meterInButton.setBounds  (meterButtonArea.removeFromLeft (meterButtonWidth).reduced (3, 1));
-    meterOutButton.setBounds (meterButtonArea.removeFromLeft (meterButtonWidth).reduced (3, 1));
-    meterGrButton.setBounds  (meterButtonArea.reduced (3, 1));
+    meterGrButton.setBounds  (meterButtonArea.removeFromLeft (meterButtonWidth).reduced (3, 1));
+    meterOutButton.setBounds (meterButtonArea.reduced (3, 1));
 
     // Bottom third: MAKEUP, then the Mode/Link/Color row underneath it.
     auto switchRow = bottomRow.removeFromBottom (kSwitchRow);

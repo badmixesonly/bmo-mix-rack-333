@@ -79,6 +79,9 @@ public:
         {
             ch.la2a.prepare (rate);
             ch.distressor.prepare (rate);
+            // The drive's DC blocker derives its pole from the rate -- see
+            // DcBlocker::prepare() for why a hard-coded one was wrong.
+            ch.la2aDrive.prepare (rate);
         }
 
         crushSmoother.prepare (rate, 15.0);

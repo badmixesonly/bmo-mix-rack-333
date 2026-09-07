@@ -103,6 +103,46 @@ double rms (const std::vector<float>& v, size_t from = 0)
     return std::sqrt (sum / (double) (v.size() - from));
 }
 
+/** Amplitude of the `harmonic`-th harmonic of `hz`, by direct correlation
+    against that one frequency rather than a whole FFT -- one bin is all
+    these tests need. Callers must hand it a whole number of cycles from
+    `from` to the end, or the answer leaks across bins. */
+double harmonicMagnitude (const std::vector<float>& v, double hz, int harmonic, size_t from)
+{
+    double re = 0.0, im = 0.0;
+    const auto n = v.size() - from;
+
+    for (size_t i = 0; i < n; ++i)
+    {
+        const auto phase = 2.0 * kPi * hz * (double) harmonic * (double) i / kSampleRate;
+        re += (double) v[from + i] * std::cos (phase);
+        im += (double) v[from + i] * std::sin (phase);
+    }
+
+    return 2.0 * std::sqrt (re * re + im * im) / (double) n;
+}
+
+/** The ratio a mode actually delivers, measured rather than assumed: two
+    settled tones 10 dB apart, both well clear of the knee, read the output
+    delta. Crush 50 puts the threshold at -23 dB, so -12 and -2 dBFS are
+    both above the knee in either mode and neither hits the 40 dB reduction
+    clamp. */
+double deliveredRatio (Mode mode, float crushPercent)
+{
+    DspCore::Params p;
+    p.crushPercent = crushPercent;
+    p.mode = mode;
+    p.color = false;
+
+    const auto quiet = render (sine (200.0, 4.0, 0.2512), p);   // -12 dBFS
+    const auto loud  = render (sine (200.0, 4.0, 0.7943), p);   //  -2 dBFS
+
+    const auto from = (size_t) (kSampleRate * 3.0);
+    const auto deltaDb = 20.0 * std::log10 (rms (loud, from) / rms (quiet, from));
+
+    return 10.0 / deltaDb;
+}
+
 //==============================================================================
 /** Well under Tele's Crush 0 threshold (-8 dB, 16 dB knee -- nothing engages
     below -16 dB), a quiet tone should come back essentially as it went in. */
@@ -464,6 +504,80 @@ void testLatencyIsAlwaysZero()
     check (dsp.latencyForParams (loud, 5) == 0, "Crush 100, Stressed, Link, Color also reports zero latency");
 }
 
+//==============================================================================
+/** Each mode delivers the ratio it claims -- measured, not assumed.
+
+    Added in 0.2.0 because testDistressorRatioExceedsLa2a only ever checked
+    that Stressed reduces *more* than Tele, which is true for any pair of
+    numbers in the right order. It stayed true, and silent, while Tele's
+    feedback loop was quietly delivering 1.67:1 against a stated 3:1: the
+    curve was being handed the feedforward slope figure. See
+    feedbackSlope() in Detector.h. */
+void testDeliveredRatioMatchesTheSpec()
+{
+    checkNear (deliveredRatio (Mode::La2a, 50.0f), 3.0, 0.4,
+               "Tele delivers ~3:1 through its feedback loop");
+    checkNear (deliveredRatio (Mode::Distressor, 50.0f), 10.0, 1.0,
+               "Stressed delivers ~10:1 feedforward");
+}
+
+/** Tele's drive stage is asymmetric, so it must generate a real 2nd
+    harmonic -- the even-order warmth of a single-ended tube stage, which is
+    the whole reason that term exists.
+
+    Added in 0.2.0 because testColorTogglesHarmonics only checks that Color
+    on differs from Color off, and an odd-harmonic stage differs from no
+    stage just as well as an even-harmonic one does. That let a sgn() factor
+    sit in La2aDrive making the whole function odd -- so it produced no even
+    harmonics whatsoever while its comment claimed the opposite. */
+void testTeleDriveProducesEvenHarmonics()
+{
+    La2aDrive drive;
+    drive.prepare (kSampleRate);
+
+    const auto dry = sine (200.0, 1.0, 0.5);
+    std::vector<float> wet (dry.size());
+
+    for (size_t i = 0; i < dry.size(); ++i)
+        wet[i] = drive.process (dry[i]);
+
+    // From 0.25 s: past the DC blocker's own settling, and exactly 150
+    // whole cycles of 200 Hz remain, so the correlation doesn't leak.
+    const auto from = (size_t) (kSampleRate * 0.25);
+    const auto fundamental = harmonicMagnitude (wet, 200.0, 1, from);
+    const auto second      = harmonicMagnitude (wet, 200.0, 2, from);
+    const auto third       = harmonicMagnitude (wet, 200.0, 3, from);
+
+    check (second > 0.02 * fundamental,
+           "Tele's drive generates a real 2nd harmonic, not just odd-order clip");
+    check (second > third,
+           "Tele's drive is even-harmonic dominant -- the asymmetry is the point");
+}
+
+/** Crush 0 is deliberately not a bypass.
+
+    The threshold sits at -8 dB under a 16 dB knee, so the knee opens at
+    -16 dBFS and normal-level material is compressed even at the bottom of
+    the knob. testQuietSignalIsLeftAlone only ever probes -26 dBFS, which is
+    under that, so nothing else in this file would notice. Frosty's call,
+    2026-09-06: a continuous knob with no discontinuity at zero was worth
+    more than a guaranteed-clean fresh instance. Pinned here so the choice
+    stays deliberate instead of drifting into an accident. */
+void testCrushZeroIsNotABypass()
+{
+    DspCore::Params p;
+    p.crushPercent = 0.0f;
+
+    const auto dry = sine (200.0, 2.0, 0.5012);   // -6 dBFS, a realistic level
+    const auto wet = render (dry, p);
+
+    const auto from = (size_t) (kSampleRate * 1.5);
+    const auto reductionDb = -20.0 * std::log10 (rms (wet, from) / rms (dry, from));
+
+    check (reductionDb > 1.0,
+           "Crush 0 still reduces a -6 dBFS source -- documented behaviour, not a bypass");
+}
+
 } // namespace
 
 //==============================================================================
@@ -475,6 +589,9 @@ int main()
     testReleaseIsProgramDependent();
     testDistressorReleaseCeilingExceedsLa2a();
     testDistressorRatioExceedsLa2a();
+    testDeliveredRatioMatchesTheSpec();
+    testTeleDriveProducesEvenHarmonics();
+    testCrushZeroIsNotABypass();
     testStereoLink();
     testColorTogglesHarmonics();
     testTeleColorIsLocked();
