@@ -554,28 +554,44 @@ void testTeleDriveProducesEvenHarmonics()
            "Tele's drive is even-harmonic dominant -- the asymmetry is the point");
 }
 
-/** Crush 0 is deliberately not a bypass.
+/** What Crush 0 does at both ends of the gain-staging range.
 
-    The threshold sits at -8 dB under a 16 dB knee, so the knee opens at
-    -16 dBFS and normal-level material is compressed even at the bottom of
-    the knob. testQuietSignalIsLeftAlone only ever probes -26 dBFS, which is
-    under that, so nothing else in this file would notice. Frosty's call,
-    2026-09-06: a continuous knob with no discontinuity at zero was worth
-    more than a guaranteed-clean fresh instance. Pinned here so the choice
-    stays deliberate instead of drifting into an accident. */
-void testCrushZeroIsNotABypass()
+    An unprocessed track reaching a compressor should sit around -18 dBFS
+    RMS and peak around -12 dBFS -- the same 0 VU = -18 dBFS the meters are
+    calibrated to. At that level Crush 0 is effectively transparent: the
+    knee opens at -16 dBFS, so only peaks reach into it at all, and the
+    feedback loop holds what they earn under a dB. That is what "should load
+    doing nothing" was actually asking for, and it already held.
+
+    It is still not a bypass. Hand it a mastering-bus level and the knee is
+    genuinely open. Both halves are pinned because the distinction between
+    them is the whole answer: a review pass in 0.2.0 measured only the hot
+    case, called -6 dBFS a realistic track level, and concluded the knob
+    needed its threshold sweep moved. It did not -- -6 dBFS is roughly where
+    a whole mix sits going into mastering, not where one source sits going
+    into a compressor. */
+void testCrushZeroAtProperGainStaging()
 {
     DspCore::Params p;
     p.crushPercent = 0.0f;
 
-    const auto dry = sine (200.0, 2.0, 0.5012);   // -6 dBFS, a realistic level
-    const auto wet = render (dry, p);
+    const auto reductionFor = [&p] (double amplitude)
+    {
+        const auto dry = sine (200.0, 2.0, amplitude);
+        const auto wet = render (dry, p);
+        const auto from = (size_t) (kSampleRate * 1.5);
+        return -20.0 * std::log10 (rms (wet, from) / rms (dry, from));
+    };
 
-    const auto from = (size_t) (kSampleRate * 1.5);
-    const auto reductionDb = -20.0 * std::log10 (rms (wet, from) / rms (dry, from));
+    const auto atTrackLevel = reductionFor (0.2512);   // peaks at -12 dBFS
+    const auto atBusLevel   = reductionFor (0.5012);   // peaks at  -6 dBFS
 
-    check (reductionDb > 1.0,
-           "Crush 0 still reduces a -6 dBFS source -- documented behaviour, not a bypass");
+    check (atTrackLevel < 1.0,
+           "Crush 0 is transparent on a correctly staged track, peaks at -12 dBFS (measured "
+             + std::to_string (atTrackLevel) + " dB of reduction)");
+    check (atBusLevel > 1.0,
+           "Crush 0 is still not a bypass -- a hot source does reach the knee (measured "
+             + std::to_string (atBusLevel) + " dB)");
 }
 
 } // namespace
@@ -591,7 +607,7 @@ int main()
     testDistressorRatioExceedsLa2a();
     testDeliveredRatioMatchesTheSpec();
     testTeleDriveProducesEvenHarmonics();
-    testCrushZeroIsNotABypass();
+    testCrushZeroAtProperGainStaging();
     testStereoLink();
     testColorTogglesHarmonics();
     testTeleColorIsLocked();
