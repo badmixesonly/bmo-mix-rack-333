@@ -33,6 +33,12 @@ public:
 
     void setKnobEnabled (bool);
 
+    /** Re-colours the knob and, unless a caption colour was passed in, its
+        caption with it. For a module whose colour depends on its own state --
+        BMO Opto runs greyscale in Tele and lavender in Stressed -- rather than
+        on which module it is. */
+    void setAccent (juce::Colour);
+
     /** Caps how wide the knob itself may draw, leaving the rest of the
         component's width to the caption underneath.
 
@@ -106,6 +112,9 @@ public:
 
     void resized() override;
     void setSwitchEnabled (bool);
+
+    /** What the switch lights up in. See PlainKnob::setAccent. */
+    void setTint (juce::Colour);
 
 private:
     juce::ToggleButton button;
@@ -188,6 +197,11 @@ public:
 
     void setMode (Mode) noexcept;
     Mode getMode() const noexcept { return mode; }
+
+    /** Bezel and hot-zone colour, for a module whose palette depends on its
+        own state rather than on which module it is. The face stays as
+        constructed: a needle meter needs a dark one whatever the mode. */
+    void setColours (juce::Colour accent, juce::Colour hot) noexcept;
 
 private:
     void timerCallback() override;

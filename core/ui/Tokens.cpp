@@ -30,6 +30,7 @@ namespace
         { "switchOn",   &Tokens::switchOn },
         { "switchAlt",  &Tokens::switchAlt },
         { "accent",     &Tokens::accent },
+        { "neutral",    &Tokens::neutral },
         { "meterLow",   &Tokens::meterLow },
         { "meterHigh",  &Tokens::meterHigh },
         { "meterClip",  &Tokens::meterClip },

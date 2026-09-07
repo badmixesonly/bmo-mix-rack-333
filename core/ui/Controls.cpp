@@ -92,6 +92,13 @@ void PlainKnob::setKnobEnabled (bool shouldBeEnabled)
     repaint();
 }
 
+void PlainKnob::setAccent (juce::Colour accent)
+{
+    accentColour = accent;
+    knob.setAccent (accent);
+    repaint();
+}
+
 //==============================================================================
 ConcentricBand::ConcentricBand (juce::RangedAudioParameter& selector, const ParamSpec& selectorSpec,
                                 juce::RangedAudioParameter* gain, juce::Colour accent)
@@ -226,6 +233,12 @@ SwitchButton::SwitchButton (juce::RangedAudioParameter& parameter, const juce::S
 void SwitchButton::resized()                 { button.setBounds (getLocalBounds()); }
 void SwitchButton::setSwitchEnabled (bool e) { button.setEnabled (e); }
 
+void SwitchButton::setTint (juce::Colour tint)
+{
+    button.setColour (juce::ToggleButton::tickColourId, tint);
+    button.repaint();
+}
+
 //==============================================================================
 OutputMeter::OutputMeter (std::function<float()> peakSource, std::function<float()> rmsSource)
     : peak (std::move (peakSource)), rms (std::move (rmsSource))
@@ -312,6 +325,13 @@ void DynamicsMeter::setMode (Mode newMode) noexcept
     // stale value from the old mode would paint a nonsense deflection for
     // one frame if it weren't reset here.
     displayed = 0.0f;
+    repaint();
+}
+
+void DynamicsMeter::setColours (juce::Colour accent, juce::Colour hot) noexcept
+{
+    accentColour = accent;
+    hotColour = hot;
     repaint();
 }
 

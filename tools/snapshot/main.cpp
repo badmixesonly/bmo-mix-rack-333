@@ -14,6 +14,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <iostream>
+#include <optional>
 
 namespace
 {
@@ -27,6 +28,32 @@ namespace
         if (product == "opto") return createOpto();
         if (product == "rack") return createRack();
         return nullptr;
+    }
+
+    /** The real value `text` asks for, or nothing if it names neither a number
+        nor one of the parameter's own choices.
+
+        A choice may be given by name -- `mode=Stressed` as well as `mode=1` --
+        because that is what anyone reading params.h will type. Before this,
+        every non-numeric value went through getFloatValue() and came out 0.0,
+        so a choice name, or a typo, silently set the parameter to its *first*
+        value and rendered a panel that looked entirely plausible and was of
+        the wrong thing. That cost a debugging round trip; a snapshot that
+        quietly answers a different question than the one asked is worse than
+        one that refuses. */
+    std::optional<float> realValueFor (const bmo::ParamSet& params, int index,
+                                       const juce::String& text)
+    {
+        if (text.containsOnly ("0123456789.-+"))
+            return text.getFloatValue();
+
+        const auto& spec = params.spec (index);
+
+        for (int i = 0; i < spec.numChoices(); ++i)
+            if (text.equalsIgnoreCase (juce::String (spec.choices[(size_t) i])))
+                return (float) i;
+
+        return {};
     }
 
     bool set (juce::AudioProcessor& processor, const juce::String& id, const juce::String& text)
@@ -58,19 +85,39 @@ namespace
 
             const auto param = id.substring (dot + 1);
 
-            if (engine->params().indexOf (param.toRawUTF8()) < 0)
+            const auto i = engine->params().indexOf (param.toRawUTF8());
+
+            if (i < 0)
                 return false;
 
-            engine->params().setReal (param.toRawUTF8(), text.getFloatValue());
+            const auto value = realValueFor (engine->params(), i, text);
+
+            if (! value.has_value())
+            {
+                std::cerr << "not a value for " << param << ": " << text << '\n';
+                return false;
+            }
+
+            engine->params().setReal (i, *value);
             return true;
         }
 
         if (auto* single = dynamic_cast<bmo::SingleModuleProcessor*> (&processor))
         {
-            if (single->getEngine().params().indexOf (id.toRawUTF8()) < 0)
+            const auto i = single->getEngine().params().indexOf (id.toRawUTF8());
+
+            if (i < 0)
                 return false;
 
-            single->getEngine().params().setReal (id.toRawUTF8(), text.getFloatValue());
+            const auto value = realValueFor (single->getEngine().params(), i, text);
+
+            if (! value.has_value())
+            {
+                std::cerr << "not a value for " << id << ": " << text << '\n';
+                return false;
+            }
+
+            single->getEngine().params().setReal (i, *value);
             return true;
         }
 

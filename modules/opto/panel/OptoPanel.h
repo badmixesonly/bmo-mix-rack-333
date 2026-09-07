@@ -5,15 +5,23 @@
 namespace bmo::opto
 {
 
-/** Mode on top, then three even rows -- COMP, the VU meter with its own
-    IN/GR/OUT row, and MAKEUP -- with LINK and COLOR stacked underneath.
+/** TELE and ELD stacked at the head, then COMP, the VU meter with its own
+    IN/GR/OUT row, and MAKEUP, with LINK and COLOR stacked at the foot.
 
-    Mode sits above everything because it is the one control that changes
-    what the other two knobs mean; it reads as the module's character
-    switch rather than as one more option in a row of them. It is a single
-    button that says which mode it is in, not the TELE/ELD pair 0.2.0 had:
-    two buttons for one either/or spent twice the width saying it, and the
-    pair was the only place in the suite where a choice was drawn that way.
+    Mode sits above everything because it is the one control that changes what
+    the other two knobs mean. 0.2.0 drew it as a TELE/ELD pair side by side,
+    which spent twice the width saying one either/or; 0.2.1 replaced that with
+    a single button carrying its own state. This is the third arrangement and
+    it keeps what each was after: the pair is back, so both modes are named on
+    the panel whichever one is active, but stacked rather than abreast, so it
+    costs height -- which this module has to spare -- instead of width, which
+    it does not. It also mirrors the LINK/COLOR stack at the foot, and it
+    fills the dead band that sat under a lone mode button.
+
+    The two modes are coloured, not just labelled. Tele runs the whole panel
+    in greyscale with a red hot zone on the meter; Stressed is the module's
+    lavender with the hot zone in the pale lavender of the knob caps. So which
+    circuit is in play reads from across the room, before any label does.
 
     Every switch here is a juce::ToggleButton so BmoLookAndFeel draws it,
     which is what makes these read as the same control as BMO Util's
@@ -46,10 +54,20 @@ private:
         directly on the underlying parameter. */
     void setChoice (juce::RangedAudioParameter& param, float normalisedValue);
 
+    /** The palette for a mode. Tele runs the panel in greyscale with a red
+        hot zone on the meter; Stressed is the module's lavender throughout,
+        with the hot zone in the pale lavender of the knob caps. */
+    juce::Colour accentFor (bool stressed) const;
+    juce::Colour hotColourFor (bool stressed) const;
+
+    /** Pushes that palette into every control. Cheap, and only called when the
+        mode actually changes. */
+    void applyModeColours (bool stressed);
+
     ui::PlainKnob crush, level;
     ui::DynamicsMeter meter;
 
-    juce::ToggleButton modeButton;
+    juce::ToggleButton teleButton, eldButton;
     juce::ToggleButton meterInButton, meterOutButton, meterGrButton;
 
     ui::SwitchButton link, color;

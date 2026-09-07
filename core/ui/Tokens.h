@@ -53,6 +53,20 @@ struct Tokens
 
     juce::Colour accent     { 0xfff08cb4 };   ///< the module's own colour; see ModuleDef
 
+    /** What a module uses in place of its accent when it is deliberately
+        showing no colour identity -- BMO Opto's Tele mode, which runs the
+        whole panel in greyscale so that Stressed reads as the louder of the
+        two by colour alone.
+
+        Not luminance-matched to any accent, and it cannot be: the four
+        accents survive pale knob caps at 1.2-1.3:1 against the plate because
+        hue separates them from it, and a grey has no hue to spend. Matched
+        for lightness this would be #b8b8b8 and its cap would land at 1.19:1
+        with nothing else to tell it from the faceplate. This is a step darker
+        so the cap reads at 1.28:1, inside the range the coloured caps already
+        occupy. */
+    juce::Colour neutral    { 0xffababab };
+
     juce::Colour meterLow   { 0xff6bbf7a };
     juce::Colour meterHigh  { 0xffe0b040 };
     juce::Colour meterClip  { 0xffe0685a };

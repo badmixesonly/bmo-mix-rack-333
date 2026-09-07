@@ -59,7 +59,7 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
       meter (context.inputRms, context.rms, context.gainReductionDb,
              ui::DynamicsMeter::Mode::output, context.def.accent,
              ui::faceOf (context.def.accent), kMeterFaceColour),
-      modeButton ("TELE"),
+      teleButton ("TELE"), eldButton ("ELD"),
       meterInButton ("IN"), meterOutButton ("OUT"), meterGrButton ("GR"),
       link  (context.params.param (Index::link),  "LINK",  context.def.accent),
       color (context.params.param (Index::color), "COLOR", context.def.accent)
@@ -68,21 +68,20 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
     // module's. What made that unreadable before was the ink: white on this
     // lavender is 1.99:1. BmoLookAndFeel now derives the label from whatever
     // fill it is drawing, so the accent can be used here directly.
-    for (auto* b : { &modeButton, &meterInButton, &meterOutButton, &meterGrButton })
+    for (auto* b : { &teleButton, &eldButton,
+                     &meterInButton, &meterOutButton, &meterGrButton })
     {
         b->setClickingTogglesState (false);
         b->setColour (juce::ToggleButton::tickColourId, context.def.accent);
         addAndMakeVisible (b);
     }
 
-    // One button, carrying whichever mode it is in. Toggling is done through
-    // the parameter rather than the button's own state so host automation and
-    // a click land in the same place; timerCallback() is what reads it back.
-    modeButton.onClick = [this]
-    {
-        const auto stressed = context.params.param (Index::mode).getValue() > 0.5f;
-        setChoice (context.params.param (Index::mode), stressed ? 0.0f : 1.0f);
-    };
+    // A pair in radio behaviour, like the meter's IN/GR/OUT row: clicking sets
+    // the mode rather than toggling a button, so host automation and a click
+    // land in the same place. timerCallback() is what reads the parameter back
+    // into the two states.
+    teleButton.onClick = [this] { setChoice (context.params.param (Index::mode), 0.0f); };
+    eldButton .onClick = [this] { setChoice (context.params.param (Index::mode), 1.0f); };
 
     meterInButton.onClick = [this]
     {
@@ -114,14 +113,58 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
         addAndMakeVisible (c);
 
     lastModeWasStressed = context.params.param (Index::mode).getValue() > 0.5f;
-    modeButton.setButtonText (lastModeWasStressed ? "ELD" : "TELE");
-    modeButton.setToggleState (lastModeWasStressed, juce::dontSendNotification);
+    teleButton.setToggleState (! lastModeWasStressed, juce::dontSendNotification);
+    eldButton .setToggleState (  lastModeWasStressed, juce::dontSendNotification);
     color.setSwitchEnabled (lastModeWasStressed);
+    applyModeColours (lastModeWasStressed);
 
     startTimerHz (15);
 }
 
 OptoPanel::~OptoPanel() { stopTimer(); }
+
+//==============================================================================
+juce::Colour OptoPanel::accentFor (bool stressed) const
+{
+    // Greyscale in Tele. `neutral` rather than a hex of its own: see the token
+    // for why it is not simply the accent's lightness in grey.
+    return stressed ? context.def.accent : ui::tokens().neutral;
+}
+
+juce::Colour OptoPanel::hotColourFor (bool stressed) const
+{
+    // Stressed prints 0 VU and above in the pale lavender of the knob caps --
+    // a classic VU's red zone, in the module's own colour. Tele prints it in
+    // an actual red, stepped off the suite's own meterClip until it clears
+    // 4.5:1 on this dark face rather than being typed in: meterClip as it
+    // stands is 3.41:1 there, which is the same mistake the 0.2.0 hot zone
+    // made at 1.02:1, only smaller.
+    return stressed ? ui::faceOf (context.def.accent)
+                    : ui::accentTextOn (ui::tokens().meterClip, kMeterFaceColour);
+}
+
+void OptoPanel::applyModeColours (bool stressed)
+{
+    const auto accent = accentFor (stressed);
+
+    // Every derived colour on the panel -- knob caps, captions, dotted tracks,
+    // the plus and minus, switch fills and their ink -- comes off this one
+    // value, so a mode change is four calls rather than a second palette.
+    for (auto* k : { &crush, &level })
+        k->setAccent (accent);
+
+    for (auto* s : { &link, &color })
+        s->setTint (accent);
+
+    for (auto* b : { &teleButton, &eldButton,
+                     &meterInButton, &meterOutButton, &meterGrButton })
+    {
+        b->setColour (juce::ToggleButton::tickColourId, accent);
+        b->repaint();
+    }
+
+    meter.setColours (accent, hotColourFor (stressed));
+}
 
 void OptoPanel::setChoice (juce::RangedAudioParameter& param, float normalisedValue)
 {
@@ -145,13 +188,14 @@ void OptoPanel::timerCallback()
     // of Mode (not just a click) still updates it.
     const auto stressed = context.params.param (Index::mode).getValue() > 0.5f;
 
-    modeButton.setToggleState (stressed, juce::dontSendNotification);
+    teleButton.setToggleState (! stressed, juce::dontSendNotification);
+    eldButton .setToggleState (  stressed, juce::dontSendNotification);
 
     if (stressed != lastModeWasStressed)
     {
         lastModeWasStressed = stressed;
-        modeButton.setButtonText (stressed ? "ELD" : "TELE");
         color.setSwitchEnabled (stressed);
+        applyModeColours (stressed);
     }
 }
 
@@ -174,15 +218,25 @@ void OptoPanel::resized()
     // as the bottom margin, so the spacing stays even if a block's height
     // changes later.
     const auto meterBlock  = kMeterHeight + kMeterButtonGap + kMeterButtonRow;
-    const auto footerBlock = kSwitchHeight * 2 + kSwitchGap;
-    const auto content     = kSwitchHeight + kKnobHeight + meterBlock + kKnobHeight + footerBlock;
+    const auto stackBlock  = kSwitchHeight * 2 + kSwitchGap;   // TELE/ELD, and LINK/COLOR
+    const auto content     = stackBlock + kKnobHeight + meterBlock + kKnobHeight + stackBlock;
 
-    // Four gaps between the five blocks, and one more of the same under the
-    // last of them so the panel does not end flush.
-    const auto gap = juce::jmax (kSwitchGap, (area.getHeight() - content) / 5);
+    // Six divisions, not four: a margin above the first block and below the
+    // last one as well as between them. A lone mode button used to sit 7 px
+    // off the top of the panel with a 58 px band under it.
+    const auto gap = juce::jmax (kSwitchGap, (area.getHeight() - content) / 6);
 
-    // Mode above everything: it decides what COMP and MAKEUP mean.
-    modeButton.setBounds (centredSwitch (area.removeFromTop (kSwitchHeight)));
+    area.removeFromTop (gap);
+
+    // Mode above everything: it decides what COMP and MAKEUP mean. Stacked
+    // rather than abreast, so naming both modes costs height instead of the
+    // width this module has none of -- and it mirrors LINK/COLOR at the foot.
+    {
+        auto head = area.removeFromTop (stackBlock);
+        teleButton.setBounds (centredSwitch (head.removeFromTop (kSwitchHeight)));
+        head.removeFromTop (kSwitchGap);
+        eldButton.setBounds  (centredSwitch (head.removeFromTop (kSwitchHeight)));
+    }
     area.removeFromTop (gap);
 
     crush.setBounds (area.removeFromTop (kKnobHeight)
@@ -216,7 +270,7 @@ void OptoPanel::resized()
 
     // LINK and COLOR at the foot, under the MAKEUP caption. Placed from the
     // top like everything else, so what is left over stays underneath them.
-    auto footer = area.removeFromTop (footerBlock);
+    auto footer = area.removeFromTop (stackBlock);
     link.setBounds  (centredSwitch (footer.removeFromTop (kSwitchHeight)));
     footer.removeFromTop (kSwitchGap);
     color.setBounds (centredSwitch (footer.removeFromTop (kSwitchHeight)));
