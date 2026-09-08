@@ -228,6 +228,40 @@ person does not is a good small first task.
 
 ## 7. Still open
 
+- **FIRST: two loose `.patch` files in the repository root.** Settle these
+  before anything else, because they are the only open item where the answer
+  might be "something is not in git".
+
+  `0001-Add-BMO-Opto-a-two-knob-opto-style-leveling-compress.patch` (60,738
+  bytes) and `0002-opto-include-algorithm-directly-in-DspCore.h.patch` (913
+  bytes), both dated 5 Sep 19:49, both untracked and both `git format-patch`
+  output.
+
+  What is known: their headers name commits `c1ab3222` and `ed5a9569`, and
+  **neither hash is an object in this repository**. But commits with exactly
+  those two subject lines *are* here — `15d4808 Add BMO Opto: a two-knob
+  opto-style leveling compressor` and `2cacb0a opto: include <algorithm>
+  directly in DspCore.h`.
+
+  What that means is undetermined. Matching subjects with different hashes is
+  what a rebase or a cherry-pick leaves behind, in which case the patches are
+  spent and deleting them loses nothing. It is equally what an *earlier draft*
+  looks like — work that was never applied, or was applied and then modified.
+  A subject line is not evidence of content.
+
+  **Do not delete on the subject match.** These are untracked, so a delete is
+  not recoverable from git. Settle it by content:
+
+      git format-patch -1 15d4808 --stdout > /tmp/a.patch
+      diff <(sed '1,3d' 0001-*.patch) <(sed '1,3d' /tmp/a.patch)
+
+  dropping the first three lines of each to skip the hash, author and date,
+  which are expected to differ. Same for `2cacb0a` against `0002`. If both are
+  identical below the header, the patches are spent — delete them and say so in
+  the commit. If either differs, **do not delete it**: work out what the
+  difference is and flag it, because the delta is then something that exists
+  only in a loose file in a working tree.
+
 - **Low-cut crowding.** Parked at Frosty's request. Five legends around a 13 px
   face; the circle is even and the radius is at the cell's limit, so more room
   means a taller row, and BMO EQ has no vertical slack — measured, no empty
