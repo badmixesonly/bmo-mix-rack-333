@@ -637,16 +637,56 @@ void DynamicsMeter::paint (juce::Graphics& g)
     // the arc to the wrong dimension whenever the face was taller than half
     // its width, which is every face this has been given -- 0.2.1 shipped with
     // roughly 40% of the meter empty above the needle.
-    const auto radius = bounds.getWidth() * 0.5f - 8.0f;
+    // The numbers sit **outside** the arc, where the needle cannot reach them.
+    //
+    // They used to be drawn at radius - 19, inside the tick ring, while the
+    // needle runs out to radius - 4 -- so the needle crossed every label
+    // position on the dial. The VU scale got away with it only because its
+    // first point is struck and never printed, and that is where the needle
+    // parks; see the vuScale comment above. The GR scale has no such point, so
+    // at zero reduction -- the state that meter is in whenever the module is
+    // not working, and the first thing anyone sees -- the needle lay straight
+    // across its own 0.
+    //
+    // Moving the ring outside settles it for both scales, and for any scale
+    // added later, rather than by giving each one its own park point.
+    constexpr float kLabelRing  = 12.0f;                     ///< arc to label centre
+    constexpr float kLabelHalf  = 7.5f;                      ///< half a label box
+    constexpr float kLabelReach = kLabelRing + kLabelHalf;   ///< arc to the top of the ink
+
+    // Both dimensions, not width alone. A bare arc is limited by width -- its
+    // ends reach sin(62) = 0.88 of the radius sideways against 0.47 of it
+    // downwards -- but a ring of numbers above the arc is not: that reaches a
+    // full radius plus the ring, straight up.
+    //
+    // This is the fault the comment above describes, one dimension over.
+    // Sizing from width alone put the top number 1.2 px *off* the top of the
+    // face, and it read as the arc being too high.
+    const auto byWidth  = bounds.getWidth() * 0.5f - 8.0f - kLabelReach;
+    const auto byHeight = bounds.getHeight() - kHubRadius - kLabelReach - 6.0f;
+    const auto radius   = juce::jmin (byWidth, byHeight);
 
     // What actually gets drawn runs from the apex, one radius above the pivot,
     // down to the hub. Centre that block in whatever face the panel hands over
     // rather than pinning the pivot to the bottom edge, so a taller box can
     // never bring the dead band back. A box shorter than the block puts the
     // pivot below the face, which is where the hardware hides it anyway.
-    const auto drawnHeight = radius + kHubRadius;
+    //
+    // The block is the numbers, the arc and the hub -- not the arc alone.
+    // Centring a height that left the label ring out of the sum is exactly
+    // what pushed the ring off the top edge.
+    //
+    // Then 6 px lower again. Frosty's call, taken on a rendered ladder: it
+    // gives the numbers 32 px of face above them rather than 20, and spends
+    // the hub, which now meets the bottom bezel instead of sitting clear of
+    // it. Hardware hides the pivot under the faceplate entirely; this leans
+    // that way without going all the way. Do not "centre" it back.
+    constexpr float kDrop = 6.0f;
+
+    const auto drawnHeight = kLabelReach + radius + kHubRadius;
     const auto pivot = juce::Point<float> (bounds.getCentreX(),
-                                           bounds.getY() + (bounds.getHeight() + drawnHeight) * 0.5f);
+                                           bounds.getY() + (bounds.getHeight() + drawnHeight) * 0.5f
+                                             + kDrop);
     // 124 rather than 100 degrees: the numbers are set larger now, and the
     // extra arc is what keeps them apart at the crowded top of the scale.
     const auto sweep     = juce::degreesToRadians (124.0f);
@@ -683,7 +723,7 @@ void DynamicsMeter::paint (juce::Graphics& g)
 
         // The scale is printed in white, the hot zone in the module's own
         // colour. Colour marks the zone; contrast does the reading.
-        const auto labelCentre = pivot.getPointOnCircumference (radius - 19.0f, angle);
+        const auto labelCentre = pivot.getPointOnCircumference (radius + kLabelRing, angle);
         drawLabel (g, juce::String ((int) p.value),
                    juce::Rectangle<float> (28.0f, 15.0f).withCentre (labelCentre),
                    juce::Justification::centred, labelFont (11.5f),
