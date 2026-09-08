@@ -4,7 +4,7 @@ What the `ui-editor` branch did, why each thing is the way it is, what was
 tried and thrown away, and what is still open. Written for someone picking
 this up cold.
 
-Thirty-nine commits, no parameter, spec, preset or DSP file touched by any of
+Forty-one commits, no parameter, spec, preset or DSP file touched by any of
 them. All ctest suites pass at every commit -- nine of them until 8 Sep, ten
 since `ui_layout` joined them. If you change anything here and a DSP test
 moves, something has gone wrong that this branch was not supposed to be able
@@ -425,37 +425,64 @@ The meter draws identically in both appearances — `meterFace` is deliberately
 the same in each and `meterInk` has no dark variant — so this one is
 appearance-independent, unusually for this branch.
 
-### The GR scale, while the code was open — **Frosty's call, 8 Sep**
+### The GR scale, while the code was open — **Frosty's calls, 8 Sep**
 
 Once the numbers were placed correctly the increments were revisited, and the
-scale is now fine where reduction is actually read and coarse where it is not.
+scale is now fine where reduction is read and coarse where it is not.
 
-- Inked figures step 3 to 12 and 6 above it — **0 3 6 9 12 18 24** — with
-  unstruck ticks at **1 2 4 5** and **15 21**, so the arc reads as one
-  continuous scale while only the round figures are printed. Same rule as the
-  VU scale beside it.
-- The sweep gives 0..6 dB more room than a linear map, at an exponent of
-  **0.7**.
+**Inked 0 3 6 12 18 24. Struck but not printed: 1 2 4 5 9 15 21.**
+0 and 24 are fixed points; everything between is set against them.
 
-The exponent is the part worth keeping. It is not decoration: the tightest
-inked pair is 9 to 12 and it clears **9.0 px**, where the same figures on an
-even sweep clear 7.8 and the `vuScale` comment treats about 6 as the point
-figures stop clearing. Weighting the sweep buys back more room than the extra
-figures cost — which is why this option is both the finest at the low end and
-the least crowded of the ones rendered.
+    dB    0    1     2     3     4     5     6     9    12    15    18    21   24
+    at  .000 .100  .190  .265  .335  .400  .460  .555  .665  .745  .820  .912 1.000
+    ink  y    .     .     y     .     .     y     .     y     .     y     .    y
 
-It also makes the needle **non-linear in dB**, moving further per dB at small
+**The fractions are hand-placed, and that is the part to understand before
+touching them.** They were a power law, and no single exponent can produce this
+shape. Pushing 6 outward drags 3 out with it, so `3..6` keeps the same share of
+the sweep however the exponent is tuned:
+
+| span | exponent 0.7 | square root | hand-placed |
+|---|---|---|---|
+| 0 → 3 | 23.3% | 35.4% | 26.5% |
+| **3 → 6** | 14.6% | **14.6%** | **19.5%** |
+| first dB | 10.8% | **20.4%** | 10.0% |
+
+The square root put 6 exactly where it was wanted and bought nothing at all for
+`3..6`, while the first dB of reduction swelled to a fifth of the dial. That is
+what settled it: the shape is not a power law, so it stopped pretending to be
+one. The cost is that a value added here must be placed by hand and its
+neighbours re-measured — there is no formula to evaluate — and that is cheaper
+than a formula whose comment lies about what it does.
+
+**9 lost its ink once the whole panel was in view** rather than a crop of the
+meter. At six figures the face reads as an instrument; at nine it reads as a
+chart. 9 was also the figure making the tightest pair, so dropping it cost
+nothing and bought a lot:
+
+| | tightest inked pair |
+|---|---|
+| exponent 0.7, 9 inked | 9.0 px |
+| hand-placed, 9 inked | 8.6 px |
+| **hand-placed, 9 struck only** | **12.5 px** (12 to 18) |
+| the vuScale comment's limit | about 6 px |
+
+The GR face now inks six of its thirteen points beside a VU inking five of
+thirteen, which is why they read as one instrument.
+
+**A lesson worth keeping: judge a meter on the whole panel.** Four rounds of
+candidates were compared on tight crops, and the crop is what made nine figures
+look reasonable. The first full-panel render settled it immediately.
+
+The needle is **non-linear in dB** as a result — further per dB at small
 reductions. That is the point of it, and VU already does the same. Display
 only: no DSP, no parameter, no spec.
 
-Candidates rendered before the call, with their tightest inked gap: step 4 even
-14.5 px, step 3 even 7.4, step 2 even 7.8, and this one 9.0.
-
 **Every default render is byte-identical after this change**, because the
-default meter mode is OUT and only the GR scale moved. The change can be seen
-solely through `ui.meter=GR` — which makes it the first piece of work on this
-branch that would have been invisible before §8b.
+default meter mode is OUT and only the GR scale moved. It can be seen solely
+through `ui.meter=GR` — and nothing automated guards it: `ui_layout` asserts
+component bounds, and a meter's face is painted rather than placed.
 
 ---
 
-*Branch `ui-editor`, 39 commits on top of `main` at 6fdf8d9.*
+*Branch `ui-editor`, 41 commits on top of `main` at 6fdf8d9.*
