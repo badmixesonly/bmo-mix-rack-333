@@ -29,7 +29,6 @@ namespace
         { "track",      &Tokens::track },
         { "trackFill",  &Tokens::trackFill },
         { "switchOff",  &Tokens::switchOff },
-        { "switchOn",   &Tokens::switchOn },
         { "switchAlt",  &Tokens::switchAlt },
         { "polarity",   &Tokens::polarity },
         { "accent",     &Tokens::accent },

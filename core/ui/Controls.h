@@ -105,10 +105,15 @@ private:
 class SwitchButton final : public juce::Component
 {
 public:
-    /** `tint` is what the switch lights up in: the suite's pink by default,
-        the module's accent or the deeper azure where a panel says so. */
+    /** `tint` is what the switch lights up in, and it is required rather than
+        defaulted. What a switch lights up in is not a free choice -- the table
+        in modules/AGENTS.md gives it: the module's accent for a bypass or for
+        mono, `polarity` for a polarity flip, `switchAlt` for anything else. A
+        default argument here quietly said otherwise, and the colour it
+        defaulted to was `switchOn`, a second name for BMO EQ's pink that no
+        call site had used since before 0.2.2. */
     SwitchButton (juce::RangedAudioParameter&, const juce::String& text,
-                  juce::Colour tint = tokens().switchOn);
+                  juce::Colour tint);
 
     void resized() override;
     void setSwitchEnabled (bool);

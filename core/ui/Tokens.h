@@ -89,7 +89,6 @@ struct Tokens
     // put its white label at 2.43:1, which is close enough to the 1.98-2.55:1
     // of an *engaged* one that on and off were told apart by hue alone.
     juce::Colour switchOff  { 0xff6f7076 };
-    juce::Colour switchOn   { 0xfff08eb5 };   ///< an engaged switch, when not the accent
 
     /** Secondary switches: Hi-Q, Auto, Mono. Module-specific functions, but
         none of them is the module's bypass, so none takes the module's colour.
@@ -98,8 +97,9 @@ struct Tokens
         by any measure that matters, arrived at twice. It now carries track's
         value outright. Kept as its own token rather than folded into `track`
         because the two mean different things and a theme may want to separate
-        them again; equal here by intent, which is not the case for `switchOn`
-        and BMO EQ's accent, still two names for one pink by accident. */
+        them again -- equal here by intent, which is what `switchOn` was not:
+        a second name for BMO EQ's pink, one channel off it, and deleted in
+        0.2.2 once nothing was left using it. */
     juce::Colour switchAlt  { 0xff4fb8e8 };
 
     /** Polarity inversion, wherever it appears.

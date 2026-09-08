@@ -54,9 +54,38 @@ modules/<id>/
    the same table.
 
    Do not write a hex in a panel. If you need "the accent, but legible",
-   that is `ui::accentTextOn`; for ink on a filled control it is
-   `ui::onAccentOf`. Both derive against the current plate, which is what
-   lets a theme change reach your module without it knowing.
+   that is `ui::accentInk`; for ink on a filled control it is
+   `ui::onAccentOf`, and for ink on some other known ground
+   `ui::accentTextOn`. All three derive against the current appearance,
+   which is what lets light and dark reach your module without it knowing.
+
+   **Metering.** `OutputMeter` is the vertical dBFS/VU bar every module
+   ends with. A module that *reduces gain* takes `DynamicsMeter` instead --
+   the horizontal needle VU, currently BMO Opto's centrepiece. Its
+   contract:
+
+   - It is fed three `std::function<float()>` from `ModuleContext` --
+     `inputRms`, `rms`, `gainReductionDb` -- and reads whichever its
+     current mode wants. Fill in the ones you have; it checks before
+     calling, so a module that cannot report input leaves that empty.
+   - `gainReductionDb` is dB of reduction and always `>= 0`.
+   - Mode is set from outside via `setMode`. The panel owns the row of
+     labelled buttons; the meter does not cycle on click, which tested as
+     unintuitive with nothing on screen to say what clicking would do.
+   - Two colours are yours: the bezel and the hot zone. Both should be
+     derived, not typed -- see `OptoPanel::hotColourFor`, which steps the
+     hot colour off the meter's own face until it clears 4.5:1 rather than
+     trusting that it does.
+   - The face, the needle, the ticks and the scale are **not** yours. They
+     are `meterFace` and `meterInk`, so every dynamics module's meter reads
+     the same and a theme moves all of them together.
+   - Give it a landscape box. It centres its arc in whatever it is handed
+     and the arc is limited by width, so a tall box buys empty face; 190 x
+     116 is what BMO Opto uses.
+
+   The scale itself is still Opto's (VU, and 0..24 dB of reduction). A
+   module wanting different units is the point at which to lift
+   `ScalePoint` out into the caller -- not before.
 6. Write factory presets. Init is index 0 and must be all defaults.
    Every preset should come out at the level it went in; the plugin tests
    check that.
