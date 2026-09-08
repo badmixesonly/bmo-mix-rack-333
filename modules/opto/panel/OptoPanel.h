@@ -52,8 +52,21 @@ public:
 
     void resized() override;
 
+    /** Accepts `meter=IN|GR|OUT`, and nothing else.
+
+        The meter mode is the one thing on this panel with no parameter behind
+        it, which meant tools/snapshot could only ever render OUT. See
+        ui::ModulePanel::setUiState. */
+    bool setUiState (const juce::String& key, const juce::String& value) override;
+
 private:
     void timerCallback() override;
+
+    /** Points the meter at `mode` and lights the one button of the three that
+        says so. The three onClick handlers and setUiState all come through
+        here, so a mode set from the command line lands in exactly the state a
+        click would have left. */
+    void selectMeterMode (ui::DynamicsMeter::Mode);
 
     /** Sets `param` to `normalisedValue` (0 or 1, for a two-choice param)
         via the standard begin/set/end gesture triplet -- there's no

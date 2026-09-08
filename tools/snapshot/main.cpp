@@ -5,6 +5,10 @@
 //
 // For the rack, "chain=util,eq,sat,opto" sets the modules and "N.id=value"
 // sets a parameter of the module in slot N (1-based), e.g. 2.mid_gain=4.
+//
+// "ui.<key>=<value>" sets panel state that has no parameter behind it. BMO
+// Opto takes "ui.meter=IN|GR|OUT", which is the only way to render its VU in
+// anything but OUT. Offered to every panel; refused by all of them is fatal.
 
 #include "products/eq/Product.h"
 #include "products/opto/Product.h"
@@ -12,9 +16,13 @@
 #include "products/util/Product.h"
 #include "products/rack/Product.h"
 
+#include "core/ui/ModulePanel.h"
+
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <iostream>
 #include <optional>
+#include <utility>
+#include <vector>
 
 namespace
 {
@@ -123,6 +131,40 @@ namespace
 
         return false;
     }
+
+    /** Every ModulePanel under `root`: one for a product, one per slot for the
+        rack. */
+    void collectPanels (juce::Component& root, std::vector<bmo::ui::ModulePanel*>& out)
+    {
+        for (auto* child : root.getChildren())
+        {
+            if (auto* panel = dynamic_cast<bmo::ui::ModulePanel*> (child))
+                out.push_back (panel);
+
+            collectPanels (*child, out);
+        }
+    }
+
+    /** Offers `key=value` to every panel and reports whether any took it.
+
+        Offered to all of them rather than addressed to one, because in a rack
+        only the module that has the state knows the key. Accepted by none is
+        an error, not a no-op: the whole reason this exists is that a render
+        which quietly ignores the mode it was asked for is a picture of the
+        wrong thing that nothing downstream can tell apart from the right one. */
+    bool setUiState (juce::AudioProcessorEditor& editor,
+                     const juce::String& key, const juce::String& value)
+    {
+        std::vector<bmo::ui::ModulePanel*> panels;
+        collectPanels (editor, panels);
+
+        bool accepted = false;
+
+        for (auto* panel : panels)
+            accepted |= panel->setUiState (key, value);
+
+        return accepted;
+    }
 }
 
 int main (int argc, char** argv)
@@ -161,6 +203,10 @@ int main (int argc, char** argv)
         first  = 5;
     }
 
+    // UI state is held back: it lives on the panel, which does not exist until
+    // the editor does.
+    std::vector<std::pair<juce::String, juce::String>> uiState;
+
     for (int i = first; i < argc; ++i)
     {
         const juce::String arg { argv[i] };
@@ -169,8 +215,17 @@ int main (int argc, char** argv)
         if (split < 0)
             continue;
 
-        if (! set (*processor, arg.substring (0, split), arg.substring (split + 1)))
-            std::cerr << "unknown parameter: " << arg.substring (0, split) << '\n';
+        const auto key = arg.substring (0, split);
+        const auto value = arg.substring (split + 1);
+
+        if (key.startsWith ("ui."))
+        {
+            uiState.emplace_back (key.substring (3), value);
+            continue;
+        }
+
+        if (! set (*processor, key, value))
+            std::cerr << "unknown parameter: " << key << '\n';
     }
 
     std::unique_ptr<juce::AudioProcessorEditor> editor (processor->createEditorAndMakeActive());
@@ -180,6 +235,18 @@ int main (int argc, char** argv)
         std::cerr << "no editor\n";
         return 1;
     }
+
+    // Fatal rather than a warning, unlike an unknown parameter above. A render
+    // that silently ignored the mode it was asked for would be a picture of
+    // the wrong thing, and nothing downstream could tell it from the right one.
+    for (const auto& [key, value] : uiState)
+        if (! setUiState (*editor, key, value))
+        {
+            std::cerr << "no panel here takes ui." << key << "=" << value << '\n';
+            processor->editorBeingDeleted (editor.get());
+            editor.reset();
+            return 2;
+        }
 
     if (width > 0 && height > 0)
         editor->setSize (width, height);

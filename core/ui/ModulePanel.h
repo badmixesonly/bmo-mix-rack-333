@@ -159,6 +159,31 @@ public:
     /** The rules this panel laid out, in the order `resized` added them. */
     const std::vector<Rule>& getRules() const noexcept { return rules; }
 
+    //== UI state that is not a parameter ======================================
+
+    /** Sets a piece of panel state that has no parameter behind it, and
+        returns false for any key or value this panel does not understand.
+
+        BMO Opto's meter mode is the only one today, and the reason this
+        exists: `DynamicsMeter::Mode` is set through `setMode` rather than
+        being a parameter -- rightly, since `specs()` is frozen and
+        append-only and which way a meter is pointing does not belong in a
+        session. But it meant `tools/snapshot` could only ever render OUT, so
+        every VU change on the ui-editor branch was verified in one mode of
+        three, including 0.2.3's resizing of the IN/GR/OUT row itself.
+
+        **Refuse what you do not understand rather than ignoring it.** The
+        snapshot tool learned this once already: a mistyped choice name used
+        to come back 0.0 from getFloatValue() and render an entirely plausible
+        panel of the wrong thing, which is why `realValueFor` now refuses.
+        Quietly ignoring `ui.meter=GR` would hand back an OUT render that
+        everything downstream would label a GR one. */
+    virtual bool setUiState (const juce::String& key, const juce::String& value)
+    {
+        juce::ignoreUnused (key, value);
+        return false;
+    }
+
     explicit ModulePanel (ModuleContext ctx) : context (std::move (ctx)) {}
 
     const ModuleContext& getContext() const noexcept { return context; }

@@ -88,28 +88,11 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
     teleButton.onClick = [this] { setChoice (context.params.param (Index::mode), 0.0f); };
     eldButton .onClick = [this] { setChoice (context.params.param (Index::mode), 1.0f); };
 
-    meterInButton.onClick = [this]
-    {
-        meter.setMode (ui::DynamicsMeter::Mode::input);
-        meterInButton.setToggleState (true, juce::dontSendNotification);
-        meterOutButton.setToggleState (false, juce::dontSendNotification);
-        meterGrButton.setToggleState (false, juce::dontSendNotification);
-    };
-    meterOutButton.onClick = [this]
-    {
-        meter.setMode (ui::DynamicsMeter::Mode::output);
-        meterInButton.setToggleState (false, juce::dontSendNotification);
-        meterOutButton.setToggleState (true, juce::dontSendNotification);
-        meterGrButton.setToggleState (false, juce::dontSendNotification);
-    };
-    meterGrButton.onClick = [this]
-    {
-        meter.setMode (ui::DynamicsMeter::Mode::reduction);
-        meterInButton.setToggleState (false, juce::dontSendNotification);
-        meterOutButton.setToggleState (false, juce::dontSendNotification);
-        meterGrButton.setToggleState (true, juce::dontSendNotification);
-    };
-    meterOutButton.setToggleState (true, juce::dontSendNotification);
+    meterInButton .onClick = [this] { selectMeterMode (ui::DynamicsMeter::Mode::input); };
+    meterOutButton.onClick = [this] { selectMeterMode (ui::DynamicsMeter::Mode::output); };
+    meterGrButton .onClick = [this] { selectMeterMode (ui::DynamicsMeter::Mode::reduction); };
+
+    selectMeterMode (ui::DynamicsMeter::Mode::output);
 
     for (auto* k : { &crush, &level })
         k->setKnobSide (kKnobSide);
@@ -127,6 +110,27 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
 }
 
 OptoPanel::~OptoPanel() { stopTimer(); }
+
+void OptoPanel::selectMeterMode (ui::DynamicsMeter::Mode mode)
+{
+    meter.setMode (mode);
+
+    meterInButton .setToggleState (mode == ui::DynamicsMeter::Mode::input,     juce::dontSendNotification);
+    meterOutButton.setToggleState (mode == ui::DynamicsMeter::Mode::output,    juce::dontSendNotification);
+    meterGrButton .setToggleState (mode == ui::DynamicsMeter::Mode::reduction, juce::dontSendNotification);
+}
+
+bool OptoPanel::setUiState (const juce::String& key, const juce::String& value)
+{
+    if (key != "meter")
+        return false;
+
+    if (value.equalsIgnoreCase ("IN"))  { selectMeterMode (ui::DynamicsMeter::Mode::input);     return true; }
+    if (value.equalsIgnoreCase ("OUT")) { selectMeterMode (ui::DynamicsMeter::Mode::output);    return true; }
+    if (value.equalsIgnoreCase ("GR"))  { selectMeterMode (ui::DynamicsMeter::Mode::reduction); return true; }
+
+    return false;
+}
 
 //==============================================================================
 juce::Colour OptoPanel::accentFor (bool) const
