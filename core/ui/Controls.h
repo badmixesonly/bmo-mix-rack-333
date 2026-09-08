@@ -91,6 +91,28 @@ private:
         side, in radians. */
     static constexpr float kLegendInset = 0.60f;
 
+    /** Frequency legend type: size when selected, when not, and which face. */
+    static constexpr float kPointSize         = 9.9f;
+    static constexpr float kPointSizeIdle     = 9.0f;
+    static constexpr bool  kPointUsesCaption  = false;
+
+    /** The box a legend label is drawn into. */
+    static constexpr float kLegendBoxWidth  = 38.0f;
+    static constexpr float kLegendBoxHeight = 15.0f;
+
+    /** Where the dial and its legend sit inside the cell.
+
+        `shift` is how far down the whole assembly is nudged. It is zero for a
+        band, whose legend is symmetric about the dial. A filter's is not: its
+        positions run around a full circle with the last one blank, and that
+        blank falls at the foot, so there is ink above the dial with no
+        counterpart below it. Centring the dial in the cell then reads as the
+        dial sitting high, because what the eye centres is the ink. The shift
+        is half that imbalance, measured rather than guessed, so it follows if
+        the number of positions or the radius ever changes. */
+    struct Geometry { float ringRadius, textRadius; int shift; };
+    Geometry geometry() const;
+
     Knob ring, centre;
     std::unique_ptr<juce::SliderParameterAttachment> ringAttachment, centreAttachment;
 

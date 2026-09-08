@@ -107,14 +107,35 @@ ConcentricBand::ConcentricBand (juce::RangedAudioParameter& selector, const Para
     ring.setDetents (selectorSpec.numChoices());
     ring.setSliderSnapsToMousePosition (false);
 
-    // The legend follows the ring's sweep, so narrowing the sweep lifts the
-    // end labels off the bottom of the dial -- which is where the gain's plus
-    // and minus live. Leave them on the same arc and the two collide.
+    // The legend follows the ring's sweep -- paint() puts label i at the angle
+    // the pointer takes for value i -- so the sweep is what decides where the
+    // legend sits, and the two kinds of control want different sweeps.
     {
         const auto r = ring.getRotaryParameters();
-        ring.setRotaryParameters (r.startAngleRadians + kLegendInset,
-                                  r.endAngleRadians   - kLegendInset,
-                                  r.stopAtEnd);
+        const auto start = r.startAngleRadians + kLegendInset;
+
+        if (gain != nullptr)
+        {
+            // A band. Narrowing both ends lifts the end labels off the bottom
+            // of the dial, which is where the gain's plus and minus live; on
+            // the same arc the two collide.
+            ring.setRotaryParameters (start, r.endAngleRadians - kLegendInset, r.stopAtEnd);
+        }
+        else
+        {
+            // A filter. Its positions sit evenly around a full circle, on a
+            // step sized so that exactly one position is left over: five
+            // frequencies plus one gap, at sixty degrees each. Nothing is
+            // drawn in the empty one -- it falls at the foot of the dial,
+            // between the highest cut and Off, and the double gap there is
+            // what says which way the control sweeps.
+            const auto step = juce::MathConstants<float>::twoPi
+                                / (float) (selectorSpec.numChoices() + 1);
+
+            ring.setRotaryParameters (start,
+                                      start + step * (float) (selectorSpec.numChoices() - 1),
+                                      r.stopAtEnd);
+        }
     }
 
     ring.setStyle (hasCentre ? Knob::Style::ring : Knob::Style::filter);
@@ -154,6 +175,52 @@ void ConcentricBand::setRingEnabled (bool shouldBeEnabled)
     repaint();
 }
 
+ConcentricBand::Geometry ConcentricBand::geometry() const
+{
+    const auto area = getLocalBounds().toFloat();
+    const auto ringRadius = juce::jmin (area.getWidth(), area.getHeight()) * 0.5f * ring.getFaceScale();
+
+    // Knob edge, gap, dotted track, the same gap again, then the legend --
+    // never so far out that a label runs off the top of the cell and is
+    // clipped by whatever is above it.
+    //
+    // A band keeps a 9 px margin for that. A filter needs less of one: its
+    // lowest position is the blank, so nothing is pushing down, and the row
+    // above it is a rule with clear space under the line. At 9 the clamp was
+    // biting -- the legend wanted 33.3 and got 29 -- and that was the whole of
+    // why the circle looked cramped.
+    const auto margin = hasCentre ? 9.0f : 4.0f;
+
+    const auto textRadius = juce::jmin (
+        hasCentre ? centre.getTrackRadius() + Tokens::legendGap
+                  : ringRadius + Tokens::filterLegendGap,
+        area.getHeight() * 0.5f - margin);
+
+    if (hasCentre)
+        return { ringRadius, textRadius, 0 };
+
+    // Measure how far the ink actually reaches above and below the dial, and
+    // nudge the assembly by half the difference. Every position but the blank
+    // carries a label, and the blank is at the foot, so the answer is always a
+    // shift downwards -- but it is measured rather than assumed, so it follows
+    // a change in the number of positions or the radius on its own.
+    const auto start = ring.getRotaryParameters().startAngleRadians;
+    const auto end   = ring.getRotaryParameters().endAngleRadians;
+
+    auto top = -ringRadius, bottom = ringRadius;
+
+    for (int i = 0; i < legend.size(); ++i)
+    {
+        const auto f = legend.size() > 1 ? (float) i / (float) (legend.size() - 1) : 0.0f;
+        const auto y = -std::cos (start + f * (end - start)) * textRadius;
+
+        top    = juce::jmin (top,    y - kLegendBoxHeight * 0.5f);
+        bottom = juce::jmax (bottom, y + kLegendBoxHeight * 0.5f);
+    }
+
+    return { ringRadius, textRadius, juce::roundToInt (-(top + bottom) * 0.5f) };
+}
+
 void ConcentricBand::paint (juce::Graphics& g)
 {
     if (legend.isEmpty())
@@ -161,17 +228,9 @@ void ConcentricBand::paint (juce::Graphics& g)
 
     const auto& t = tokens();
     const auto area = getLocalBounds().toFloat();
-    const auto centrePoint = area.getCentre();
-
-    const auto ringRadius = juce::jmin (area.getWidth(), area.getHeight()) * 0.5f * ring.getFaceScale();
-
-    // Knob edge, gap, dotted track, the same gap again, then the legend. Never
-    // so far out that a label runs off the top of the cell and is clipped by
-    // whatever is above it.
-    const auto textRadius = juce::jmin (
-        hasCentre ? centre.getTrackRadius() + Tokens::legendGap
-                  : ringRadius + Tokens::filterLegendGap,
-        area.getHeight() * 0.5f - 9.0f);
+    const auto geo = geometry();
+    const auto centrePoint = area.getCentre().translated (0.0f, (float) geo.shift);
+    const auto textRadius = geo.textRadius;
 
     const auto startAngle = ring.getRotaryParameters().startAngleRadians;
     const auto endAngle   = ring.getRotaryParameters().endAngleRadians;
@@ -197,26 +256,33 @@ void ConcentricBand::paint (juce::Graphics& g)
         if (! ringEnabled)
             fill = fill.withAlpha (0.35f);
 
-        drawLabel (g, legend[i], juce::Rectangle<float> (38.0f, 15.0f).withCentre (at),
-                   juce::Justification::centred, labelFont (isSelected ? 13.0f : 12.0f, true), fill);
+        drawLabel (g, legend[i], juce::Rectangle<float> (kLegendBoxWidth, kLegendBoxHeight).withCentre (at),
+                   juce::Justification::centred,
+                   kPointUsesCaption ? captionFont (isSelected ? kPointSize : kPointSizeIdle)
+                                     : labelFont   (isSelected ? kPointSize : kPointSizeIdle, true),
+                   fill);
     }
 }
 
 void ConcentricBand::resized()
 {
-    ring.setBounds (getLocalBounds());
+    // The dial moves with its legend, so a filter is nudged down by the same
+    // amount paint() nudges the labels -- see geometry().
+    const auto bounds = getLocalBounds().translated (0, geometry().shift);
+
+    ring.setBounds (bounds);
 
     if (! hasCentre)
         return;
 
-    centre.setBounds (getLocalBounds());
+    centre.setBounds (bounds);
 
     // The gain track has to clear the selector ring drawn around it, and the
     // gain control cannot work that out from its own face.
     const auto area = getLocalBounds().toFloat();
     const auto ringRadius = juce::jmin (area.getWidth(), area.getHeight()) * 0.5f * ring.getFaceScale();
 
-    centre.setTrackRadius (ringRadius + Tokens::trackGap);
+    centre.setTrackRadius (ringRadius + Tokens::concentricTrackGap);
 }
 
 //==============================================================================

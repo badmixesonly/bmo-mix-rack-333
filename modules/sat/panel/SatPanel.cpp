@@ -82,7 +82,7 @@ void SatPanel::resized()
 
     {
         auto switches = area.removeFromTop (kSwitchRow);
-        constexpr int gap = 6;
+        constexpr int gap = ui::Tokens::switchGap;
 
         auto group = switches.withSizeKeepingCentre (kSwitchWidth * 3 + gap * 2, kSwitchHeight);
         satIn.setBounds (group.removeFromLeft (kSwitchWidth));

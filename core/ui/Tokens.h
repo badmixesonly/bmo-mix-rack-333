@@ -156,10 +156,24 @@ struct Tokens
     static constexpr int switchWidth  = 70;
     static constexpr int switchHeight = 26;
 
+    /** Between two switches, whether they sit in a row or a stack. Was 6 in
+        BMO EQ and the Saturator against 8 in Util and Opto -- the same drift
+        the sizes had, one number smaller. */
+    static constexpr int switchGap    = 8;
+
     static constexpr float corner       = 3.0f;
     static constexpr float hairlineWeight = 1.0f;
     static constexpr float knobStroke   = 2.2f;
     static constexpr float trackGap     = 10.0f;   ///< face edge to the dotted track
+
+    /** Ring edge to the dotted track, for a gain that sits inside a selector.
+
+        Tighter than `trackGap` because the space is not the same space. A
+        utility knob has ten clear pixels between its face and its track; a
+        band's gain has a ring drawn around it and its legend clamped to the
+        cell height above that, and at the full gap the track's rest dot came
+        out 2.6 px underneath the frequency labels. */
+    static constexpr float concentricTrackGap = 4.5f;
     static constexpr float legendGap    = 12.0f;   ///< track to the legend
     static constexpr float filterLegendGap = 20.0f; ///< a filter has no track, so one gap carries two
 };

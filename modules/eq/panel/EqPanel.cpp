@@ -81,7 +81,7 @@ void EqPanel::resized()
         // no row for it there, so it joins the switches, where its azure
         // still says it is not one of the other two.
         auto switches = area.removeFromTop (kSwitchRow);
-        constexpr int gap = 6;
+        constexpr int gap = ui::Tokens::switchGap;
 
         auto group = switches.withSizeKeepingCentre (kSwitchWidth * 3 + gap * 2, kSwitchHeight);
         eqIn.setBounds (group.removeFromLeft (kSwitchWidth));

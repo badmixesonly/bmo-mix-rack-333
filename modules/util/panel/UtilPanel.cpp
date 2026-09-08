@@ -8,7 +8,7 @@ namespace
 {
     constexpr int kKnobRow   = 126;
     constexpr int kSwitchRow = 34;
-    constexpr int kSwitchGap = 8;
+    constexpr int kSwitchGap = ui::Tokens::switchGap;
     constexpr int kMeterRow  = 100;
 
     constexpr int kSwitchWidth  = ui::Tokens::switchWidth;

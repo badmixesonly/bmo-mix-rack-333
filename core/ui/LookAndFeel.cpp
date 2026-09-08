@@ -171,8 +171,16 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         // drawing beats setting: they match each other exactly, at any size,
         // on any machine.
         {
-            const auto arm = 5.0f;
-            const auto weight = 2.6f;
+            // A gain sitting inside a selector ring has far less room for these
+            // than a knob with a bare face: between the ring's outer edge and
+            // the frequency legend there are about eight and a half pixels, and
+            // at the old size the symbols needed fourteen, so they were drawn
+            // straight over the ring. A knob that was given its track radius is
+            // one of those; one that works its own out is not.
+            const auto concentric = knob != nullptr && knob->getTrackRadius() > 0.0f;
+
+            const auto arm    = concentric ? 2.8f : 4.2f;
+            const auto weight = concentric ? 1.8f : 2.3f;
 
             g.setColour (dim (accent));
 

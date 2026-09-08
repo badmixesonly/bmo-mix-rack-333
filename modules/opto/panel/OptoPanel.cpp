@@ -26,7 +26,7 @@ namespace
 
     constexpr int kSwitchWidth  = ui::Tokens::switchWidth;
     constexpr int kSwitchHeight = ui::Tokens::switchHeight;
-    constexpr int kSwitchGap    = 8;
+    constexpr int kSwitchGap    = ui::Tokens::switchGap;
 
     // 0.2.1 carried #9c71c3 here for the captions and the switches, because
     // the accent was a pale lavender chosen for knob caps and there was no

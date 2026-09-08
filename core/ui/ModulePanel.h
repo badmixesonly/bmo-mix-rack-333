@@ -42,6 +42,9 @@ public:
     /** Header 28 + preset row 24 + this = the common 740. */
     static constexpr int kContentHeight = 688;
     static constexpr int kPad     = 10;
+
+    /** Section legend type size. */
+    static constexpr float kLegendSize = 13.0f;
     static constexpr int kRuleRow = 16;
 
     explicit ModulePanel (ModuleContext ctx) : context (std::move (ctx)) {}
@@ -75,17 +78,29 @@ protected:
     void drawRuleLegend (juce::Graphics& g, juce::Rectangle<int> row,
                          const juce::String& text, juce::Colour accent) const
     {
-        const auto colour = accentInk (accent);
+        // The module's accent as it stands, not stepped for contrast: a section
+        // legend is set in exactly the colour that module's bypass switch
+        // lights up in, so the panel's navigation and its bypass agree.
+        //
+        // Frosty's call, and it costs contrast in both appearances: 1.72-2.00:1
+        // on the pale plate against the 4.57-4.69:1 accentInk was giving, and
+        // 5.87:1 on the dark one against 9.07:1. The size below is part of the
+        // same decision -- a legend set in a colour this pale has to be big
+        // enough to survive it.
+        //
+        // This is the one place a module's colour is used as ink without going
+        // through accentInk, so a section legend and a knob caption are
+        // deliberately no longer the same colour.
         drawRule (g, row);
 
-        const auto font = labelFont (11.0f, true);
-        const auto width = juce::GlyphArrangement::getStringWidth (font, text) + 12.0f;
+        const auto font = labelFont (kLegendSize, true);
+        const auto width = juce::GlyphArrangement::getStringWidth (font, text) + 14.0f;
         const auto box = juce::Rectangle<float> (width, (float) row.getHeight())
                              .withCentre (row.toFloat().getCentre());
 
         g.setColour (tokens().plate);
         g.fillRect (box);
-        drawLabel (g, text, box, juce::Justification::centred, font, colour);
+        drawLabel (g, text, box, juce::Justification::centred, font, accent);
     }
 
     ModuleContext context;
