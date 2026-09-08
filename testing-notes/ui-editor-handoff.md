@@ -4,7 +4,7 @@ What the `ui-editor` branch did, why each thing is the way it is, what was
 tried and thrown away, and what is still open. Written for someone picking
 this up cold.
 
-Forty-two commits, no parameter, spec, preset or DSP file touched by any of
+Forty-five commits, no parameter, spec, preset or DSP file touched by any of
 them. All ctest suites pass at every commit -- nine of them until 8 Sep, ten
 since `ui_layout` joined them. If you change anything here and a DSP test
 moves, something has gone wrong that this branch was not supposed to be able
@@ -273,10 +273,10 @@ reaching for a screenshot and a squint.
   everything between: the rules inside a module's own middle sit where that
   module's rows put them. Frosty's call was "some should, some should not", so
   that half wants a module-by-module pass rather than another shared constant.
-- **Contrast and text-fit assertions.** Both bug classes that shipped in 0.2.1
-  are pure functions of the tokens and a `resized()`, and neither is tested.
-  `docs/ui-workflow-brief.md` §4, and §8 below for how to build the harness
-  they both need.
+- **Contrast assertions.** Text fit is done -- knob captions and switch
+  labels both, see §8a -- so this is the half that is left. It is a pure
+  function of the tokens, needs no rendering and no component, and is the
+  cheapest thing still open. `docs/ui-workflow-brief.md` §4.
 - **Two remotes, and `gh` prefers the wrong one.** `origin` is
   `badmixesonly/bmo-mix-rack-333`; `upstream` is `kevkloud/bmo-mix-rack`. A
   `gh workflow run` without `--repo` resolves to `upstream` and, on 8 Sep,
@@ -356,9 +356,43 @@ Three things went in to make it possible, all UI-side and all pixel-neutral:
 numbers above were read off the panels, not derived from the constants and
 then asserted against the derivation.
 
-**What it does not cover.** Switch label fit (only knob captions are measured),
-the rack's own composition, contrast ratios, and BMO Opto's meter modes, which
-cannot be laid out differently because they are not parameters — that is 8b.
+**Widened the same day** to cover the three gaps it first shipped with.
+
+- **The rack.** Slots on one baseline, tiling with no gap or overlap, and the
+  shared rules on *absolute rack rows* — input 142, output 618, from a slot top
+  of 52 — plus a count of how many panels share each line, so a module changing
+  its mind about opting in shows up here rather than in a screenshot.
+
+  The injected fault is the argument for absolutes: `kSlotBar` 24 → 25 moves
+  every slot **equally**, so a check comparing panels to one another passes it.
+  The absolute rows failed naming every one.
+
+- **Switch labels.** `BmoLookAndFeel::toggleLabelOverflow`, beside
+  `drawToggleButton` and sharing its box and font — the discipline
+  `PlainKnob::captionOverflow` set. A polarity switch is measured as what is
+  drawn: the slashed circle is a path, so its diameter counts and whatever sits
+  beside it is added.
+
+- **The meter scales.** `DynamicsMeter::vuScale` and `reductionScale` are public
+  for the reason `getRules` is — a scale is painted, not placed. Ends at
+  fraction 0 and 1, both axes strictly increasing, and a floor on how close two
+  printed figures may sit.
+
+  This one matters more than it reads. Those fractions stopped being computed
+  on 8 Sep and became thirteen hand-typed numbers; a transposed pair is
+  otherwise invisible, because the needle would just run backwards over a
+  stretch of dial with every other test passing.
+
+  **The 0.10 floor is a floor, not the limit.** Crowding is a pixel question —
+  it depends on the label ring radius and on how many digits a figure has — so
+  measure a new figure with `tools/inspect` before printing it. The floor is
+  calibrated, though: re-inking the 9 that was dropped for crowding trips it at
+  0.095, which is the same conclusion the renders reached.
+
+**Still not covered.** Contrast ratios — `docs/ui-workflow-brief.md` §4, and a
+pure function of the tokens, so the cheapest thing left. Anything about a
+meter's *face* beyond the scale table, which stays a render question. And the
+GR scale's appearance generally: `ui_layout` never looks at pixels.
 
 ### 8b. Meter-mode injection — **done, 8 Sep**
 
@@ -500,4 +534,4 @@ component bounds, and a meter's face is painted rather than placed.
 
 ---
 
-*Branch `ui-editor`, 42 commits on top of `main` at 6fdf8d9.*
+*Branch `ui-editor`, 45 commits on top of `main` at 6fdf8d9.*
