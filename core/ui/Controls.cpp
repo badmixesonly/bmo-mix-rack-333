@@ -1,4 +1,5 @@
 #include "Controls.h"
+#include <cmath>
 
 namespace bmo::ui
 {
@@ -612,10 +613,40 @@ void DynamicsMeter::paint (juce::Graphics& g)
         { -3.0f, 0.67f, false }, { -2.0f, 0.72f, false }, { -1.0f, 0.78f, false }, { 0.0f, 0.85f },
         { 1.0f, 0.90f, false }, { 2.0f, 0.95f, false }, { 3.0f, 1.00f },
     };
-    static const std::vector<ScalePoint> grScale {
-        { 0.0f, 0.0f }, { 4.0f, 1.0f / 6.0f }, { 8.0f, 2.0f / 6.0f }, { 12.0f, 0.5f },
-        { 16.0f, 4.0f / 6.0f }, { 20.0f, 5.0f / 6.0f }, { kGrRangeDb, 1.0f },
-    };
+    // Reduction is read where it is small: two or three dB is a decision, and
+    // twenty is a fact you already knew. So this scale is fine at the bottom
+    // and coarse above 12, in two ways at once -- the inked figures step 3 to
+    // 12 and 6 above it, and the sweep itself gives 0..6 dB more room than a
+    // linear map would. Frosty's call, taken on a rendered ladder.
+    //
+    // A tick every dB through 0..6, and at 15 and 21, so the arc reads as one
+    // continuous scale while only the round figures are inked. That is the
+    // rule the vuScale above follows, for the same reason.
+    //
+    // The exponent is what makes the fine end legible rather than merely
+    // printed. Measured on the render, the tightest inked pair is 9 to 12 and
+    // it clears 9.0 px; the same figures on an even sweep clear 7.8, and the
+    // vuScale comment treats about 6 as the point where figures stop clearing.
+    // It also makes the needle non-linear in dB -- further per dB at small
+    // reductions -- which is the point of it, and which VU already does.
+    static const std::vector<ScalePoint> grScale = []
+    {
+        constexpr float exponent = 0.7f;
+
+        const std::pair<float, bool> points[] {
+            { 0.0f, true },  { 1.0f, false },  { 2.0f, false }, { 3.0f, true },
+            { 4.0f, false }, { 5.0f, false },  { 6.0f, true },
+            { 9.0f, true },  { 12.0f, true },  { 15.0f, false },
+            { 18.0f, true }, { 21.0f, false }, { 24.0f, true },
+        };
+
+        std::vector<ScalePoint> out;
+
+        for (auto [dB, inked] : points)
+            out.push_back ({ dB, std::pow (dB / kGrRangeDb, exponent), inked });
+
+        return out;
+    }();
 
     const auto isReduction = mode == Mode::reduction;
 
