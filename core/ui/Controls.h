@@ -188,19 +188,19 @@ public:
         but left up to the caller since a module's own theme may want
         something other than red there.
 
-        `faceColour` is the plate the scale is printed on. It is a caller's
-        choice rather than always `well` because the two are what decide
-        whether the meter can be read at all: the first cut drew a #97ddff hot
-        zone on `well` #d6d6d6, which measures 1.02:1 and is invisible. A
-        needle meter wants a dark face and light ink, the way the hardware
-        does it. */
+        The face the scale is printed on is `meterFace` and is not a parameter:
+        it was a caller's choice while it was a raw hex in a panel, and the
+        reason given was that the face and its ink together decide whether the
+        meter can be read at all -- the first cut drew a #97ddff hot zone on
+        `well` #d6d6d6, 1.02:1, invisible. A token settles that once for every
+        module and lets a theme move it, which a constructor argument captured
+        at build time could not. */
     DynamicsMeter (std::function<float()> inputRmsSource,
                    std::function<float()> outputRmsSource,
                    std::function<float()> gainReductionDbSource,
                    Mode initialMode = Mode::output,
                    juce::Colour accent = tokens().accent,
-                   juce::Colour hotColour = tokens().meterClip,
-                   juce::Colour faceColour = tokens().well);
+                   juce::Colour hotColour = tokens().meterClip);
 
     void paint (juce::Graphics&) override;
 
@@ -239,7 +239,7 @@ private:
 
     static constexpr float kVuReference = -18.0f;
     static constexpr float kGrRangeDb   = 24.0f;
-    juce::Colour accentColour, hotColour, faceColour;
+    juce::Colour accentColour, hotColour;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DynamicsMeter)
 };

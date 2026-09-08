@@ -318,11 +318,10 @@ void OutputMeter::paint (juce::Graphics& g)
 DynamicsMeter::DynamicsMeter (std::function<float()> inputRmsSource,
                               std::function<float()> outputRmsSource,
                               std::function<float()> gainReductionDbSource,
-                              Mode initialMode, juce::Colour accent, juce::Colour hot,
-                              juce::Colour face)
+                              Mode initialMode, juce::Colour accent, juce::Colour hot)
     : inputRms (std::move (inputRmsSource)), outputRms (std::move (outputRmsSource)),
       gainReductionDb (std::move (gainReductionDbSource)), mode (initialMode),
-      accentColour (accent), hotColour (hot), faceColour (face)
+      accentColour (accent), hotColour (hot)
 {
     startTimerHz (30);
 }
@@ -454,7 +453,7 @@ void DynamicsMeter::paint (juce::Graphics& g)
     // Face plate: dark, so the light ink on it reads. The bezel stays the
     // module's accent -- semantic colour on the frame, luminance contrast on
     // everything that has to be read.
-    g.setColour (faceColour);
+    g.setColour (t.meterFace);
     g.fillRoundedRectangle (bounds, 4.0f);
     g.setColour (accentColour.withAlpha (0.7f));
     g.drawRoundedRectangle (bounds.reduced (0.75f), 4.0f, 1.5f);

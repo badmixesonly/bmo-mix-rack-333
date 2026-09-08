@@ -37,12 +37,9 @@ namespace
     // theme change reaches this module the way it reaches the others. See
     // accentFor / activeFor for which token does what.
 
-    // The face the scale is printed on. Dark, so the white needle and white
-    // numbers have something to read against: 11.4:1 for the needle, 8.2:1
-    // for the hot zone. Frosty's cream-face/black-needle mockup inverted --
-    // same idea, which is that a needle meter needs one very light element
-    // and one very dark one, and 0.2.0 had neither.
-    const juce::Colour kMeterFaceColour = juce::Colour (0xff3a3a3a);
+    // The face the scale is printed on was #3a3a3a here until 0.2.2 and is
+    // now the `meterFace` token, which is what lets a theme move it. It was
+    // the last raw hex left in this panel.
 }
 
 OptoPanel::OptoPanel (ui::ModuleContext ctx)
@@ -58,7 +55,7 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
              ui::Knob::Style::character, 0.62f, ui::tokens().neutral),
       meter (context.inputRms, context.rms, context.gainReductionDb,
              ui::DynamicsMeter::Mode::output, ui::tokens().neutral,
-             ui::tokens().meterClip, kMeterFaceColour),
+             ui::tokens().meterClip),
       teleButton ("TELE"), eldButton ("ELD"),
       meterInButton ("IN"), meterOutButton ("OUT"), meterGrButton ("GR"),
       link  (context.params.param (Index::link),  "LINK",  ui::tokens().meterClip),
@@ -148,11 +145,11 @@ juce::Colour OptoPanel::hotColourFor (bool stressed) const
 {
     // 0 VU and above, in the mode's own colour, stepped off it until it clears
     // 4.5:1 on this dark face rather than being trusted to. Amber already
-    // clears at 5.66:1 and comes back untouched; red is 3.41:1 raw and is
-    // lightened to 4.59:1. That difference is why the meter keeps the mode's
+    // clears at 4.68:1 and comes back untouched; red is lightened to reach it.
+    // That difference is why the meter keeps the mode's
     // colour in both modes instead of falling back to red in Stressed -- the
     // amber is the more readable of the two, not the less.
-    return ui::accentTextOn (activeFor (stressed), kMeterFaceColour);
+    return ui::accentTextOn (activeFor (stressed), ui::tokens().meterFace);
 }
 
 void OptoPanel::applyModeColours (bool stressed)

@@ -24,6 +24,7 @@ namespace
         { "pointer",    &Tokens::pointer },
         { "ringFace",   &Tokens::ringFace },
         { "meterInk",   &Tokens::meterInk },
+        { "meterFace",  &Tokens::meterFace },
         { "track",      &Tokens::track },
         { "trackFill",  &Tokens::trackFill },
         { "switchOff",  &Tokens::switchOff },

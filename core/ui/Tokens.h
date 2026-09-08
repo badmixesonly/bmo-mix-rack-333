@@ -37,9 +37,31 @@ struct Tokens
     // its own face, an annulus wants to read as a raised ring on the plate,
     // and a knob's pointer wants to be legible on a pale cap -- which white
     // never was. It measured 1.39:1 on BMO Opto's cap.
-    juce::Colour pointer    { 0xff2b2b2e };   ///< the pointer on a knob cap
+    /** The pointer on a knob cap. White, and 1.39-1.49:1 against the pale
+        caps it is drawn on, which is Frosty's call taken with the number in
+        front of him: it is the suite's look and he would rather have it than
+        the contrast. 0.2.2 ran it dark for one release. The dark theme puts
+        it back to #2b2b2e, where the caps are the lightest thing on the panel
+        and a dark pointer is the legible choice as well as the handsome one. */
+    juce::Colour pointer    { 0xffffffff };
+
     juce::Colour ringFace   { 0xffffffff };   ///< the selector-ring annulus
     juce::Colour meterInk   { 0xffffffff };   ///< VU needle, ticks and printed scale
+
+    /** The plate a needle meter's scale is printed on.
+
+        Lightened from #3a3a3a in 0.2.2. White numbers were never the limit --
+        they still read 9.41:1 here, and would survive a face two steps
+        lighter again. What stops it is the hot zone: the amber that marks
+        0 VU and above is 4.68:1 on this face and 4.51:1 one step lighter, and
+        the red washes visibly toward pink as the face comes up. So the meter
+        is as light as its own warning colour allows, not as light as its
+        numbers allow.
+
+        A token rather than a panel constant since 0.2.2, which is what lets a
+        dark theme raise it above the plate -- a meter window that reads as lit
+        rather than as a hole. */
+    juce::Colour meterFace  { 0xff464649 };
 
     juce::Colour track      { 0xff4fb8e8 };   ///< dotted gain tracks and their plus/minus
     juce::Colour trackFill  { 0xff7fd0f2 };   ///< highlights derived from the track colour

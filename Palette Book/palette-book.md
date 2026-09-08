@@ -199,20 +199,44 @@ raw accents clear 7:1 with no adjustment at all:
 
 The palette was designed for a dark plate and has been shipping on a pale one.
 
-### The dark set, provisional
+### The dark set, tuned
 
-| Token | Hex | Note |
-|---|---|---|
-| `well` | `#141418` | 1.13:1 vs plate — too narrow, wants a render pass |
-| `plate` | `#202024` | text1 `#e6e6ea` reads 13.04:1 |
-| `plateEdge` | `#2a2a30` | 1.14:1 vs plate — also too narrow |
-| `hairline` | `#3c3d43` | 1.50:1 |
-| `outline` | `#62636e` | 2.73:1 |
-| `switchOff` | `#4a4a53` | white text 8.77:1 |
-| `onAccent` | `#101012` | on Opto accent 9.55:1 |
+The first pass spaced these by contrast ratio and they came out flat. **WCAG
+ratio is the wrong tool below about L\* 20**: from `plate #202024`, the
+maximum contrast obtainable by going *darker* — all the way to pure black — is
+**1.29:1**. The +0.05 term in the ratio formula dominates down there, so every
+dark grey measures "the same" as every other.
 
-The structural greys carry the same too-narrow interval the light set has and
-should be widened once they can be seen on a panel.
+Perceptual lightness separates them properly. Spacing the dark set by CIE L\*
+against the light set's own intervals:
+
+| Token | Hex | L\* | step from plate | light set's step |
+|---|---|---|---|---|
+| `well` | `#1b1b1f` | 9.9 | −9.2 | −8.8 |
+| `plate` | `#2e2e32` | 19.1 | — | — |
+| `plateEdge` | `#37373b` | 23.2 | +4.1 | −3.8 |
+| `hairline` | `#5e5e62` | 40.0 | +20.9 | −21.1 |
+| `outline` | `#727276` | 48.2 | +29.1 | −29.3 |
+
+`plateEdge`, `hairline` and `outline` invert direction — lighter than the
+plate rather than darker — which is what a dark surface has to do to read as
+raised. The intervals are the same size.
+
+`text1 #e6e6ea` reads 10.86:1 on the tuned plate, `text2 #9a9aa4` 4.85:1.
+
+### The meter face
+
+`meterFace` was `#3a3a3a`, hardcoded in `OptoPanel.cpp`, and is now a token at
+**`#464649`**. White numbers were never what limited it — they read 9.41:1
+here and would survive two steps lighter again. The limit is the **hot zone**:
+the amber marking 0 VU and above is 4.68:1 on this face and 4.51:1 one step
+lighter, and the red washes visibly toward pink as the face comes up. The
+meter is as light as its own warning colour allows, not as light as its
+numbers allow.
+
+Being a token is what lets the dark theme leave it *above* the plate — a
+window that reads as lit rather than as a hole punched in the panel. It was
+the last raw hex in the suite.
 
 ### How it is built
 
