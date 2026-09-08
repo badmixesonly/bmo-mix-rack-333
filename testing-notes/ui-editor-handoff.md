@@ -4,7 +4,7 @@ What the `ui-editor` branch did, why each thing is the way it is, what was
 tried and thrown away, and what is still open. Written for someone picking
 this up cold.
 
-Thirty-three commits, no parameter, spec, preset or DSP file touched by any of
+Thirty-seven commits, no parameter, spec, preset or DSP file touched by any of
 them. All ctest suites pass at every commit -- nine of them until 8 Sep, ten
 since `ui_layout` joined them. If you change anything here and a DSP test
 moves, something has gone wrong that this branch was not supposed to be able
@@ -263,7 +263,7 @@ reaching for a screenshot and a squint.
   band over 16 px anywhere on the panel.
 - **~~Meter modes cannot be rendered.~~ Closed 8 Sep** by §8b:
   `snapshot opto out.png ui.meter=GR`. It found a fault on its first use --
-  in GR the needle rests on top of the `0` -- which is open below.
+  in GR the needle rested on top of the `0` -- fixed the same day; see §8.
 - **Section rules line up at the ends and nowhere else.** The input and output
   sections are `ui::ModulePanel`'s now — `takeInputSection` off the top,
   `takeOutputSection` off the bottom — so every panel that opts in puts its
@@ -367,26 +367,64 @@ of three buttons"; they and `setUiState` now come through one
 `selectMeterMode`, so a mode set from the command line lands in exactly the
 state a click leaves.
 
-### And it immediately found one — **open, Frosty's call**
+### And it immediately found one — **fixed 8 Sep**
 
-**In GR, the needle passes straight through the `0` label.** The scale runs
-0..24 left to right, so at zero reduction the needle rests at the left end,
-which is exactly where the 0 is drawn. The two occupy the same pixels.
+**In GR the needle passed straight through the `0`.** The scale runs 0..24 left
+to right, so at zero reduction the needle rested at the left end, which is
+exactly where the 0 was drawn.
 
-This is the *default* state of that mode — a meter showing no reduction is
-what BMO Opto looks like whenever it is not working — and it is the third time
-this branch has been bitten by §6's **check the opening state specifically**,
-after the high shelf's rest dot landing on the band marker and COLOR reading
-off while the DSP held it on. On the VU scale the same corner is clear, because
--20 sits well above where that needle rests.
+It was the *default* state of that mode — a meter showing no reduction is what
+BMO Opto looks like whenever it is not working — and the third time this branch
+was bitten by §6's **check the opening state specifically**, after the high
+shelf's rest dot on the band marker and COLOR reading off while the DSP held it
+on. Nobody had seen it because until §8b the mode could not be rendered.
 
-Nobody had seen it because until this commit the mode could not be rendered.
+**The cause was general, not a GR quirk.** Numbers were drawn at `radius - 19`,
+*inside* the tick ring, while the needle runs out to `radius - 4` — so it
+crossed every label position on the dial. The VU scale escaped only because its
+first point is struck and never printed and that is where its needle parks,
+which was a fix made in 0.2.1 for this same collision. GR had no such point.
 
-Not fixed here: where a legend sits is character, and the options trade against
-each other — move the 0 inboard, drop it from the scale the way a VU has no
-label at its own left end, shorten the needle's tail, or start the arc further
-left. Worth a `sheet` of two or three candidates rather than a quiet pick.
+The numbers now sit **outside** the arc, at `radius + kLabelRing`, which the
+needle cannot reach. That settles it for both scales and for any scale added
+later, rather than by giving each one a park point of its own.
+
+**That exposed a second fault, and it is the one worth remembering.** The block
+is centred in the face using `drawnHeight`, and `drawnHeight` summed the arc
+and the hub but *not* the label ring. With the numbers outside, the ring
+reaches 19.5 px above the arc, so leaving it out put the top number **1.2 px
+off the top of the face**. The radius was also taken from width alone — right
+for a bare arc, whose ends reach sin(62) = 0.88 of the radius sideways against
+0.47 downwards, and wrong the moment numbers sit above it, because those reach
+a full radius plus the ring straight up.
+
+This is the fault the comment in that function already describes, one dimension
+over. It is why the first candidates rendered for Frosty looked "too high": he
+was reading a bug, not a design. Both are fixed — the ring is in the sum, and
+the radius comes from whichever dimension binds.
+
+`kDrop` is 6 px further down, and is **Frosty's call**, taken on a rendered
+ladder. It buys the numbers 32 px of face above them rather than 20 and spends
+the hub, which now meets the bottom bezel instead of clearing it. Do not
+"centre" it back. Going further costs the hub entirely — at +12 it falls below
+the face — which is how hardware does it and is a different look, not a tweak.
+
+Measured on the render: face starts at y 661, first ink at 693, hub 856..861
+against a face ending at 861.
+
+**Label sets are untouched on both scales.** The reference faceplate inks
+-20 -10 -7 -5 -3 -2 -1 0 1 2 3; it does not fit here. Rendered, the full set
+collides badly and even adding only -7 and -3 leaves `-10 -7 -5` touching —
+which is the constraint the `vuScale` comment already records, that the -10 to
+-5 pair clears by about 6 px. The reference is a wide hardware faceplate; this
+meter is 190 px. Frosty's call was to keep the five figures.
+
+The needle needed no shortening: it cannot reach the numbers any more.
+
+The meter draws identically in both appearances — `meterFace` is deliberately
+the same in each and `meterInk` has no dark variant — so this one is
+appearance-independent, unusually for this branch.
 
 ---
 
-*Branch `ui-editor`, 33 commits on top of `main` at 6fdf8d9.*
+*Branch `ui-editor`, 37 commits on top of `main` at 6fdf8d9.*
