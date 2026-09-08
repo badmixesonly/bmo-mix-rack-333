@@ -57,7 +57,14 @@ struct Tokens
         9.5:1. */
     juce::Colour pointer    { 0xffffffff };
 
-    juce::Colour ringFace   { 0xffffffff };   ///< the selector-ring annulus
+    /** The selector-ring annulus on a band -- BMO EQ's frequency switches.
+
+        White on the pale plate, where it measures 1.15:1 and is defined by the
+        two hairline circles drawn around it rather than by its own value. That
+        is the suite's look and it stays. On the dark plate the same white ring
+        became the brightest thing in the window, so the dark set takes it to a
+        middle grey -- see darkTokens. */
+    juce::Colour ringFace   { 0xffffffff };
     juce::Colour meterInk   { 0xffffffff };   ///< VU needle, ticks and printed scale
 
     /** The plate a needle meter's scale is printed on.

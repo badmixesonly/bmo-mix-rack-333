@@ -205,7 +205,13 @@ Tokens darkTokens() noexcept
     t.knobFace  = juce::Colour (0xff4fb8e8);
     t.knobEdge  = juce::Colour (0xff8d8d98);
     t.pointer   = juce::Colour (0xff2b2b2e);
-    t.ringFace  = juce::Colour (0xffffffff);
+
+    // A band's selector ring, middle grey here and white on the pale plate.
+    // White is 1.15:1 against that plate and is defined by the hairline
+    // circles around it, which is the suite's look; on this one the same ring
+    // was the brightest thing in the window, brighter than any knob. At 4.15:1
+    // against the plate it now carries its own edge.
+    t.ringFace  = juce::Colour (0xff8e8e93);
 
     // meterFace is deliberately left at its light value, which is *above*
     // this plate rather than below it: the meter window reads as lit instead
