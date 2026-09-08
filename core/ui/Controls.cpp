@@ -150,7 +150,6 @@ ConcentricBand::ConcentricBand (juce::RangedAudioParameter& selector, const Para
     // legend sits, and the two kinds of control want different sweeps.
     {
         const auto r = ring.getRotaryParameters();
-        const auto start = r.startAngleRadians + kLegendInset;
 
         if (gain != nullptr)
         {
@@ -187,18 +186,29 @@ ConcentricBand::ConcentricBand (juce::RangedAudioParameter& selector, const Para
         }
         else
         {
-            // A filter. Its positions sit evenly around a full circle, on a
-            // step sized so that exactly one position is left over: five
-            // frequencies plus one gap, at sixty degrees each. Nothing is
-            // drawn in the empty one -- it falls at the foot of the dial,
-            // between the highest cut and Off, and the double gap there is
-            // what says which way the control sweeps.
+            // A filter. Its positions sit on a step sized so that exactly one
+            // is left over: five frequencies plus one gap, at sixty degrees
+            // each. Nothing is drawn in the empty one.
+            //
+            // The fan is centred on 12 o'clock, so the middle position sits
+            // straight up and the rest radiate from it -- lower counter-
+            // clockwise, higher clockwise. BMO EQ's low cut is Off, 45, 70,
+            // 160, 360, which puts 70 at the top with a frequency either side
+            // of it and Off at the far anti-clockwise end.
+            //
+            // It used to start from the sweep's own start angle and run
+            // clockwise from there, which left the whole fan rotated off
+            // vertical for no reason anyone could state. Centred, the empty
+            // slot falls symmetrically about 6 o'clock, and the double gap
+            // there still says which way the control sweeps.
+            //
+            // An even number of positions has no middle one; the fan is still
+            // centred, so two positions straddle 12 o'clock instead.
             const auto step = juce::MathConstants<float>::twoPi
                                 / (float) (selectorSpec.numChoices() + 1);
+            const auto halfSpan = step * (float) (selectorSpec.numChoices() - 1) * 0.5f;
 
-            ring.setRotaryParameters (start,
-                                      start + step * (float) (selectorSpec.numChoices() - 1),
-                                      r.stopAtEnd);
+            ring.setRotaryParameters (-halfSpan, halfSpan, r.stopAtEnd);
         }
     }
 
@@ -254,6 +264,43 @@ void ConcentricBand::setRingEnabled (bool shouldBeEnabled)
     repaint();
 }
 
+float ConcentricBand::filterLabelRadius (float angle, const juce::String& text,
+                                         float ringRadius, float maxRadius) const
+{
+    // The selected size in both states: a label that grew when you switched
+    // onto it would also move outwards, and the fan would breathe.
+    const auto font = kPointUsesCaption ? captionFont (kPointSize)
+                                        : labelFont (kPointSize, true);
+
+    // The **ink**, not the box it is drawn in. kLegendBoxHeight is 15 and
+    // these digits are 6 tall, so measuring the box would hand a near-vertical
+    // ray four and a half pixels of empty air and push that label out by it:
+    // 70 cleared 14.5 px where 45 and 160 cleared 10, which is exactly the
+    // unevenness this function exists to remove.
+    juce::GlyphArrangement arrangement;
+    arrangement.addLineOfText (font, text, 0.0f, 0.0f);
+
+    // The glyph outlines, not getBoundingBox: that returns the line's box,
+    // which carries the font's ascent and descent whether the string uses them
+    // or not, and left 70 two pixels proud of the rest.
+    juce::Path outline;
+    arrangement.createPath (outline);
+
+    const auto ink = outline.getBounds();
+    const auto halfWidth  = ink.getWidth()  * 0.5f;
+    const auto halfHeight = ink.getHeight() * 0.5f;
+
+    // Which of the box's own edges this ray crosses first, and how far out
+    // that is from the label's centre.
+    const auto s = std::abs (std::sin (angle));
+    const auto c = std::abs (std::cos (angle));
+
+    const auto reach = juce::jmin (s > 1.0e-3f ? halfWidth  / s : maxRadius,
+                                   c > 1.0e-3f ? halfHeight / c : maxRadius);
+
+    return juce::jmin (ringRadius + Tokens::filterLegendGap + reach, maxRadius);
+}
+
 ConcentricBand::Geometry ConcentricBand::geometry() const
 {
     const auto area = getLocalBounds().toFloat();
@@ -275,13 +322,12 @@ ConcentricBand::Geometry ConcentricBand::geometry() const
     // two -- legend tight to the ring, track outside it -- was built and works,
     // but it is not needed once the two controls are on opposite halves, and
     // it costs the track the clearance the cell's height gives the legend.
-    const auto textRadius = juce::jmin (
-        hasCentre ? centre.getTrackRadius() + Tokens::legendGap
-                  : ringRadius + Tokens::filterLegendGap,
-        area.getHeight() * 0.5f - margin);
+    const auto maxRadius = area.getHeight() * 0.5f - margin;
 
     if (hasCentre)
-        return { ringRadius, textRadius, 0 };
+        return { ringRadius,
+                 juce::jmin (centre.getTrackRadius() + Tokens::legendGap, maxRadius),
+                 maxRadius, 0 };
 
     // Measure how far the ink actually reaches above and below the dial, and
     // nudge the assembly by half the difference. Every position but the blank
@@ -296,13 +342,14 @@ ConcentricBand::Geometry ConcentricBand::geometry() const
     for (int i = 0; i < legend.size(); ++i)
     {
         const auto f = legend.size() > 1 ? (float) i / (float) (legend.size() - 1) : 0.0f;
-        const auto y = -std::cos (start + f * (end - start)) * textRadius;
+        const auto a = start + f * (end - start);
+        const auto y = -std::cos (a) * filterLabelRadius (a, legend[i], ringRadius, maxRadius);
 
         top    = juce::jmin (top,    y - kLegendBoxHeight * 0.5f);
         bottom = juce::jmax (bottom, y + kLegendBoxHeight * 0.5f);
     }
 
-    return { ringRadius, textRadius, juce::roundToInt (-(top + bottom) * 0.5f) };
+    return { ringRadius, 0.0f, maxRadius, juce::roundToInt (-(top + bottom) * 0.5f) };
 }
 
 void ConcentricBand::paint (juce::Graphics& g)
@@ -314,7 +361,6 @@ void ConcentricBand::paint (juce::Graphics& g)
     const auto area = getLocalBounds().toFloat();
     const auto geo = geometry();
     const auto centrePoint = area.getCentre().translated (0.0f, (float) geo.shift);
-    const auto textRadius = geo.textRadius;
 
     const auto startAngle = ring.getRotaryParameters().startAngleRadians;
     const auto endAngle   = ring.getRotaryParameters().endAngleRadians;
@@ -324,6 +370,12 @@ void ConcentricBand::paint (juce::Graphics& g)
     {
         const auto f = legend.size() > 1 ? (float) i / (float) (legend.size() - 1) : 0.0f;
         const auto a = startAngle + f * (endAngle - startAngle);
+
+        // A band's legend is one radius for all of it; a filter's is per label,
+        // so that each clears the dial by the same gap. See filterLabelRadius.
+        const auto textRadius = hasCentre
+            ? geo.textRadius
+            : filterLabelRadius (a, legend[i], geo.ringRadius, geo.maxRadius);
 
         const juce::Point<float> at { centrePoint.x + textRadius * std::sin (a),
                                       centrePoint.y - textRadius * std::cos (a) };

@@ -210,7 +210,11 @@ struct Tokens
         cell height above that. */
     static constexpr float concentricTrackGap = 4.5f;
     static constexpr float legendGap    = 12.0f;   ///< track to the legend
-    static constexpr float filterLegendGap = 20.0f; ///< a filter has no track, so one gap carries two
+    /** Knob edge to the legend on a filter. Half what it was: at 20 the
+        numbers read as a separate ring floating around the dial rather than as
+        its own markings. Frosty's call, on a render. Only BMO EQ's low cut is
+        a filter, so this reaches nothing else. */
+    static constexpr float filterLegendGap = 10.0f;
 };
 
 //== Derived colours ==========================================================

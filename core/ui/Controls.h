@@ -117,10 +117,6 @@ public:
     void setRingEnabled (bool);
 
 private:
-    /** How much narrower the selector sweep is than the gain sweep, each
-        side, in radians. */
-    static constexpr float kLegendInset = 0.60f;
-
     /** How far a band's fan stops short of 12 and 6 o'clock -- or runs past
         them, when the band is outset. 15 degrees. */
     static constexpr float kFanNudge = 0.2618f;
@@ -144,8 +140,31 @@ private:
         dial sitting high, because what the eye centres is the ink. The shift
         is half that imbalance, measured rather than guessed, so it follows if
         the number of positions or the radius ever changes. */
-    struct Geometry { float ringRadius, textRadius; int shift; };
+    struct Geometry
+    {
+        float ringRadius;
+        float textRadius;   ///< a band's single legend radius; unused by a filter
+        float maxRadius;    ///< how far out anything may go before it clips
+        int shift;
+    };
     Geometry geometry() const;
+
+    /** The radius one of a filter's legend labels sits at.
+
+        Per label, not one radius for all of them, because what the eye
+        measures is the gap to the nearest **ink** and every label presents a
+        different part of itself to the dial. A label at twelve o'clock shows a
+        flat edge; one on a diagonal shows a corner, and a wide word pushes
+        that corner further out still. On one shared radius BMO EQ's low cut
+        cleared 6.5 px at 45 and 4.5 at 360, which reads as uneven because it
+        is.
+
+        So: the knob edge, the gap, and then however far this particular
+        label's own box reaches back along its own ray. Measured at the
+        selected point size in both states, so a label does not move when you
+        switch onto it. */
+    float filterLabelRadius (float angle, const juce::String& text,
+                             float ringRadius, float maxRadius) const;
 
     Knob ring, centre;
     std::unique_ptr<juce::SliderParameterAttachment> ringAttachment, centreAttachment;
