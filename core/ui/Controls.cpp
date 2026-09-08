@@ -1,5 +1,4 @@
 #include "Controls.h"
-#include <cmath>
 
 namespace bmo::ui
 {
@@ -615,38 +614,54 @@ void DynamicsMeter::paint (juce::Graphics& g)
     };
     // Reduction is read where it is small: two or three dB is a decision, and
     // twenty is a fact you already knew. So this scale is fine at the bottom
-    // and coarse above 12, in two ways at once -- the inked figures step 3 to
-    // 12 and 6 above it, and the sweep itself gives 0..6 dB more room than a
-    // linear map would. Frosty's call, taken on a rendered ladder.
+    // and coarse at the top, in two ways at once -- the inked figures step 3
+    // to 6 and then widen, and the sweep itself gives the low end far more
+    // room than a linear map would. Frosty's calls throughout, taken on
+    // rendered ladders.
     //
-    // A tick every dB through 0..6, and at 15 and 21, so the arc reads as one
-    // continuous scale while only the round figures are inked. That is the
-    // rule the vuScale above follows, for the same reason.
+    // **The fractions are hand-placed, and that is deliberate.** They were a
+    // power law until the shape was pinned down, and no single exponent can
+    // produce it: pushing 6 outward drags 3 out with it, so 3..6 keeps the
+    // same share of the sweep however the exponent is tuned. Going from 0.7 to
+    // a square root moved 6 exactly where it was wanted and left 3..6 at 14.6%
+    // either way, while the first dB of reduction swelled to a fifth of the
+    // whole dial. The table below gives 3..6 19.5% and holds the first dB at
+    // 10.0%, which an exponent cannot do at the same time.
     //
-    // The exponent is what makes the fine end legible rather than merely
-    // printed. Measured on the render, the tightest inked pair is 9 to 12 and
-    // it clears 9.0 px; the same figures on an even sweep clear 7.8, and the
-    // vuScale comment treats about 6 as the point where figures stop clearing.
-    // It also makes the needle non-linear in dB -- further per dB at small
-    // reductions -- which is the point of it, and which VU already does.
-    static const std::vector<ScalePoint> grScale = []
-    {
-        constexpr float exponent = 0.7f;
-
-        const std::pair<float, bool> points[] {
-            { 0.0f, true },  { 1.0f, false },  { 2.0f, false }, { 3.0f, true },
-            { 4.0f, false }, { 5.0f, false },  { 6.0f, true },
-            { 9.0f, true },  { 12.0f, true },  { 15.0f, false },
-            { 18.0f, true }, { 21.0f, false }, { 24.0f, true },
-        };
-
-        std::vector<ScalePoint> out;
-
-        for (auto [dB, inked] : points)
-            out.push_back ({ dB, std::pow (dB / kGrRangeDb, exponent), inked });
-
-        return out;
-    }();
+    // The cost is that a value added here has to be placed by hand and its
+    // neighbours re-measured. There is no formula to evaluate. That is the
+    // honest price of the shape, and it is cheaper than a formula that quietly
+    // does not do what the comment claims.
+    //
+    // 0 and 24 are fixed points. Everything between is set against them.
+    //
+    //   dB    0    1     2     3     4     5     6     9    12    15    18    21   24
+    //   at  .000 .100  .190  .265  .335  .400  .460  .555  .665  .745  .820  .912 1.000
+    //   ink  y    .     .     y     .     .     y     .     y     .     y     .    y
+    //
+    // A tick every dB through 0..6, and at 9, 15 and 21, so the arc reads as
+    // one continuous scale while only the round figures are inked. That is the
+    // rule vuScale above follows, and for the same reason -- it inks five of
+    // its thirteen points.
+    //
+    // 9 is struck but not printed. It was inked until the whole panel was
+    // looked at rather than a crop: at six figures this reads as an
+    // instrument, at nine as a chart, and 9 was also the figure that made the
+    // tightest pair. Measured on the render, the closest inked pair is now
+    // 12 to 18 at 12.5 px, against 8.6 with the 9 inked and about 6 where the
+    // vuScale comment says figures stop clearing.
+    //
+    // The needle is non-linear in dB as a result -- it moves further per dB at
+    // small reductions, which is the point of all of this, and which VU
+    // already does. Display only: no DSP, no parameter, no spec.
+    static const std::vector<ScalePoint> grScale {
+        { 0.0f,  0.000f },        { 1.0f,  0.100f, false }, { 2.0f,  0.190f, false },
+        { 3.0f,  0.265f },        { 4.0f,  0.335f, false }, { 5.0f,  0.400f, false },
+        { 6.0f,  0.460f },        { 9.0f,  0.555f, false },
+        { 12.0f, 0.665f },        { 15.0f, 0.745f, false },
+        { 18.0f, 0.820f },        { 21.0f, 0.912f, false },
+        { kGrRangeDb, 1.000f },
+    };
 
     const auto isReduction = mode == Mode::reduction;
 
