@@ -195,14 +195,20 @@ Tokens darkTokens() noexcept
     t.text1     = juce::Colour (0xffe6e6ea);   // 10.86:1 on the plate
     t.text2     = juce::Colour (0xff9a9aa4);   // 4.85:1
 
-    // The caps go dark with the panel, which is the whole reason knobTint is
-    // a token. A knob is then a deep wash of its module's colour rather than
-    // a pale one, and the pointer inverts with it.
-    t.knobTint  = juce::Colour (0xff26262a);
-    t.knobFace  = juce::Colour (0xff2f4b5c);
-    t.knobEdge  = juce::Colour (0xff6c6d78);
-    t.pointer   = juce::Colour (0xffe8e8ee);
-    t.ringFace  = juce::Colour (0xffc8c8d0);
+    // Caps stay pale here, so a knob is the brightest thing on the panel and
+    // reads as lit. knobTint is left at white for that. Two other shapes were
+    // tried on this plate and neither survived a look: mixing the accent
+    // toward the dark plate turned the Saturator's orange to brown, and
+    // lifting its saturation instead made the caps shout.
+    //
+    // What changes is the pointer, which goes near-black -- about 9.5:1 on a
+    // pale cap, against the 1.39-1.49:1 the white one measures on the light
+    // plate. The caps being the lightest thing in the window is exactly what
+    // makes dark the right choice here and the wrong one over there.
+    t.knobFace  = juce::Colour (0xff97ddff);
+    t.knobEdge  = juce::Colour (0xff8d8d98);
+    t.pointer   = juce::Colour (0xff2b2b2e);
+    t.ringFace  = juce::Colour (0xffffffff);
 
     // meterFace is deliberately left at its light value, which is *above*
     // this plate rather than below it: the meter window reads as lit instead

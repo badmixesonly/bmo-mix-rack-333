@@ -31,27 +31,30 @@ struct Tokens
     juce::Colour knobFace   { 0xff97ddff };   ///< utility knob caps
     juce::Colour knobEdge   { 0xffa6a6a6 };   ///< single-element rings, disengaged switches
 
-    /** What a character knob's cap is: its module's accent, mixed half way to
-        this. White on the pale plate, so a cap is a pale wash of the module's
-        colour; dark on a dark one, so it is a deep one.
+    /** What a character knob's cap is mixed half way to -- see faceOf.
 
-        It was the literal `Colours::white` inside faceOf() until 0.2.2, which
-        made it the one part of the palette a theme could not reach: every
-        theme got pale caps whatever it did to the plate behind them. */
+        White in both appearances today. It is still a per-appearance token
+        rather than the literal `Colours::white` it was inside faceOf() until
+        0.2.2, because that literal was the one part of the palette a theme
+        could not reach, and because the knob treatments are meant to be able
+        to differ per appearance even while they happen not to. */
     juce::Colour knobTint   { 0xffffffff };
 
-    // These three were one `pointer` token, #ffffff, until 0.2.2. It was
-    // doing five jobs at once, and they stopped agreeing the moment the
-    // plate was allowed to go dark: a needle wants maximum contrast against
-    // its own face, an annulus wants to read as a raised ring on the plate,
-    // and a knob's pointer wants to be legible on a pale cap -- which white
-    // never was. It measured 1.39:1 on BMO Opto's cap.
-    /** The pointer on a knob cap. White, and 1.39-1.49:1 against the pale
-        caps it is drawn on, which is Frosty's call taken with the number in
-        front of him: it is the suite's look and he would rather have it than
-        the contrast. 0.2.2 ran it dark for one release. The dark theme puts
-        it back to #2b2b2e, where the caps are the lightest thing on the panel
-        and a dark pointer is the legible choice as well as the handsome one. */
+    // pointer, ringFace and meterInk were one `pointer` token, #ffffff, until
+    // 0.2.2. It was doing five jobs at once, and they stopped agreeing the
+    // moment the plate was allowed to go dark: a needle wants maximum contrast
+    // against its own face, an annulus wants to read as a raised ring on the
+    // plate, and a knob's pointer answers to the cap rather than to either.
+
+    /** The pointer on a knob cap, and the one thing that really differs
+        between the two appearances.
+
+        White on the pale plate, and 1.39-1.49:1 against the caps it is drawn
+        on -- Frosty's call, taken with the number in front of him: it is the
+        suite's look and he would rather have it than the contrast. Near-black
+        on the dark plate, where the caps are the lightest thing in the window
+        and dark is the handsome choice as well as the legible one, at about
+        9.5:1. */
     juce::Colour pointer    { 0xffffffff };
 
     juce::Colour ringFace   { 0xffffffff };   ///< the selector-ring annulus
@@ -175,13 +178,6 @@ juce::Colour onAccentOf (juce::Colour fill, float minRatio = 4.5f) noexcept;
     with whatever the user's theme file overrides on top. */
 const Tokens& tokens() noexcept;
 
-/** A character knob's cap: its module's accent, mixed half way to `knobTint`.
-    Declared after tokens() because it reads one. */
-inline juce::Colour faceOf (juce::Colour accent) noexcept
-{
-    return accent.interpolatedWith (tokens().knobTint, 0.5f);
-}
-
 //== Appearance ===============================================================
 //
 // Light or dark, stored once per machine rather than per plugin instance and
@@ -204,6 +200,24 @@ bool isDarkMode() noexcept;
 /** Writes the preference and applies it here immediately; other open editors
     pick it up on their next poll. */
 void setDarkMode (bool);
+
+/** A character knob's cap: its module's accent, mixed half way to `knobTint`.
+
+    Pale in both appearances, and on the dark plate that is the point -- a knob
+    is the brightest thing on the panel and reads as lit rather than as a
+    tinted hole in it. Two other shapes were tried and neither survived a look:
+    mixing toward the dark plate turned the Saturator's orange to brown, and
+    lifting the accent's saturation instead made the caps shout.
+
+    `knobTint` and `pointer` are both per-appearance tokens even though the
+    tint happens to be white in both today, so the two can be moved apart
+    again without touching this. What actually differs between them is the
+    pointer: white on the pale plate, near-black on the dark one, where the
+    caps are the lightest thing in the window. */
+inline juce::Colour faceOf (juce::Colour accent) noexcept
+{
+    return accent.interpolatedWith (tokens().knobTint, 0.5f);
+}
 
 //== Theming (option A from the plan: a flat JSON file of token -> hex) ========
 //

@@ -261,18 +261,28 @@ has ended up.
 A theme file still works and is now an **overlay** on whichever base is
 chosen, so picking dark and then hand-editing two colours does what it reads.
 
-### `knobTint`, and the one thing a theme could not reach
+### Knobs: pale in both, and the pointer is what changes
 
-`faceOf()` mixed an accent half way to a literal `Colours::white`, so every
-theme got pale knob caps whatever it did to the plate behind them. It is now
-`knobTint`: white on the pale plate, `#26262a` on the dark one, so a cap is a
-deep wash of its module's colour rather than a pale one, and the pointer
-inverts with it.
+`faceOf()` mixed an accent half way to a literal `Colours::white`, which made
+it the one part of the palette a theme could not reach. It is `knobTint` now —
+still white in both appearances, but reachable, and per-appearance so the two
+treatments can be moved apart without touching `faceOf`.
 
-Worth knowing: **orange suffers most from the dark mix.** Pink goes to a clean
-maroon and green to a deep green, but the Saturator's orange lands on a brown
-that reads muddier than the others. Setting `"knobTint": "#ffffff"` in a theme
-file restores pale caps on the dark plate if that reads better.
+Caps stay pale on the dark plate deliberately: a knob is then the brightest
+thing on the panel and reads as **lit** rather than as a tinted hole in it.
+Two other shapes were built and rejected on sight:
+
+| tried | why it went |
+|---|---|
+| mix the accent toward the dark plate | the Saturator's orange landed on a **brown**; pink and green survived, orange did not |
+| the accent with saturation ×1.35 | measured fine — every module kept ≥4.5:1 cap-to-pointer, EQ tightest at 4.86 — but the caps shouted |
+
+What actually differs between the appearances is the **pointer**: white on the
+pale plate at 1.39–1.49:1, near-black on the dark one at about 9.5:1. The caps
+being the lightest thing in the window is exactly what makes dark right there
+and wrong here. Verified off the renders — 172 near-black pointer pixels and
+no white ones in dark, exactly the reverse in light, with the cap itself
+byte-identical in both.
 
 ---
 
