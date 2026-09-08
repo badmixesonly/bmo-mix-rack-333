@@ -31,6 +31,15 @@ struct Tokens
     juce::Colour knobFace   { 0xff97ddff };   ///< utility knob caps
     juce::Colour knobEdge   { 0xffa6a6a6 };   ///< single-element rings, disengaged switches
 
+    /** What a character knob's cap is: its module's accent, mixed half way to
+        this. White on the pale plate, so a cap is a pale wash of the module's
+        colour; dark on a dark one, so it is a deep one.
+
+        It was the literal `Colours::white` inside faceOf() until 0.2.2, which
+        made it the one part of the palette a theme could not reach: every
+        theme got pale caps whatever it did to the plate behind them. */
+    juce::Colour knobTint   { 0xffffffff };
+
     // These three were one `pointer` token, #ffffff, until 0.2.2. It was
     // doing five jobs at once, and they stopped agreeing the moment the
     // plate was allowed to go dark: a needle wants maximum contrast against
@@ -130,12 +139,6 @@ struct Tokens
     static constexpr float filterLegendGap = 20.0f; ///< a filter has no track, so one gap carries two
 };
 
-/** Pale version of an accent for a knob face: the accent halfway to white. */
-inline juce::Colour faceOf (juce::Colour accent) noexcept
-{
-    return accent.interpolatedWith (juce::Colours::white, 0.5f);
-}
-
 //== Derived colours ==========================================================
 //
 // A module states one colour, its accent, and everything else it needs is
@@ -168,9 +171,39 @@ juce::Colour accentTextOn (juce::Colour accent, juce::Colour ground,
     monochromatic. White was 1.98-2.55:1 on the four accents. */
 juce::Colour onAccentOf (juce::Colour fill, float minRatio = 4.5f) noexcept;
 
-/** The current tokens. The built-in set, with whatever the user's theme file
-    overrides on top. */
+/** The current tokens: the built-in set for whichever appearance is chosen,
+    with whatever the user's theme file overrides on top. */
 const Tokens& tokens() noexcept;
+
+/** A character knob's cap: its module's accent, mixed half way to `knobTint`.
+    Declared after tokens() because it reads one. */
+inline juce::Colour faceOf (juce::Colour accent) noexcept
+{
+    return accent.interpolatedWith (tokens().knobTint, 0.5f);
+}
+
+//== Appearance ===============================================================
+//
+// Light or dark, stored once per machine rather than per plugin instance and
+// per project. It is not a parameter: specs() is frozen and append-only, a
+// parameter would be automatable and saved into every session, and a look is
+// not something a session should carry. See modules/eq/params.h.
+//
+// Every open editor already polls for theme changes once a second, so the
+// choice reaches every instance -- standalone and in a rack, this plugin and
+// the one in the next track -- without any of them knowing about each other.
+
+/** The built-in dark palette. The light one is `Tokens {}`. */
+Tokens darkTokens() noexcept;
+
+/** Where the appearance is remembered: one small JSON file beside the themes. */
+juce::File uiPreferenceFile();
+
+bool isDarkMode() noexcept;
+
+/** Writes the preference and applies it here immediately; other open editors
+    pick it up on their next poll. */
+void setDarkMode (bool);
 
 //== Theming (option A from the plan: a flat JSON file of token -> hex) ========
 //
@@ -195,7 +228,10 @@ bool pollTheme();
 /** Every token name the theme file may set, for writing a template. */
 juce::StringArray tokenNames();
 
-/** Applies a parsed theme object over the built-in tokens. Exposed for tests. */
-Tokens tokensFromJson (const juce::var& object);
+/** Applies a parsed theme object over `base`, which defaults to the light
+    built-in set. A theme is an overlay, not a whole palette, so choosing dark
+    and then hand-editing two colours works the way it reads. Exposed for
+    tests. */
+Tokens tokensFromJson (const juce::var& object, Tokens base = Tokens {});
 
 } // namespace bmo::ui

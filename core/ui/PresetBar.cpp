@@ -12,6 +12,7 @@ namespace
         exportPreset,
         revealFolder,
         deleteCurrent,
+        toggleDark,
         factoryBase = 2000,
         userBase    = 3000
     };
@@ -84,6 +85,13 @@ void PresetBar::showMenu()
     menu.addItem (deleteCurrent, "Delete \"" + current + "\"",
                   users.contains (current));
 
+    // Appearance lives here rather than on a button of its own. There is no
+    // room on a 160 px panel for a control that is used twice a year, and this
+    // menu is already where everything that is about the plugin rather than
+    // about the sound has ended up.
+    menu.addSeparator();
+    menu.addItem (toggleDark, "Dark mode", true, isDarkMode());
+
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (name),
                         [this, users] (int choice)
     {
@@ -100,6 +108,10 @@ void PresetBar::showMenu()
             case revealFolder:  presets.directory().revealToUser(); break;
             case deleteCurrent: presets.deleteUser (presets.getCurrentName());
                                 presets.loadFactory (0);
+                                break;
+            case toggleDark:    setDarkMode (! isDarkMode());
+                                if (auto* top = getTopLevelComponent())
+                                    top->repaint();
                                 break;
             default: break;
         }

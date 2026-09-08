@@ -238,19 +238,41 @@ Being a token is what lets the dark theme leave it *above* the plate — a
 window that reads as lit rather than as a hole punched in the panel. It was
 the last raw hex in the suite.
 
-### How it is built
+### How it is built — shipped
 
 **Dark mode is not a second design. It is a second binding of one token set.**
-Option A applies to both. That is what makes the moon icon a change at the
-paint layer rather than a parallel set of panels to maintain, and it is why
-the token split in section 3 has to land first.
+`darkTokens()` in `core/ui/Tokens.cpp` is the whole palette; every panel,
+control and derivation was already reading tokens, so nothing else changed.
 
-The preference is **machine-wide**, stored beside the theme JSON — not a
-plugin parameter. A parameter would touch `specs()`, which `AGENTS.md` freezes
-as permanent and append-only and which every golden schema test pins, and it
-would expose "dark mode" to host automation. The existing 1 Hz theme poll in
-`ProductEditor` and `RackEditor` already propagates a change to every open
-editor, standalone and rack, within a second.
+The preference is **machine-wide**, in `LT3 Audio/UI.json` beside the themes —
+not a plugin parameter. A parameter would touch `specs()`, which `AGENTS.md`
+freezes as permanent and append-only and which every golden schema test pins,
+it would be automatable, and it would save a *look* into every session. The
+existing 1 Hz poll in `ProductEditor` and `RackEditor` propagates a change to
+every open editor — standalone and in a rack, this plugin and the one in the
+next track — within a second, without any of them holding a reference to the
+others.
+
+The choice is in the preset dropdown rather than on a button of its own:
+there is no room on a 160 px panel for a control used twice a year, and that
+menu is already where everything about the plugin rather than about the sound
+has ended up.
+
+A theme file still works and is now an **overlay** on whichever base is
+chosen, so picking dark and then hand-editing two colours does what it reads.
+
+### `knobTint`, and the one thing a theme could not reach
+
+`faceOf()` mixed an accent half way to a literal `Colours::white`, so every
+theme got pale knob caps whatever it did to the plate behind them. It is now
+`knobTint`: white on the pale plate, `#26262a` on the dark one, so a cap is a
+deep wash of its module's colour rather than a pale one, and the pointer
+inverts with it.
+
+Worth knowing: **orange suffers most from the dark mix.** Pink goes to a clean
+maroon and green to a deep green, but the Saturator's orange lands on a brown
+that reads muddier than the others. Setting `"knobTint": "#ffffff"` in a theme
+file restores pale caps on the dark plate if that reads better.
 
 ---
 

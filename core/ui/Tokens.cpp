@@ -21,6 +21,7 @@ namespace
         { "text2",      &Tokens::text2 },
         { "knobFace",   &Tokens::knobFace },
         { "knobEdge",   &Tokens::knobEdge },
+        { "knobTint",   &Tokens::knobTint },
         { "pointer",    &Tokens::pointer },
         { "ringFace",   &Tokens::ringFace },
         { "meterInk",   &Tokens::meterInk },
@@ -40,8 +41,10 @@ namespace
     };
 
     Tokens current;
-    juce::Time lastModified;
+    juce::Time lastModified, lastPreferenceModified;
     bool loadedOnce = false;
+    bool dark = false;
+    bool preferenceRead = false;
 
     bool parseColour (const juce::var& v, juce::Colour& out)
     {
@@ -167,8 +170,88 @@ juce::Colour onAccentOf (juce::Colour fill, float minRatio) noexcept
     return searchCached (fill, fill, minRatio, target);
 }
 
+//== Appearance ===============================================================
+
+Tokens darkTokens() noexcept
+{
+    Tokens t;
+
+    // Structural greys spaced by CIE L* rather than by contrast ratio. Below
+    // about L* 20 the ratio is useless: from this plate the most contrast
+    // available by going darker -- all the way to black -- is 1.29:1, because
+    // the +0.05 term in the formula dominates. Spaced by lightness these carry
+    // the light set's own intervals, within a few tenths: plate to well 9.2
+    // against 8.8, plate to plateEdge 4.1 against 3.8, to hairline 20.9
+    // against 21.1, to outline 29.1 against 29.3.
+    //
+    // Three of them invert direction -- lighter than the plate rather than
+    // darker -- which is what a dark surface has to do to read as raised.
+    t.well      = juce::Colour (0xff1b1b1f);
+    t.plate     = juce::Colour (0xff2e2e32);
+    t.plateEdge = juce::Colour (0xff37373b);
+    t.hairline  = juce::Colour (0xff5e5e62);
+    t.outline   = juce::Colour (0xff727276);
+
+    t.text1     = juce::Colour (0xffe6e6ea);   // 10.86:1 on the plate
+    t.text2     = juce::Colour (0xff9a9aa4);   // 4.85:1
+
+    // The caps go dark with the panel, which is the whole reason knobTint is
+    // a token. A knob is then a deep wash of its module's colour rather than
+    // a pale one, and the pointer inverts with it.
+    t.knobTint  = juce::Colour (0xff26262a);
+    t.knobFace  = juce::Colour (0xff2f4b5c);
+    t.knobEdge  = juce::Colour (0xff6c6d78);
+    t.pointer   = juce::Colour (0xffe8e8ee);
+    t.ringFace  = juce::Colour (0xffc8c8d0);
+
+    // meterFace is deliberately left at its light value, which is *above*
+    // this plate rather than below it: the meter window reads as lit instead
+    // of as a hole punched in the panel.
+
+    // The accents need no dark variant at all -- all four clear 7:1 on this
+    // plate raw, where on the pale one they measure 1.72-2.00:1 and have to be
+    // darkened hard. accentTextOn hands them back untouched here.
+
+    return t;
+}
+
 juce::File themeDirectory() { return suitePresetRoot().getChildFile ("Themes"); }
 juce::File themeFile()      { return themeDirectory().getChildFile ("Default.json"); }
+juce::File uiPreferenceFile() { return suitePresetRoot().getChildFile ("UI.json"); }
+
+bool isDarkMode() noexcept { return dark; }
+
+void setDarkMode (bool shouldBeDark)
+{
+    dark = shouldBeDark;
+
+    const auto file = uiPreferenceFile();
+    file.getParentDirectory().createDirectory();
+
+    auto* object = new juce::DynamicObject();
+    object->setProperty ("appearance", shouldBeDark ? "dark" : "light");
+    file.replaceWithText (juce::JSON::toString (juce::var (object)));
+
+    // Apply here rather than waiting for a poll, so the panel the click landed
+    // on repaints at once; everyone else follows within a second.
+    //
+    // Deliberately left looking unread, so this editor's next poll still
+    // reports a change and refreshes the look-and-feel with it. The tokens
+    // below only cover what the panels paint themselves -- popup menus, the
+    // preset strip's buttons and the alert windows are JUCE colour IDs set in
+    // BmoLookAndFeel::refreshColours, and nothing here can reach those.
+    preferenceRead = false;
+    loadedOnce = false;
+    lastModified = {};
+    current = shouldBeDark ? darkTokens() : Tokens {};
+
+    if (themeFile().existsAsFile())
+    {
+        loadedOnce = true;
+        lastModified = themeFile().getLastModificationTime();
+        current = tokensFromJson (juce::JSON::parse (themeFile().loadFileAsString()), current);
+    }
+}
 
 juce::StringArray tokenNames()
 {
@@ -178,44 +261,72 @@ juce::StringArray tokenNames()
     return names;
 }
 
-Tokens tokensFromJson (const juce::var& object)
+Tokens tokensFromJson (const juce::var& object, Tokens base)
 {
-    Tokens t;
-
     if (auto* obj = object.getDynamicObject())
         for (const auto& e : kEntries)
             if (obj->hasProperty (e.name))
-                parseColour (obj->getProperty (e.name), t.*(e.member));
+                parseColour (obj->getProperty (e.name), base.*(e.member));
 
-    return t;
+    return base;
 }
 
 bool pollTheme()
 {
+    // Two files, and either changing rebuilds the palette: the appearance
+    // preference chooses the base set, the theme file is an overlay on top of
+    // it. Both are polled rather than watched, which is what lets a change
+    // made in one plugin instance reach every other one within a second
+    // without any of them holding a reference to the others.
+    bool changed = false;
+
+    {
+        const auto file = uiPreferenceFile();
+        const auto exists = file.existsAsFile();
+        const auto modified = exists ? file.getLastModificationTime() : juce::Time {};
+
+        if (! preferenceRead || modified != lastPreferenceModified)
+        {
+            const auto wanted = exists
+                && juce::JSON::parse (file.loadFileAsString())
+                       .getProperty ("appearance", "light").toString()
+                       .equalsIgnoreCase ("dark");
+
+            changed = (! preferenceRead) || wanted != dark;
+            dark = wanted;
+            preferenceRead = true;
+            lastPreferenceModified = modified;
+        }
+    }
+
     const auto file = themeFile();
 
     if (! file.existsAsFile())
     {
-        if (! loadedOnce)
-            return false;
+        if (loadedOnce)
+        {
+            // The theme file went away: back to the chosen built-in set.
+            loadedOnce = false;
+            lastModified = {};
+            changed = true;
+        }
 
-        // The file went away: back to the built-in set.
-        loadedOnce = false;
-        lastModified = {};
-        current = Tokens {};
-        return true;
+        if (changed)
+            current = dark ? darkTokens() : Tokens {};
+
+        return changed;
     }
 
     const auto modified = file.getLastModificationTime();
 
-    if (loadedOnce && modified == lastModified)
+    if (! changed && loadedOnce && modified == lastModified)
         return false;
 
     lastModified = modified;
     loadedOnce = true;
 
     const auto parsed = juce::JSON::parse (file.loadFileAsString());
-    current = tokensFromJson (parsed);
+    current = tokensFromJson (parsed, dark ? darkTokens() : Tokens {});
     return true;
 }
 
