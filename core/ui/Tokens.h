@@ -174,6 +174,20 @@ juce::Colour accentTextOn (juce::Colour accent, juce::Colour ground,
     monochromatic. White was 1.98-2.55:1 on the four accents. */
 juce::Colour onAccentOf (juce::Colour fill, float minRatio = 4.5f) noexcept;
 
+/** A module's own colour used as ink on the plate: a knob's caption, a section
+    legend, the selected position on a band. Paired with `faceOf`, and the two
+    trade places between the appearances.
+
+    On the pale plate the cap is a wash of the accent and the ink is the accent
+    stepped down until it reads -- the wash would vanish as text there.
+
+    On the dark plate they swap. The cap carries the module's colour at full
+    strength, which is what a knob wants on a dark panel, and the ink is the
+    wash, which is what text wants: 9.07-9.73:1 against the plate, against the
+    5.87-6.84:1 the raw accent managed. Both directions come out better than
+    they went in, which is why this is a swap and not a compromise. */
+juce::Colour accentInk (juce::Colour accent) noexcept;
+
 /** The current tokens: the built-in set for whichever appearance is chosen,
     with whatever the user's theme file overrides on top. */
 const Tokens& tokens() noexcept;
@@ -201,22 +215,24 @@ bool isDarkMode() noexcept;
     pick it up on their next poll. */
 void setDarkMode (bool);
 
-/** A character knob's cap: its module's accent, mixed half way to `knobTint`.
+/** A character knob's cap -- and see `accentInk`, which is the other half of
+    this and trades places with it between the appearances.
 
-    Pale in both appearances, and on the dark plate that is the point -- a knob
-    is the brightest thing on the panel and reads as lit rather than as a
-    tinted hole in it. Two other shapes were tried and neither survived a look:
-    mixing toward the dark plate turned the Saturator's orange to brown, and
-    lifting the accent's saturation instead made the caps shout.
+    On the pale plate the cap is the accent washed half way to `knobTint`: the
+    accent at full strength would be a very loud knob on a near-white panel.
+    On the dark plate it is the accent itself, because there it is not loud, it
+    is the module's colour reading properly for the first time -- 5.87-6.84:1
+    against the plate with the pointer at 6.13-7.14:1 on top of it.
 
-    `knobTint` and `pointer` are both per-appearance tokens even though the
-    tint happens to be white in both today, so the two can be moved apart
-    again without touching this. What actually differs between them is the
-    pointer: white on the pale plate, near-black on the dark one, where the
-    caps are the lightest thing in the window. */
+    Mixing the accent toward the *dark plate* was tried first and rejected on
+    sight: pink went to a clean maroon and green to a deep green, but the
+    Saturator's orange landed on a brown. Lifting the accent's saturation was
+    tried second and measured fine, and the caps shouted. Neither number said
+    anything was wrong, which is the argument for rendering over computing. */
 inline juce::Colour faceOf (juce::Colour accent) noexcept
 {
-    return accent.interpolatedWith (tokens().knobTint, 0.5f);
+    return isDarkMode() ? accent
+                        : accent.interpolatedWith (tokens().knobTint, 0.5f);
 }
 
 //== Theming (option A from the plan: a flat JSON file of token -> hex) ========

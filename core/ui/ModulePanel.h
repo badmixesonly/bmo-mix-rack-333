@@ -75,7 +75,7 @@ protected:
     void drawRuleLegend (juce::Graphics& g, juce::Rectangle<int> row,
                          const juce::String& text, juce::Colour accent) const
     {
-        const auto colour = accentTextOn (accent, tokens().plate);
+        const auto colour = accentInk (accent);
         drawRule (g, row);
 
         const auto font = labelFont (11.0f, true);

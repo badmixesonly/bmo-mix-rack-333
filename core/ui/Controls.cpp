@@ -57,7 +57,7 @@ void PlainKnob::paint (juce::Graphics& g)
                                                                  : tokens().track;
 
     const auto ink = captionColour.isTransparent()
-                       ? accentTextOn (system, tokens().plate)
+                       ? accentInk (system)
                        : captionColour;
 
 
@@ -192,7 +192,7 @@ void ConcentricBand::paint (juce::Graphics& g)
         // 2.22:1 and unselected was text2 at 2.45:1 -- so the *unselected*
         // legends had more contrast than the selected one, on the control this
         // module is mostly used through.
-        auto fill = isSelected ? accentTextOn (accentColour, t.plate) : t.text1;
+        auto fill = isSelected ? accentInk (accentColour) : t.text1;
 
         if (! ringEnabled)
             fill = fill.withAlpha (0.35f);

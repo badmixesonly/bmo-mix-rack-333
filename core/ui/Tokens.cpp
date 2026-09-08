@@ -195,17 +195,14 @@ Tokens darkTokens() noexcept
     t.text1     = juce::Colour (0xffe6e6ea);   // 10.86:1 on the plate
     t.text2     = juce::Colour (0xff9a9aa4);   // 4.85:1
 
-    // Caps stay pale here, so a knob is the brightest thing on the panel and
-    // reads as lit. knobTint is left at white for that. Two other shapes were
-    // tried on this plate and neither survived a look: mixing the accent
-    // toward the dark plate turned the Saturator's orange to brown, and
-    // lifting its saturation instead made the caps shout.
+    // A cap here carries its colour at full strength and the text under it
+    // takes the wash -- the reverse of the pale plate. See faceOf and
+    // accentInk, which are the two halves of that. knobFace is the utility
+    // knobs' own colour and swaps with them: the raw track blue, where on the
+    // pale plate it is #97ddff, a wash of the same.
     //
-    // What changes is the pointer, which goes near-black -- about 9.5:1 on a
-    // pale cap, against the 1.39-1.49:1 the white one measures on the light
-    // plate. The caps being the lightest thing in the window is exactly what
-    // makes dark the right choice here and the wrong one over there.
-    t.knobFace  = juce::Colour (0xff97ddff);
+    // The pointer goes near-black with it, 6.13-7.14:1 on the caps above.
+    t.knobFace  = juce::Colour (0xff4fb8e8);
     t.knobEdge  = juce::Colour (0xff8d8d98);
     t.pointer   = juce::Colour (0xff2b2b2e);
     t.ringFace  = juce::Colour (0xffffffff);
@@ -219,6 +216,16 @@ Tokens darkTokens() noexcept
     // darkened hard. accentTextOn hands them back untouched here.
 
     return t;
+}
+
+juce::Colour accentInk (juce::Colour accent) noexcept
+{
+    // The other half of faceOf. On the dark plate the cap takes the accent
+    // whole and the ink takes the wash; on the pale one it is the other way
+    // round. The wash is written out here rather than calling faceOf, which
+    // would hand back the accent in this appearance and defeat the swap.
+    return isDarkMode() ? accent.interpolatedWith (current.knobTint, 0.5f)
+                        : accentTextOn (accent, current.plate);
 }
 
 juce::File themeDirectory() { return suitePresetRoot().getChildFile ("Themes"); }

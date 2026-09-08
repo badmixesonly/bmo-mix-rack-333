@@ -261,28 +261,40 @@ has ended up.
 A theme file still works and is now an **overlay** on whichever base is
 chosen, so picking dark and then hand-editing two colours does what it reads.
 
-### Knobs: pale in both, and the pointer is what changes
+### Knobs: the cap and the caption trade places
 
-`faceOf()` mixed an accent half way to a literal `Colours::white`, which made
-it the one part of the palette a theme could not reach. It is `knobTint` now —
-still white in both appearances, but reachable, and per-appearance so the two
-treatments can be moved apart without touching `faceOf`.
+A module's colour appears twice on every knob — on the cap and in the caption
+under it — and one of them is the full accent while the other is a wash of it.
+**Which is which flips between the appearances.**
 
-Caps stay pale on the dark plate deliberately: a knob is then the brightest
-thing on the panel and reads as **lit** rather than as a tinted hole in it.
-Two other shapes were built and rejected on sight:
+| | knob cap | caption / legend |
+|---|---|---|
+| light plate | wash, `faceOf` | accent stepped down, `accentInk` |
+| dark plate | **accent at full strength** | **wash** |
+
+Measured on the dark plate: caps 5.87–6.84:1 with the pointer at 6.13–7.14:1
+on top of them, captions 9.07–9.73:1 — against the 5.87–6.84:1 the raw accent
+managed as text. **Both directions come out better than they went in**, which
+is why this is a swap rather than a compromise. `knobFace` swaps with them, so
+a utility knob is the raw track blue on dark and a wash of it on light.
+
+Three shapes were built before this one and the first two were rejected on
+sight, not on numbers:
 
 | tried | why it went |
 |---|---|
 | mix the accent toward the dark plate | the Saturator's orange landed on a **brown**; pink and green survived, orange did not |
-| the accent with saturation ×1.35 | measured fine — every module kept ≥4.5:1 cap-to-pointer, EQ tightest at 4.86 — but the caps shouted |
+| the accent with saturation ×1.35 | measured fine — every module held ≥4.5:1 cap-to-pointer, EQ tightest at 4.86 — but the caps shouted |
+| pale caps in both, pointer inverted | correct and dull; the module's colour never got to be the loud thing on a dark panel |
 
-What actually differs between the appearances is the **pointer**: white on the
-pale plate at 1.39–1.49:1, near-black on the dark one at about 9.5:1. The caps
-being the lightest thing in the window is exactly what makes dark right there
-and wrong here. Verified off the renders — 172 near-black pointer pixels and
-no white ones in dark, exactly the reverse in light, with the cap itself
-byte-identical in both.
+The **pointer** inverts with them either way: white on the pale plate at
+1.39–1.49:1, near-black on the dark one. Verified off the renders — 172
+near-black pointer pixels and no white ones in dark, exactly the reverse in
+light, and light mode came through the swap with **zero** changed pixels.
+
+`faceOf()` mixed toward a literal `Colours::white` until 0.2.2, which made it
+the one part of the palette a theme could not reach. That literal is `knobTint`
+now.
 
 ---
 
