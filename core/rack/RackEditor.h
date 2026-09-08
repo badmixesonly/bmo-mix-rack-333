@@ -64,6 +64,21 @@ private:
         juce::TextButton add { "+" };
     };
 
+    /** A hairline down the boundary between two panels.
+
+        A slot bar draws one along its own right edge, but the bar is 24 px
+        tall and the panel under it is 688, so below the bars four identical
+        plates ran together into a single field with nothing to say where one
+        module ended. Every panel paints its own plate edge to edge, which is
+        what makes a rack read as one surface; this is the seam that keeps it
+        from reading as one *module*. */
+    class Seam final : public juce::Component
+    {
+    public:
+        Seam() { setInterceptsMouseClicks (false, false); }
+        void paint (juce::Graphics& g) override { g.fillAll (ui::tokens().hairline); }
+    };
+
     struct SlotView
     {
         std::unique_ptr<SlotBar> bar;
@@ -87,6 +102,7 @@ private:
     ui::ProductHeader header;
     ui::PresetBar presetBar;
     std::vector<SlotView> views;
+    std::vector<std::unique_ptr<Seam>> seams;
     AddStrip addStrip;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RackEditor)
