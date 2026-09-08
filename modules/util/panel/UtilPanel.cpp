@@ -57,25 +57,14 @@ UtilPanel::UtilPanel (ui::ModuleContext ctx)
         p->setActiveInkFrom (context.def.accent);
 }
 
-void UtilPanel::paintPanel (juce::Graphics& g)
-{
-    for (const auto& r : rules)
-    {
-        if (r.text.isEmpty())
-            drawRule (g, r.row);
-        else
-            drawRuleLegend (g, r.row, r.text, context.def.accent);
-    }
-}
-
 void UtilPanel::resized()
 {
-    rules.clear();
+    clearRules();
     auto area = getLocalBounds().reduced (kPad, 4);
 
     const auto rule = [&] (const juce::String& text)
     {
-        rules.push_back ({ area.removeFromTop (kRuleRow), text });
+        addRule (area.removeFromTop (kRuleRow), text);
     };
 
     // Three sections instead of five.
@@ -122,7 +111,7 @@ void UtilPanel::resized()
     mono.setBounds  (centred (area.removeFromTop (kSwitchRow)));
 
     area.removeFromTop (kMonoToRule);
-    rules.push_back ({ out.rule, {} });
+    addRule (out.rule, {});
 
     // The pair centres in the body the output section would have used, so the
     // rule above them reads as the top of a section rather than as a line ruled

@@ -53,20 +53,9 @@ SatPanel::SatPanel (ui::ModuleContext ctx)
     phase.setActiveInkFrom (context.def.accent);
 }
 
-void SatPanel::paintPanel (juce::Graphics& g)
-{
-    for (const auto& r : rules)
-    {
-        if (r.text.isEmpty())
-            drawRule (g, r.row);
-        else
-            drawRuleLegend (g, r.row, r.text, context.def.accent);
-    }
-}
-
 void SatPanel::resized()
 {
-    rules.clear();
+    clearRules();
     // 4, not 6: the same content inset BMO EQ and Util use, so all three
     // panels measure from the same origin and the matched rows below actually
     // land where the arithmetic says.
@@ -74,7 +63,7 @@ void SatPanel::resized()
 
     const auto rule = [&] (const juce::String& text)
     {
-        rules.push_back ({ area.removeFromTop (kRule), text });
+        addRule (area.removeFromTop (kRule), text);
     };
 
     // Both sections, output first off the foot. The 6 px of air that used to
@@ -84,7 +73,7 @@ void SatPanel::resized()
     const auto in  = takeInputSection (area);
 
     inputGain.setBounds (in.knob);
-    rules.push_back ({ in.rule, {} });
+    addRule (in.rule, {});
 
     // What is left is the middle, and it centres in it.
     area.removeFromTop ((area.getHeight() - (kDriveRow + kRule + kPairRow)) / 2);
@@ -102,7 +91,7 @@ void SatPanel::resized()
         mix.setBounds (pair);
     }
 
-    rules.push_back ({ out.rule, {} });
+    addRule (out.rule, {});
 
     {
         constexpr int gap = ui::Tokens::switchGap;

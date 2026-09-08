@@ -138,6 +138,27 @@ public:
         knob.setCaptionSize (Tokens::gainCaptionSize);
     }
 
+    //== Section rules =========================================================
+    //
+    // A rule is painted, not placed, so unlike every other thing on a panel it
+    // has no component and no bounds anyone can read. Three panels each kept a
+    // private copy of this vector and a byte-identical paintPanel to draw it,
+    // which is three encodings of one fact -- the same shape as the section
+    // constants before 0.2.3, and it drifts the same way.
+    //
+    // It lives here now, and `getRules` is public because a layout test has no
+    // other way to see where a rule landed. That is the point: the rules are
+    // what the panels are supposed to agree about.
+
+    struct Rule
+    {
+        juce::Rectangle<int> row;
+        juce::String text;          ///< empty for a bare rule
+    };
+
+    /** The rules this panel laid out, in the order `resized` added them. */
+    const std::vector<Rule>& getRules() const noexcept { return rules; }
+
     explicit ModulePanel (ModuleContext ctx) : context (std::move (ctx)) {}
 
     const ModuleContext& getContext() const noexcept { return context; }
@@ -145,12 +166,31 @@ public:
     void paint (juce::Graphics& g) override
     {
         g.fillAll (tokens().plate);
+        paintRules (g);
         paintPanel (g);
     }
 
 protected:
-    /** Rules and legends go here; the plate is already down. */
+    /** Anything the module draws itself, over its rules and its plate. */
     virtual void paintPanel (juce::Graphics&) {}
+
+    /** Call at the top of `resized`, before laying any rule out again. */
+    void clearRules() { rules.clear(); }
+
+    /** Records a rule so the panel paints it and a test can see it. */
+    void addRule (juce::Rectangle<int> row, juce::String text = {})
+    {
+        rules.push_back ({ row, std::move (text) });
+    }
+
+private:
+    /** Defined in ModulePanel.cpp: reading `def.accent` needs the complete
+        ModuleDef, and this header is the one ModuleDef.h includes. */
+    void paintRules (juce::Graphics&) const;
+
+    std::vector<Rule> rules;
+
+protected:
 
     /** A hairline through the middle of a row, inset by the padding. */
     void drawRule (juce::Graphics& g, juce::Rectangle<int> row) const

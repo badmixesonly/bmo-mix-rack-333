@@ -19,13 +19,10 @@ public:
     void resized() override;
 
 private:
-    void paintPanel (juce::Graphics&) override;
 
     ui::PlainKnob gain, pan, width;
     ui::SwitchButton phaseL, phaseR, mono;
 
-    struct Rule { juce::Rectangle<int> row; juce::String text; };
-    std::vector<Rule> rules;
 };
 
 } // namespace bmo::util

@@ -26,14 +26,11 @@ public:
     void resized() override;
 
 private:
-    void paintPanel (juce::Graphics&) override;
 
     ui::PlainKnob inputGain, outputLevel;
     ui::ConcentricBand high, mid, low, highPass;
     ui::SwitchButton eqIn, phase, midHiQ;
 
-    struct Rule { juce::Rectangle<int> row; juce::String text; };
-    std::vector<Rule> rules;
 };
 
 } // namespace bmo::eq

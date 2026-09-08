@@ -47,25 +47,14 @@ EqPanel::EqPanel (ui::ModuleContext ctx)
     phase.setActiveInkFrom (context.def.accent);
 }
 
-void EqPanel::paintPanel (juce::Graphics& g)
-{
-    for (const auto& r : rules)
-    {
-        if (r.text.isEmpty())
-            drawRule (g, r.row);
-        else
-            drawRuleLegend (g, r.row, r.text, context.def.accent);
-    }
-}
-
 void EqPanel::resized()
 {
-    rules.clear();
+    clearRules();
     auto area = getLocalBounds().reduced (kPad, 4);
 
     const auto rule = [&] (const juce::String& text)
     {
-        rules.push_back ({ area.removeFromTop (kRuleRow), text });
+        addRule (area.removeFromTop (kRuleRow), text);
     };
 
     // Both sections, and the output one comes off the foot first so the bands
@@ -79,7 +68,7 @@ void EqPanel::resized()
     // The input section's rule is this panel's HIGH rule -- the same row, and
     // the only one in the suite that carries a legend. A module with nothing
     // to name there pushes it with an empty string.
-    rules.push_back ({ in.rule, "HIGH" });
+    addRule (in.rule, "HIGH");
     high.setBounds (area.removeFromTop (kBandRow));
 
     rule ("MID");
@@ -91,7 +80,7 @@ void EqPanel::resized()
     rule ("LO-CUT");
     highPass.setBounds (area.removeFromTop (kFilterRow));
 
-    rules.push_back ({ out.rule, {} });
+    addRule (out.rule, {});
 
     {
         // Hi-Q used to sit with the mid band. At the common height there is

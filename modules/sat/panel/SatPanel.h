@@ -15,13 +15,10 @@ public:
     void resized() override;
 
 private:
-    void paintPanel (juce::Graphics&) override;
 
     ui::PlainKnob inputGain, drive, tone, mix, outputLevel;
     ui::SwitchButton satIn, phase, autoGain;
 
-    struct Rule { juce::Rectangle<int> row; juce::String text; };
-    std::vector<Rule> rules;
 };
 
 } // namespace bmo::sat
