@@ -63,8 +63,11 @@ void BmoLookAndFeel::drawDottedArc (juce::Graphics& g, juce::Point<float> centre
                                     float startAngle, float endAngle, juce::Colour colour,
                                     float dotSize)
 {
+    // std::abs, because a sweep may run backwards -- a control whose value
+    // rises anti-clockwise hands this a negative span, and the dot count came
+    // out negative and clamped to the minimum eight.
     const auto span = endAngle - startAngle;
-    const auto count = juce::jlimit (8, 96, juce::roundToInt (radius * span * 0.16f));
+    const auto count = juce::jlimit (8, 96, juce::roundToInt (radius * std::abs (span) * 0.16f));
 
     g.setColour (colour);
 
@@ -147,7 +150,10 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         const auto given = knob != nullptr ? knob->getTrackRadius() : 0.0f;
         const auto track = given > 0.0f ? given : radius + Tokens::trackGap;
 
-        constexpr float symbolInset = 0.11f;
+        // Signed with the sweep. The inset pulls the symbols in from the ends;
+        // on a sweep that runs backwards, adding it to the start and taking it
+        // off the end pushes them out past the ends instead.
+        const auto symbolInset = endAngle >= startAngle ? 0.11f : -0.11f;
 
         // The dotted ring stops short of the sweep's ends, and the plus and
         // minus are placed on those two terminal dots rather than beyond them.
@@ -178,11 +184,12 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         // on any machine.
         {
             // A gain sitting inside a selector ring has far less room for these
-            // than a knob with a bare face: between the ring's outer edge and
-            // the frequency legend there are about eight and a half pixels, and
-            // at the old size the symbols needed fourteen, so they were drawn
-            // straight over the ring. A knob that was given its track radius is
-            // one of those; one that works its own out is not.
+            // than a knob with a bare face: its track runs in the gap between
+            // the ring's outer edge and the frequency legend, which is about
+            // eight and a half pixels. At the bare-face size the symbols need
+            // fourteen and are drawn straight over the ring. A knob that was
+            // given its track radius is one of those; one that works its own
+            // out is not.
             const auto concentric = knob != nullptr && knob->getTrackRadius() > 0.0f;
 
             const auto arm    = concentric ? 2.8f : 4.2f;

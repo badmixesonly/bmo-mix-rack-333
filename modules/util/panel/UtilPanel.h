@@ -5,8 +5,12 @@
 namespace bmo::util
 {
 
-/** Gain, pan, width, two polarity switches, mono, and a meter. The narrow
-    one: it goes at the front of a chain and stays out of the way. */
+/** Gain, then the stereo image -- pan, width, mono --
+    then the two polarity flips. The narrow one: it goes at the front of a
+    chain and stays out of the way.
+
+    No output meter, which is a deliberate exception to the rule in
+    modules/AGENTS.md that every module ends with one. */
 class UtilPanel final : public ui::ModulePanel
 {
 public:
@@ -19,7 +23,6 @@ private:
 
     ui::PlainKnob gain, pan, width;
     ui::SwitchButton phaseL, phaseR, mono;
-    ui::OutputMeter meter;
 
     struct Rule { juce::Rectangle<int> row; juce::String text; };
     std::vector<Rule> rules;

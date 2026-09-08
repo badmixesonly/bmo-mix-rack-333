@@ -33,8 +33,15 @@ struct ModuleContext
     width and the common content height, below whatever header the product
     puts over it.
 
-    A panel paints its own plate, so a rack of them reads as one surface with
-    the section rules lining up across modules.
+    A panel paints its own plate, so a rack of them reads as one surface.
+
+    It does **not** guarantee that section rules line up across modules, which
+    this comment claimed until 0.2.3 and which has never been true: in a rack
+    of util, eq, sat and opto the first rule sits at y 379, 283, 347 and
+    nowhere respectively. Lining them up needs a shared row grid, and whether
+    they should line up is per-module -- Frosty's call was "some should, some
+    should not". Until that pass happens, a rule is at whatever height its own
+    panel's layout puts it.
 */
 class ModulePanel : public juce::Component
 {
@@ -46,6 +53,90 @@ public:
     /** Section legend type size. */
     static constexpr float kLegendSize = 13.0f;
     static constexpr int kRuleRow = 16;
+
+    //== The input and output sections ==========================================
+    //
+    // Two blocks a module may opt into, so that the modules which have them put
+    // them in the same place. A trim knob and a rule at the top; a rule, a
+    // switch row and a trim knob at the bottom. Take them with takeInputSection
+    // and takeOutputSection rather than laying the rows out by hand.
+    //
+    // They are opt-in and most modules will not want both. BMO EQ and the
+    // Saturator take both. BMO Util takes neither -- its VOLUME is the thing
+    // that module does rather than a trim either side of it, and it has no
+    // output stage -- but it still takes the *reservation*, because that is
+    // what puts its lower rule on the same line as theirs. BMO Opto takes
+    // neither and reserves nothing.
+    //
+    // In panel-local pixels, on a content area inset by (kPad, 4):
+    //
+    //     input   knob 4..81, rule 82..97          line drawn at y 90
+    //     output  rule 558..573, switches 574..601,
+    //             knob 602..679, then 4 px of foot  line drawn at y 566
+    //
+    // which leaves 98..557 -- 460 px -- for whatever the module actually is.
+    //
+    // These lived in BMO EQ until 0.2.3, with the Saturator holding a second
+    // copy under names that said "Eq" and Util deriving its rule position from
+    // EQ's total column height by arithmetic. Three encodings of one fact, none
+    // of them tested, and all three drifted at least once.
+
+    static constexpr int kTrimKnobRow     = 78;   ///< input and output alike
+    static constexpr int kOutputSwitchRow = 28;   ///< bypass, polarity, one more
+    static constexpr int kFootMargin      = 4;    ///< plate under the output knob
+
+    /** What takeOutputSection reserves off the foot of the content area. */
+    static constexpr int kOutputSection = kRuleRow + kOutputSwitchRow
+                                        + kTrimKnobRow + kFootMargin;
+
+    struct InputSection  { juce::Rectangle<int> knob, rule; };
+    struct OutputSection
+    {
+        juce::Rectangle<int> rule;      ///< the hairline row
+        juce::Rectangle<int> switches;  ///< bypass / polarity / module switch
+        juce::Rectangle<int> knob;      ///< the output trim
+        juce::Rectangle<int> body;      ///< everything under the rule, foot included
+    };
+
+    /** Takes the input section off the top of `area`. */
+    static InputSection takeInputSection (juce::Rectangle<int>& area)
+    {
+        InputSection in;
+        in.knob = area.removeFromTop (kTrimKnobRow);
+        in.rule = area.removeFromTop (kRuleRow);
+        return in;
+    }
+
+    /** Takes the output section off the **bottom** of `area`.
+
+        Off the bottom, and before anything else is placed, which is the whole
+        point: what a module's own controls get is then whatever is left over,
+        rather than a number someone worked out and has to redo when a row
+        changes. A module that wants only the rule position -- Util -- uses
+        `rule` and `body` and ignores the other two. */
+    static OutputSection takeOutputSection (juce::Rectangle<int>& area)
+    {
+        auto section = area.removeFromBottom (kOutputSection);
+
+        OutputSection out;
+        out.rule     = section.removeFromTop (kRuleRow);
+        out.body     = section;
+        out.switches = section.removeFromTop (kOutputSwitchRow);
+        out.knob     = section.removeFromTop (kTrimKnobRow);
+        return out;
+    }
+
+    /** One size and one type size for every trim knob in the suite.
+
+        INPUT and OUTPUT are the same control wherever they appear and are read
+        once, when you go looking for them -- so they are capped at the size BMO
+        EQ's crowded column can afford, and named a step under the section
+        legends rather than at the 15 pt a knob you actually turn gets. */
+    static void styleTrimKnob (PlainKnob& knob)
+    {
+        knob.setKnobSide (Tokens::gainKnobSide);
+        knob.setCaptionSize (Tokens::gainCaptionSize);
+    }
 
     explicit ModulePanel (ModuleContext ctx) : context (std::move (ctx)) {}
 
@@ -78,19 +169,17 @@ protected:
     void drawRuleLegend (juce::Graphics& g, juce::Rectangle<int> row,
                          const juce::String& text, juce::Colour accent) const
     {
-        // The module's accent as it stands, not stepped for contrast: a section
-        // legend is set in exactly the colour that module's bypass switch
-        // lights up in, so the panel's navigation and its bypass agree.
+        // The module's accent stepped until it is legible. A section legend is
+        // the smaller of the two labels on a panel -- 13 pt against a knob
+        // caption's 15 -- and contrast is worth more to the smaller of two
+        // sizes than to the larger, so the legible step goes here and the raw
+        // accent goes on the caption. See PlainKnob::paint, which is the other
+        // half of this and carries the numbers.
         //
-        // Frosty's call, and it costs contrast in both appearances: 1.72-2.00:1
-        // on the pale plate against the 4.57-4.69:1 accentInk was giving, and
-        // 5.87:1 on the dark one against 9.07:1. The size below is part of the
-        // same decision -- a legend set in a colour this pale has to be big
-        // enough to survive it.
-        //
-        // This is the one place a module's colour is used as ink without going
-        // through accentInk, so a section legend and a knob caption are
-        // deliberately no longer the same colour.
+        // 0.2.2 had it the other way round, and the legend went to 13 pt to
+        // survive being set in the raw accent at 2.00:1. It keeps the size:
+        // the two labels want to be different sizes whichever way the colours
+        // fall, and this is the one a panel is navigated by.
         drawRule (g, row);
 
         const auto font = labelFont (kLegendSize, true);
@@ -100,7 +189,7 @@ protected:
 
         g.setColour (tokens().plate);
         g.fillRect (box);
-        drawLabel (g, text, box, juce::Justification::centred, font, accent);
+        drawLabel (g, text, box, juce::Justification::centred, font, accentInk (accent));
     }
 
     ModuleContext context;

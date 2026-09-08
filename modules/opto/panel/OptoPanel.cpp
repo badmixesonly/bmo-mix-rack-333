@@ -14,19 +14,29 @@ namespace
     constexpr int kKnobWidth   = 136;
     constexpr int kKnobHeight  = 150;
     constexpr int kMeterWidth  = 190;
-    constexpr int kMeterButtonRow = 22;
     constexpr int kMeterButtonGap = 4;   ///< meter face to its IN/GR/OUT row
-
-    // A needle meter is a landscape window: at this width the arc stands about
-    // 91 px tall, and the 14 px mode caption sits under it. Handing DynamicsMeter
-    // the whole 168 px of the middle third, as 0.2.1 did, only bought empty
-    // face -- the meter centres its arc in whatever box it is given, so the
-    // height it does not need is better spent by the panel.
-    constexpr int kMeterHeight = 116;
 
     constexpr int kSwitchWidth  = ui::Tokens::switchWidth;
     constexpr int kSwitchHeight = ui::Tokens::switchHeight;
     constexpr int kSwitchGap    = ui::Tokens::switchGap;
+
+    // The IN/GR/OUT row is a row of switches, so it is switchHeight tall like
+    // every other switch in the suite. It was 20, which is what made it read
+    // as a different kind of control from TELE/ELD and LINK/COLOR six inches
+    // above and below it.
+    constexpr int kMeterButtonRow = kSwitchHeight;
+
+    // A needle meter is a landscape window: at this width the arc stands about
+    // 91 px tall. Handing DynamicsMeter the whole 168 px of the middle third,
+    // as 0.2.1 did, only bought empty face -- the meter centres its arc in
+    // whatever box it is given, so the height it does not need is better spent
+    // by the panel.
+    //
+    // 116 until 0.2.2, of which the meter spent 14 on a caption naming the
+    // current mode. That caption is gone -- the row of buttons under it says
+    // the same word -- so the face is the same 102 px it always was and the
+    // 14 px is the panel's, which is where the taller button row comes from.
+    constexpr int kMeterHeight = 102;
 
     // 0.2.1 carried #9c71c3 here for the captions and the switches, because
     // the accent was a pale lavender chosen for knob caps and there was no
@@ -110,7 +120,7 @@ OptoPanel::OptoPanel (ui::ModuleContext ctx)
     lastModeWasStressed = context.params.param (Index::mode).getValue() > 0.5f;
     teleButton.setToggleState (! lastModeWasStressed, juce::dontSendNotification);
     eldButton .setToggleState (  lastModeWasStressed, juce::dontSendNotification);
-    color.setSwitchEnabled (lastModeWasStressed);
+    color.setLockedOn (! lastModeWasStressed);
     applyModeColours (lastModeWasStressed);
 
     startTimerHz (15);
@@ -184,11 +194,20 @@ void OptoPanel::setChoice (juce::RangedAudioParameter& param, float normalisedVa
 
 void OptoPanel::timerCallback()
 {
-    // Color has no off state in Tele mode (DspCore locks it on regardless of
-    // the parameter -- see DspCore::process()), so the switch is disabled
-    // there. Disabled and not hidden: hiding it moved LINK up the panel every
-    // time the mode changed, and a control that jumps around is worse than a
-    // dimmed one that stays put.
+    // Color has no off state in Tele mode: DspCore reads
+    // `mode == Mode::La2a || params.color`, so in Tele it is on whatever the
+    // parameter says. The switch is therefore drawn locked on there -- lit,
+    // and not clickable.
+    //
+    // It was drawn *disabled* until 0.2.3, which was wrong twice over. It said
+    // colour was off while the DSP had it on, which for the Init preset is the
+    // first thing anyone sees on this panel; and the disabled alpha collapses
+    // a switch's fill and its ink toward the plate at the same rate, so it
+    // said it at 1.27:1 on the pale plate, which is to say invisibly.
+    //
+    // Not hidden, either: hiding it moved LINK up the panel every time the
+    // mode changed, and a control that jumps around is worse than one that
+    // stays put.
     //
     // Polled rather than a parameter listener, same as OutputMeter/
     // DynamicsMeter's own timers -- there's no cross-thread marshaling to get
@@ -203,8 +222,22 @@ void OptoPanel::timerCallback()
     if (stressed != lastModeWasStressed)
     {
         lastModeWasStressed = stressed;
-        color.setSwitchEnabled (stressed);
+        color.setLockedOn (! stressed);
         applyModeColours (stressed);
+
+        // Leaving Tele hands the switch back what the user actually set. The
+        // lock never wrote to the parameter, so the value is still there, but
+        // nothing else will push it into the button: the attachment only
+        // speaks when the parameter changes, and it has not.
+        if (stressed)
+            color.setToggleStateSilently (context.params.param (Index::color).getValue() > 0.5f);
+    }
+    else if (! stressed)
+    {
+        // Re-asserted while the lock holds. Host automation of Color still
+        // reaches the attachment in Tele and would otherwise put the stored
+        // value back on screen, under a switch the DSP is holding on.
+        color.setLockedOn (true);
     }
 }
 
@@ -264,12 +297,22 @@ void OptoPanel::resized()
                               .withSizeKeepingCentre (meterWidth, kMeterHeight));
         block.removeFromTop (kMeterButtonGap);
 
-        auto buttons = block.withSizeKeepingCentre (meterWidth, block.getHeight());
-        const auto buttonWidth = buttons.getWidth() / 3;
+        // The suite's switch height and the suite's gap. The width is this
+        // row's one exception and the arithmetic is why: three switches at
+        // Tokens::switchWidth with two gaps between them wants 226 px, and
+        // this panel is 220 wide -- 200 inside its padding. So the row takes
+        // the meter's width and splits it three ways, which lands each switch
+        // at 58. Height and gap are what carried the visible drift anyway;
+        // a switch 6 px short reads as a different control, a switch 12 px
+        // narrow reads as a switch.
+        auto buttons = block.withSizeKeepingCentre (meterWidth, kSwitchHeight);
+        const auto buttonWidth = (meterWidth - kSwitchGap * 2) / 3;
 
-        meterInButton.setBounds  (buttons.removeFromLeft (buttonWidth).reduced (3, 1));
-        meterGrButton.setBounds  (buttons.removeFromLeft (buttonWidth).reduced (3, 1));
-        meterOutButton.setBounds (buttons.reduced (3, 1));
+        meterInButton.setBounds (buttons.removeFromLeft (buttonWidth));
+        buttons.removeFromLeft (kSwitchGap);
+        meterGrButton.setBounds (buttons.removeFromLeft (buttonWidth));
+        buttons.removeFromLeft (kSwitchGap);
+        meterOutButton.setBounds (buttons.removeFromLeft (buttonWidth));
     }
     area.removeFromTop (gap);
 

@@ -31,6 +31,56 @@ modules/<id>/
    `PlainKnob`, `ConcentricBand`, `SwitchButton`, `OutputMeter` and the
    rule helpers; do not draw text with an outline.
 
+   **The input and output sections are opt-in, and you take them before
+   you lay anything else out.** `takeInputSection` gives you a trim knob's
+   row and the rule under it off the top; `takeOutputSection` gives you a
+   rule, a switch row and a trim knob's row off the **bottom**. Style the
+   two knobs with `styleTrimKnob`. Every module that takes them puts them
+   in the same place, which is the whole point -- in a rack the input
+   knobs, the bypass rows and the output knobs line up across columns.
+
+   Take the output one first. It comes off the foot, so what your own
+   controls get is whatever is left -- 460 px if you took both -- rather
+   than a number you worked out and have to redo when a row changes.
+
+   Take neither if neither fits. BMO Util has no input trim (its VOLUME is
+   what that module *does*, not a trim either side of it) and no output
+   stage, so it takes no section -- but it still calls
+   `takeOutputSection` and uses the `rule` and `body` it hands back,
+   because that is what puts its lower rule on the same line as everyone
+   else's and gives it somewhere to put the polarity pair. BMO Opto takes
+   nothing and reserves nothing.
+
+   Before 0.2.3 these rows lived in BMO EQ, the Saturator held a second
+   copy under names that said "Eq", and Util derived its rule position by
+   summing EQ's whole column. Three encodings of one fact, none tested,
+   all three drifted at least once. Do not start a fourth.
+
+   **A section rule separates sections, so a module with one section does
+   not get one.** The rule is a divider, not a decoration, and a panel that
+   is a single idea has nothing to divide -- BMO Opto is one compressor,
+   and drawing a line across it would be marking a boundary that is not
+   there. This is the rule being followed, not an exception to it: Opto
+   has one section and therefore no rules, the same way it has one accent
+   and therefore no colour.
+
+   A panel that grows a second section later grows rules with it; the
+   count is what decides, not the module.
+
+   **A rule is bare unless the sections need naming, and only BMO EQ's
+   do.** Use `drawRule`. `drawRuleLegend` exists for the one panel that
+   has four dials which look alike and do different things -- three bands
+   and a filter, told apart by nothing but their legends. Everywhere else
+   the controls in a section say what it is: two green knobs and a mono
+   switch do not need the word IMAGE over them, and a big orange knob
+   called DRIVE does not need SATURATION. Those two panels carried
+   legends until 0.2.3 and the words were restating their own captions.
+
+   A module whose accent is greyscale could not carry a legend anyway --
+   `drawRuleLegend` sets it in the accent as it stands, and grey as ink on
+   the plate is either illegible or it is simply text, so it cannot do the
+   job pink does on BMO EQ.
+
    **What a switch lights up in** is not a free choice:
 
    | switch | colour |
@@ -59,10 +109,20 @@ modules/<id>/
    `ui::accentTextOn`. All three derive against the current appearance,
    which is what lets light and dark reach your module without it knowing.
 
-   **Metering.** `OutputMeter` is the vertical dBFS/VU bar every module
-   ends with. A module that *reduces gain* takes `DynamicsMeter` instead --
-   the horizontal needle VU, currently BMO Opto's centrepiece. Its
-   contract:
+   **Metering.** `OutputMeter` is the vertical dBFS/VU bar a module ends
+   with if it has something to say about its own output level. A module
+   that *reduces gain* takes `DynamicsMeter` instead -- the horizontal
+   needle VU, currently BMO Opto's centrepiece.
+
+   It is not compulsory, which it was said to be until 0.2.3. BMO Util
+   dropped its meter that release: it sat at the foot of the narrowest
+   panel in the suite reading a level the module barely changes, and the
+   next module in a rack shows the same signal at its own input a hundred
+   pixels to the right. The height went to pan, width and mono, which are
+   what anyone opens that panel for. A module that only passes level
+   through should think about the same trade before spending 100 px on it.
+
+   `DynamicsMeter`'s contract:
 
    - It is fed three `std::function<float()>` from `ModuleContext` --
      `inputRms`, `rms`, `gainReductionDb` -- and reads whichever its
@@ -72,6 +132,18 @@ modules/<id>/
    - Mode is set from outside via `setMode`. The panel owns the row of
      labelled buttons; the meter does not cycle on click, which tested as
      unintuitive with nothing on screen to say what clicking would do.
+   - That row is **switches**, so it is `Tokens::switchHeight` tall and
+     `Tokens::switchGap` apart like every other switch in the suite. It was
+     20 px tall on a 6 px gap until 0.2.3, sized off the meter's width
+     rather than off the tokens, and it read as a different kind of control
+     from the switches directly above and below it. Width is the one number
+     you may not get: three at `switchWidth` with two gaps needs 226 px and
+     BMO Opto's panel is 220, so that row splits the meter's width three
+     ways instead. If your panel is wider, use `switchWidth` and delete the
+     exception.
+   - The row is also the only thing naming the current mode. The meter
+     printed a caption of its own until 0.2.3; it said the same word the
+     lit button said, three pixels below it, at 9 pt.
    - Two colours are yours: the bezel and the hot zone. Both should be
      derived, not typed -- see `OptoPanel::hotColourFor`, which steps the
      hot colour off the meter's own face until it clears 4.5:1 rather than
@@ -81,7 +153,8 @@ modules/<id>/
      the same and a theme moves all of them together.
    - Give it a landscape box. It centres its arc in whatever it is handed
      and the arc is limited by width, so a tall box buys empty face; 190 x
-     116 is what BMO Opto uses.
+     102 is what BMO Opto uses, and the whole of it is face now that the
+     caption is gone.
 
    The scale itself is still Opto's (VU, and 0..24 dB of reduction). A
    module wanting different units is the point at which to lift

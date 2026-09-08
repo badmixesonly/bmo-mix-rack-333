@@ -205,12 +205,37 @@ Tokens darkTokens() noexcept
     t.knobEdge  = juce::Colour (0xff8d8d98);
     t.pointer   = juce::Colour (0xff2b2b2e);
 
-    // A band's selector ring, middle grey here and white on the pale plate.
-    // White is 1.15:1 against that plate and is defined by the hairline
-    // circles around it, which is the suite's look; on this one the same ring
-    // was the brightest thing in the window, brighter than any knob. At 4.15:1
-    // against the plate it now carries its own edge.
-    t.ringFace  = juce::Colour (0xff8e8e93);
+    // A band's selector ring. Just above the plate here, white on the pale one.
+    //
+    // A band dial is five concentric rings, and the pale plate builds them by
+    // alternating: knobEdge, ringFace, knobEdge, the plate showing through the
+    // gap between the ring and the gain cap, knobEdge again. Three hairlines
+    // at #a6a6a6 and two light grounds at #ffffff and #efefef -- the second of
+    // those is the plate, and it only reads as part of the dial because the
+    // pale plate happens to sit 16 levels off ringFace. Nobody chose that; it
+    // was true for free.
+    //
+    // 0.2.2 put this at middle grey #8e8e93, on the reasoning that white was
+    // the brightest thing in a dark window and 4.15:1 against the plate let
+    // the ring carry its own edge. Carrying its own edge is exactly what went
+    // wrong: at that value it measured 1.01:1 against knobEdge -- #8e8e93 and
+    // #8d8d98 are the same colour -- so the outer hairline, the ring and the
+    // inner hairline fused into one flat 21 px slab, and the gap behind it
+    // stayed plate-dark. Five rings became a slab, a dark gap and a hairline.
+    //
+    // So the pattern inverts instead of surviving. Dark grounds and light
+    // hairlines: ringFace goes to just above the plate, the gap is the plate
+    // itself, and knobEdge's #8d8d98 draws all three circles at 3.30:1 on
+    // them. 1.27:1 ring against plate here, against 1.15:1 white-on-pale --
+    // the same interval, which is what makes it the same dial.
+    //
+    // It also puts the band marker back on the same side as everything else.
+    // accentTextOn steps away from the ground it is given, and from a middle
+    // grey the most contrast available going lighter is 3.26:1 -- under the
+    // 4.5 it needs -- so it had no choice but to go darker, and the one mark
+    // saying which frequency is selected came out near-black while every other
+    // thing on the panel got brighter. From this ground it steps up.
+    t.ringFace  = juce::Colour (0xff3e3e42);
 
     // meterFace is deliberately left at its light value, which is *above*
     // this plate rather than below it: the meter window reads as lit instead

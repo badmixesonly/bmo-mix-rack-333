@@ -31,10 +31,17 @@ git, so a fresh clone or a second worktree does not get it and the build stops
 with a fatal error naming a missing `.otf`. Fix per working copy with
 `scripts/set-font-dir.sh`, or machine-wide with `setx BMO_FONT_DIR`.
 
-**`scripts/build.sh --snapshots` is still broken on Windows.** It calls
-`./build/tools/snapshot`; the multi-config VS generator puts the binary at
-`build/tools/Debug/snapshot.exe`. Fine on macOS. Still a good first commit for
-whoever wants it.
+**`scripts/build.sh` works on Windows now**, so the four lines above are only
+what you type when you want one render rather than all of them:
+
+    scripts/build.sh --snapshots
+
+It was broken in three places, not the one this file used to name. It assumed a
+single-config generator throughout: it left the configuration off the build,
+left `-C` off `ctest` — which finds no tests at all on a multi-config build —
+and then looked for the snapshot tool at `build/tools/snapshot`, one directory
+above where Visual Studio puts it. It now reads `CMAKE_CONFIGURATION_TYPES` out
+of the cache and adapts, and searches for the tool rather than assuming a path.
 
 `snapshots/` is gitignored, so renders never travel with a branch. Re-run the
 tool.
@@ -198,14 +205,19 @@ source. Three times the *check* was wrong rather than the code, so:
   parameters, so `tools/snapshot` can only ever show `OUT`. Every VU change on
   this branch was verified in one mode of three. This is the one verification
   hole left, and `docs/ui-workflow-brief.md` §2 is the fix.
-- **Section rules still do not line up across modules**, which `AGENTS.md`
-  claims they do. Frosty's call was "some should, some should not" — it needs a
-  module-by-module pass before any shared row grid moves.
-- **`scripts/build.sh --snapshots`** on Windows, per §1.
+- **Section rules line up at the ends and nowhere else.** The input and output
+  sections are `ui::ModulePanel`'s now — `takeInputSection` off the top,
+  `takeOutputSection` off the bottom — so every panel that opts in puts its
+  input knob, its bypass row and its output knob on the same lines. BMO EQ and
+  the Saturator take both; Util takes neither but keeps the reservation, which
+  is what puts its lower rule on their line. What is still per-panel is
+  everything between: the rules inside a module's own middle sit where that
+  module's rows put them. Frosty's call was "some should, some should not", so
+  that half wants a module-by-module pass rather than another shared constant.
 - **Contrast and text-fit assertions.** Both bug classes that shipped in 0.2.1
   are pure functions of the tokens and a `resized()`, and neither is tested.
   `docs/ui-workflow-brief.md` §4.
 
 ---
 
-*Branch `ui-editor`, 23 commits on top of `main` at 6fdf8d9.*
+*Branch `ui-editor`, 25 commits on top of `main` at 6fdf8d9.*

@@ -119,6 +119,20 @@ struct Tokens
         in the suite that is not an amount of anything. */
     juce::Colour polarity   { 0xffffffff };
 
+    /** BMO Util's gain, and nothing else yet.
+
+        It behaves exactly like INPUT and OUTPUT -- same range, same control --
+        and until 0.2.3 it was drawn as one of them, in `track`, in the
+        `utility` style. That said it *was* one of them, and it is not: INPUT
+        and OUTPUT are the pair every module begins and ends with, trims either
+        side of whatever the module does. Util's gain is the thing Util does.
+        Same behaviour, different job, so it gets its own rules.
+
+        BMO Opto's old lavender, unused since that module went greyscale in
+        0.2.2. A placeholder that differentiates rather than a colour chosen
+        for this knob -- when one is chosen, change it here. */
+    juce::Colour utilGain   { 0xff9c71c3 };
+
     juce::Colour accent     { 0xfff08cb4 };   ///< the module's own colour; see ModuleDef
 
     /** What a module uses in place of its accent when it is deliberately
@@ -161,6 +175,28 @@ struct Tokens
         the sizes had, one number smaller. */
     static constexpr int switchGap    = 8;
 
+    /** How wide a utility gain knob -- INPUT, OUTPUT, Util's GAIN -- may draw.
+
+        One number, because those three are the same control wherever they
+        appear and were drawing at four different sizes: 56 in BMO EQ, 78 and
+        98 in the Saturator, 104 in Util. The row each sits in still differs
+        per panel; this caps the knob inside it, so a taller row buys the
+        caption room rather than a bigger circle.
+
+        56 is what BMO EQ can afford and therefore what the suite can afford.
+        Its column carries three bands, a filter, a switch row and two gain
+        knobs inside the common 688, with four pixels to spare -- so it is the
+        panel that sets this number, and the others come down to meet it. */
+    static constexpr int gainKnobSide = 56;
+
+    /** Point size for INPUT's and OUTPUT's names, against 15 for a knob whose
+        setting you read off the panel.
+
+        These two are named so you can find them, not so you can watch them.
+        11 puts them a step under the 13 pt section legends, which is the
+        order they should be read in. */
+    static constexpr float gainCaptionSize = 11.0f;
+
     static constexpr float corner       = 3.0f;
     static constexpr float hairlineWeight = 1.0f;
     static constexpr float knobStroke   = 2.2f;
@@ -171,8 +207,7 @@ struct Tokens
         Tighter than `trackGap` because the space is not the same space. A
         utility knob has ten clear pixels between its face and its track; a
         band's gain has a ring drawn around it and its legend clamped to the
-        cell height above that, and at the full gap the track's rest dot came
-        out 2.6 px underneath the frequency labels. */
+        cell height above that. */
     static constexpr float concentricTrackGap = 4.5f;
     static constexpr float legendGap    = 12.0f;   ///< track to the legend
     static constexpr float filterLegendGap = 20.0f; ///< a filter has no track, so one gap carries two

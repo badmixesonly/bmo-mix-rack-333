@@ -56,14 +56,29 @@ void PlainKnob::paint (juce::Graphics& g)
     const auto system = knob.getStyle() == Knob::Style::character ? accentColour
                                                                  : tokens().track;
 
-    const auto ink = captionColour.isTransparent()
-                       ? accentInk (system)
-                       : captionColour;
+    // The colour system as it stands, not stepped for contrast. A caption is
+    // the larger of a panel's two labels -- 15 pt against a section legend's
+    // 13 -- and it names a knob you are already looking at, where the legend
+    // is what you navigate by. So the raw colour goes here and the legible
+    // step goes on the legend; see ModulePanel::drawRuleLegend.
+    //
+    // The two swapped in 0.2.3 and the swap costs contrast here: on the pale
+    // plate a caption goes from 4.57-4.69:1 to 1.72-2.00:1, and on the dark
+    // one from 9.07 to 5.87. Frosty's call, taken on a render with those
+    // numbers in front of him. Do not "fix" it.
+    const auto ink = captionColour.isTransparent() ? system : captionColour;
 
 
-    drawLabel (g, caption,
-               getLocalBounds().removeFromBottom (kCaptionRow).withTrimmedBottom (4).toFloat(),
-               juce::Justification::centred, captionFont (15.0f),
+    // Hung off the knob's own bottom edge, not the component's. The two are
+    // the same thing for a knob that fills its cell, which every knob in the
+    // suite did until gain knobs were capped at one shared size -- a capped
+    // knob centres in a taller area, and a caption pinned to the foot of the
+    // cell would drift away from it by half the difference, and drift further
+    // every time the type got smaller.
+    const auto box = juce::Rectangle<int> (0, knob.getBottom(), getWidth(), captionRow() - 4);
+
+    drawLabel (g, caption, box.toFloat(),
+               juce::Justification::centred, captionFont (captionSize),
                knob.isEnabled() ? ink : ink.withAlpha (0.4f));
 }
 
@@ -74,7 +89,7 @@ void PlainKnob::resized()
     // area leaves the drawn knob exactly where it was -- what it buys is the
     // freedom to make the component wider than the knob, so a long caption
     // has somewhere to go. See setKnobSide().
-    const auto area = getLocalBounds().withTrimmedBottom (kCaptionRow);
+    const auto area = getLocalBounds().withTrimmedBottom (captionRow());
     const auto side = juce::jmin (area.getWidth(), area.getHeight(), knobSide);
 
     knob.setBounds (area.withSizeKeepingCentre (side, side));
@@ -84,6 +99,13 @@ void PlainKnob::setKnobSide (int maxSide)
 {
     knobSide = maxSide;
     resized();
+}
+
+void PlainKnob::setCaptionSize (float points)
+{
+    captionSize = points;
+    resized();
+    repaint();
 }
 
 void PlainKnob::setKnobEnabled (bool shouldBeEnabled)
@@ -101,7 +123,8 @@ void PlainKnob::setAccent (juce::Colour accent)
 
 //==============================================================================
 ConcentricBand::ConcentricBand (juce::RangedAudioParameter& selector, const ParamSpec& selectorSpec,
-                                juce::RangedAudioParameter* gain, juce::Colour accent)
+                                juce::RangedAudioParameter* gain, juce::Colour accent,
+                                bool outsetFan)
     : accentColour (accent), hasCentre (gain != nullptr)
 {
     ring.setDetents (selectorSpec.numChoices());
@@ -116,10 +139,36 @@ ConcentricBand::ConcentricBand (juce::RangedAudioParameter& selector, const Para
 
         if (gain != nullptr)
         {
-            // A band. Narrowing both ends lifts the end labels off the bottom
-            // of the dial, which is where the gain's plus and minus live; on
-            // the same arc the two collide.
-            ring.setRotaryParameters (start, r.endAngleRadians - kLegendInset, r.stopAtEnd);
+            // A band's frequencies occupy the left half of the dial and its
+            // gain the right, so the two controls on it are told apart by
+            // which side of the knob they are on.
+            //
+            // Before 0.2.3 they shared the whole circle at different radii,
+            // and the collisions that came of it were fixed one at a time:
+            // the gain's rest dot and the selected frequency both want to
+            // point straight up, and on a band with an odd number of
+            // positions they landed a pixel and a half apart and read as one
+            // mark. BMO EQ's high shelf is three positions with 12 kHz in the
+            // middle, and 12 kHz is the default, so that was the panel's
+            // opening state.
+            //
+            // The middle of the available frequencies sits at 9 o'clock.
+            // Higher values radiate clockwise from it, toward 12; lower ones
+            // counter-clockwise, toward 6. An even count straddles 9 o'clock
+            // rather than landing on it, which is what "the middle of the
+            // frequencies" means when there is no middle frequency.
+            //
+            // The ends stop short of 12 and 6, or run just past them, and the
+            // direction alternates down the panel. Left to itself every band
+            // puts a label at dead-centre top and dead-centre bottom, so the
+            // high shelf's lowest and the mid bell's highest would sit one
+            // above the other on the same x with only a rule between them --
+            // a column of numbers down the middle of the panel. Alternating
+            // the nudge breaks it.
+            const auto pi = juce::MathConstants<float>::pi;
+            const auto nudge = outsetFan ? -kFanNudge : kFanNudge;
+
+            ring.setRotaryParameters (pi + nudge, pi * 2.0f - nudge, r.stopAtEnd);
         }
         else
         {
@@ -159,6 +208,21 @@ ConcentricBand::ConcentricBand (juce::RangedAudioParameter& selector, const Para
         // component only tight around the face would clip them away entirely.
         centre.setFaceScale (0.286f);
         centre.setCircularHitTest (true);
+
+        // The gain keeps the suite's own sweep untouched: rest dot straight
+        // up, minus at about 7:25, plus at about 4:35, pointer vertical at
+        // 0 dB like every other knob in the suite. Only the frequency fan
+        // moved, and it moved to the half of the dial the gain was not using.
+        //
+        // Two other arrangements were built and thrown away on the way here.
+        // Turning the gain a quarter clockwise, to put its rest dot opposite
+        // the fan at 3 o'clock, works on paper and reads as a knob turned hard
+        // right at zero -- the rest dot is where the pointer rests, so moving
+        // one moves the other. Flipping and shrinking the sweep to a 120
+        // degree arc on the right, minus at 5 and plus at 1, keeps the two
+        // controls on separate sides but makes gain rise anti-clockwise: with
+        // zero at 3 o'clock and the sweep symmetric about it, the end that
+        // carries the minus is the end that fixes the direction.
         addAndMakeVisible (centre);
 
         centreAttachment = std::make_unique<juce::SliderParameterAttachment> (*gain, centre);
@@ -191,6 +255,11 @@ ConcentricBand::Geometry ConcentricBand::geometry() const
     // why the circle looked cramped.
     const auto margin = hasCentre ? 9.0f : 4.0f;
 
+    // The gain's dotted track runs between the selector ring and the frequency
+    // legend, and the legend is the outermost thing on the dial. Swapping the
+    // two -- legend tight to the ring, track outside it -- was built and works,
+    // but it is not needed once the two controls are on opposite halves, and
+    // it costs the track the clearance the cell's height gives the legend.
     const auto textRadius = juce::jmin (
         hasCentre ? centre.getTrackRadius() + Tokens::legendGap
                   : ringRadius + Tokens::filterLegendGap,
@@ -250,7 +319,28 @@ void ConcentricBand::paint (juce::Graphics& g)
         // you could switch to. Until 0.2.2 selected was the shared azure at
         // 2.22:1 and unselected was text2 at 2.45:1 -- so the *unselected*
         // legends had more contrast than the selected one, on the control this
-        // module is mostly used through.
+        // module is mostly used through. Moving unselected up to text1 fixed
+        // that on the pale plate: 4.53:1 selected against 4.37, near enough
+        // equal, with hue doing the work.
+        //
+        // On the dark plate the same pair measures 8.98:1 selected against
+        // 10.87, so the inversion is still there -- the frequency you did not
+        // pick is seven points of L* brighter than the one you did. That is
+        // deliberate and it is not fixable from this line. text1 sits at 10.87
+        // of a 13.53 ceiling on this plate, and a *coloured* ink cannot pass it:
+        // taking the accent past that luminance means mixing it so far toward
+        // white it stops reading as the accent. The only lever is to dim the
+        // unselected legends instead, and that was built, rendered and thrown
+        // away -- at 6.00:1 it works, and it dims the numbers you read to
+        // decide where to go next in order to emphasise the one you already
+        // know.
+        //
+        // What carries selection here is the band marker, which since 0.2.3 is
+        // the accent at full strength pointing straight at the chosen position.
+        // It did not used to be: when this was first measured the marker was
+        // near-black on a middle-grey ring, so nothing on the dial said which
+        // frequency was live. Fixing the ring fixed the premise, and the
+        // labels were left to hue. Frosty's call, on a side-by-side.
         auto fill = isSelected ? accentInk (accentColour) : t.text1;
 
         if (! ringEnabled)
@@ -298,6 +388,33 @@ SwitchButton::SwitchButton (juce::RangedAudioParameter& parameter, const juce::S
 
 void SwitchButton::resized()                 { button.setBounds (getLocalBounds()); }
 void SwitchButton::setSwitchEnabled (bool e) { button.setEnabled (e); }
+
+void SwitchButton::setLockedOn (bool shouldBeLocked)
+{
+    locked = shouldBeLocked;
+
+    // Clicks off rather than enabled off: enabled off is what dims it, and a
+    // switch the DSP is holding on is not a dimmed switch, it is an engaged
+    // one you cannot turn off from here.
+    button.setInterceptsMouseClicks (! locked, ! locked);
+
+    if (locked)
+    {
+        // dontSendNotification, so the attachment does not hear it and the
+        // parameter keeps the value the user set. The caller re-asserts this
+        // while the lock holds -- a parameter change would otherwise push the
+        // stored value back into the button underneath us -- and hands the
+        // switch its real state back when the lock lifts.
+        button.setToggleState (true, juce::dontSendNotification);
+        button.repaint();
+    }
+}
+
+void SwitchButton::setToggleStateSilently (bool shouldBeOn)
+{
+    button.setToggleState (shouldBeOn, juce::dontSendNotification);
+    button.repaint();
+}
 
 void SwitchButton::setTint (juce::Colour tint)
 {
@@ -486,8 +603,12 @@ void DynamicsMeter::paint (juce::Graphics& g)
 
     const auto isReduction = mode == Mode::reduction;
 
+    // The whole box is face. A caption naming the current mode used to take 14
+    // px off the bottom of it, and it was saying what the IN/GR/OUT row under
+    // the meter already says -- louder, in the same place, and without the 9 pt
+    // and 2.45:1 on the pale plate that the caption was read at. The 14 px went
+    // back to the panel. With it went the suite's only non-ASCII source glyph.
     auto bounds = getLocalBounds().toFloat();
-    const auto modeLabelArea = bounds.removeFromBottom (14.0f);
 
     // Sweep geometry: needle pivots at bottom-centre, arcs upward. 100
     // degrees total, split evenly either side of straight up.
@@ -571,15 +692,6 @@ void DynamicsMeter::paint (juce::Graphics& g)
     g.setColour (t.meterInk);
     g.drawLine (juce::Line<float> (pivot, tip), 2.4f);
     g.fillEllipse (juce::Rectangle<float> (kHubRadius * 2.0f, kHubRadius * 2.0f).withCentre (pivot));
-
-    const auto readoutLabel = isReduction ? "GR" : (mode == Mode::input ? "IN" : "OUT");
-    // Spelled as an escape rather than a literal bullet: MSVC without /utf-8
-    // reads a BOM-less source file in the system codepage, which would mangle
-    // the character on Windows only. This is the one non-ASCII glyph in the
-    // suite's sources -- keep it that way, or set the flag.
-    drawLabel (g, juce::String (juce::CharPointer_UTF8 ("VU  \xe2\x80\xa2  ")) + readoutLabel,
-               modeLabelArea,
-               juce::Justification::centred, labelFont (9.0f), t.text2);
 }
 
 } // namespace bmo::ui

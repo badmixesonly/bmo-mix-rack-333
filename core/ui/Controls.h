@@ -50,14 +50,27 @@ public:
         component once the side is capped. */
     void setKnobSide (int maxSide);
 
+    /** Point size for the name under the knob. 15 unless set.
+
+        The row the name is drawn in follows it, and the name is drawn against
+        the knob's own bottom edge rather than the component's, so shrinking
+        the type leaves the label as close to the knob as it was rather than
+        stranding it at the foot of the cell. */
+    void setCaptionSize (float points);
+
 private:
-    /** Room under the knob for its name. */
-    static constexpr int kCaptionRow = 22;
+    /** Room under the knob for its name, at the current caption size.
+
+        1.2 x the point size plus four, which is the 22 px row a 15 pt caption
+        had when the number was fixed -- so a knob that never sets a size lays
+        out exactly as it did. */
+    int captionRow() const { return juce::roundToInt (captionSize * 1.2f) + 4; }
 
     juce::String caption;
     juce::Colour captionColour;   ///< transparent means "derive from accentColour"
     juce::Colour accentColour;
     int knobSide = std::numeric_limits<int>::max();
+    float captionSize = 15.0f;
     Knob knob;
     std::unique_ptr<juce::SliderParameterAttachment> attachment;
 
@@ -78,8 +91,12 @@ private:
 class ConcentricBand final : public juce::Component
 {
 public:
+    /** `outsetFan` runs this band's frequency fan just past 12 and 6 o'clock
+        instead of stopping just short of them. Alternate it down a panel: see
+        the constructor. */
     ConcentricBand (juce::RangedAudioParameter& selector, const ParamSpec& selectorSpec,
-                    juce::RangedAudioParameter* gain, juce::Colour accent = tokens().accent);
+                    juce::RangedAudioParameter* gain, juce::Colour accent = tokens().accent,
+                    bool outsetFan = false);
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -90,6 +107,10 @@ private:
     /** How much narrower the selector sweep is than the gain sweep, each
         side, in radians. */
     static constexpr float kLegendInset = 0.60f;
+
+    /** How far a band's fan stops short of 12 and 6 o'clock -- or runs past
+        them, when the band is outset. 15 degrees. */
+    static constexpr float kFanNudge = 0.2618f;
 
     /** Frequency legend type: size when selected, when not, and which face. */
     static constexpr float kPointSize         = 9.9f;
@@ -152,7 +173,32 @@ public:
         plate underneath is doing. */
     void setActiveInkFrom (juce::Colour accent);
 
+    /** Drawn engaged and not clickable, for a control the DSP holds on
+        regardless of its parameter.
+
+        Not the same as `setSwitchEnabled (false)`, and the difference is the
+        whole point. A disabled switch is dimmed and still draws whatever its
+        parameter says, so BMO Opto's COLOR spent 0.2.1 and 0.2.2 telling you
+        colour was *off* in Tele while DspCore had it on -- and telling you at
+        1.27:1, because the disabled alpha collapses the fill and its ink
+        toward the plate together. Locked draws the switch at full strength in
+        the state the DSP is actually in.
+
+        The state is asserted here rather than written to the parameter: the
+        parameter still holds what the user set for the mode where it counts,
+        and gets it back the moment the lock lifts. */
+    void setLockedOn (bool);
+
+    /** True while setLockedOn(true) is holding the switch engaged. */
+    bool isLockedOn() const noexcept { return locked; }
+
+    /** Set the drawn state without writing to the parameter. For restoring a
+        switch to what its parameter says after a lock lifts. */
+    void setToggleStateSilently (bool);
+
 private:
+    bool locked = false;
+
     juce::ToggleButton button;
     std::unique_ptr<juce::ButtonParameterAttachment> attachment;
 
@@ -204,7 +250,14 @@ private:
     Mode is switched externally via setMode() -- the panel owns a row of
     labelled buttons for that (see modules/opto/panel/OptoPanel.cpp); this
     class used to cycle modes on click, which tested as unintuitive with
-    nothing on screen to say what clicking would do. */
+    nothing on screen to say what clicking would do.
+
+    That row is also the only thing that names the current mode. This class
+    printed a caption of its own under the face until 0.2.2, which said the
+    same word the lit button said, three pixels below it, at 9 pt and 2.45:1
+    on the pale plate. A module that gives this meter no such row needs to
+    name the mode somewhere -- but every dynamics module owes its meter one
+    (see modules/AGENTS.md), so there is no such module. */
 class DynamicsMeter final : public juce::Component,
                             private juce::Timer
 {
