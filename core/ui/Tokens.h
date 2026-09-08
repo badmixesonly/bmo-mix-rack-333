@@ -286,6 +286,22 @@ bool isDarkMode() noexcept;
     pick it up on their next poll. */
 void setDarkMode (bool);
 
+/** Chooses an appearance for **this process only**: the machine-wide
+    preference is neither written nor read again, and the theme poll stops
+    touching the appearance.
+
+    `setDarkMode` is the one a user's click goes through, and it persists. This
+    one deliberately does not, because a tool that renders the dark palette
+    should not flip the appearance of every plugin open on the machine, and
+    should not leave a preference changed behind it if it falls over.
+
+    It exists because there was no other way to see the dark set without
+    changing that preference — which is a large part of why half the faults on
+    the ui-editor branch existed in one appearance only, against a house rule
+    that says to check both every time. See `tools/snapshot`'s
+    `appearance=dark|light`. */
+void overrideAppearance (bool shouldBeDark);
+
 /** A character knob's cap -- and see `accentInk`, which is the other half of
     this and trades places with it between the appearances.
 

@@ -6,6 +6,10 @@
 // For the rack, "chain=util,eq,sat,opto" sets the modules and "N.id=value"
 // sets a parameter of the module in slot N (1-based), e.g. 2.mid_gain=4.
 //
+// "appearance=dark|light" renders the other palette. Set for this process
+// only: it neither writes nor reads the machine-wide preference, so it cannot
+// flip the look of plugins that happen to be open.
+//
 // "ui.<key>=<value>" sets panel state that has no parameter behind it. BMO
 // Opto takes "ui.meter=IN|GR|OUT", which is the only way to render its VU in
 // anything but OUT. Offered to every panel; refused by all of them is fatal.
@@ -217,6 +221,23 @@ int main (int argc, char** argv)
 
         const auto key = arg.substring (0, split);
         const auto value = arg.substring (split + 1);
+
+        // Appearance is not a panel's state and not a parameter: it is the
+        // whole palette. Set for this process only -- rendering the dark set
+        // must not flip every plugin open on the machine, which is what
+        // ui::setDarkMode would do.
+        if (key == "appearance")
+        {
+            if (value.equalsIgnoreCase ("dark"))       bmo::ui::overrideAppearance (true);
+            else if (value.equalsIgnoreCase ("light")) bmo::ui::overrideAppearance (false);
+            else
+            {
+                std::cerr << "appearance is dark or light, got " << value << '\n';
+                return 2;
+            }
+
+            continue;
+        }
 
         if (key.startsWith ("ui."))
         {

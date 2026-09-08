@@ -45,6 +45,11 @@ namespace
     bool dark = false;
     bool preferenceRead = false;
 
+    // Set by overrideAppearance: the poll then leaves the appearance alone,
+    // so a tool can render one palette without the machine-wide preference
+    // being touched or read.
+    bool appearanceOverridden = false;
+
     bool parseColour (const juce::var& v, juce::Colour& out)
     {
         if (! v.isString())
@@ -264,6 +269,21 @@ juce::File uiPreferenceFile() { return suitePresetRoot().getChildFile ("UI.json"
 
 bool isDarkMode() noexcept { return dark; }
 
+void overrideAppearance (bool shouldBeDark)
+{
+    appearanceOverridden = true;
+    dark = shouldBeDark;
+    preferenceRead = true;
+    current = shouldBeDark ? darkTokens() : Tokens {};
+
+    if (themeFile().existsAsFile())
+    {
+        loadedOnce = true;
+        lastModified = themeFile().getLastModificationTime();
+        current = tokensFromJson (juce::JSON::parse (themeFile().loadFileAsString()), current);
+    }
+}
+
 void setDarkMode (bool shouldBeDark)
 {
     dark = shouldBeDark;
@@ -323,6 +343,7 @@ bool pollTheme()
     // without any of them holding a reference to the others.
     bool changed = false;
 
+    if (! appearanceOverridden)
     {
         const auto file = uiPreferenceFile();
         const auto exists = file.existsAsFile();
