@@ -171,8 +171,24 @@ its own. Consider also widening the structural greys: `plate #efefef` to
   not.
 - **Ask before pushing, and batch.** A CI round trip is ~22 minutes on
   Windows, the workflow's concurrency group cancels an in-progress run on the
-  same ref, and CI does not auto-run on feature branches (`gh workflow run
-  build.yml --ref <branch>`). Accumulate changes, then ask.
+  same ref, and CI does not auto-run on feature branches. Accumulate changes,
+  then ask.
+- **Name the repository on every `gh` command.**
+
+      gh workflow run build.yml --repo badmixesonly/bmo-mix-rack-333 --ref <branch>
+
+  There are two remotes — `origin` is `badmixesonly/bmo-mix-rack-333` and
+  `upstream` is `kevkloud/bmo-mix-rack` — and **`gh` picks `upstream`**. On
+  8 Sep a `gh workflow run` without `--repo` tried to dispatch against
+  Kevin's repository and was stopped only by a 403 for want of admin rights
+  there. Nothing had gone wrong with the push: `git push origin <branch>`
+  names its remote and went to the right place. It is `gh` alone that
+  resolves elsewhere, and it does so silently.
+
+  Left as a flag deliberately. Do not paper over it with an alias, a
+  `gh repo set-default`, or a wrapper — whether this working copy should have
+  an `upstream` remote at all is Frosty's question for Kevin, and a fix that
+  hides the two-remote setup would hide the question with it.
 - **Frosty decides character and version numbers.** Layout, colour and preset
   character are his calls — offer real options with measured trade-offs
   (contrast ratios, dB) rather than picking one quietly.

@@ -4,7 +4,7 @@ What the `ui-editor` branch did, why each thing is the way it is, what was
 tried and thrown away, and what is still open. Written for someone picking
 this up cold.
 
-Forty-one commits, no parameter, spec, preset or DSP file touched by any of
+Forty-two commits, no parameter, spec, preset or DSP file touched by any of
 them. All ctest suites pass at every commit -- nine of them until 8 Sep, ten
 since `ui_layout` joined them. If you change anything here and a DSP test
 moves, something has gone wrong that this branch was not supposed to be able
@@ -277,6 +277,21 @@ reaching for a screenshot and a squint.
   are pure functions of the tokens and a `resized()`, and neither is tested.
   `docs/ui-workflow-brief.md` §4, and §8 below for how to build the harness
   they both need.
+- **Two remotes, and `gh` prefers the wrong one.** `origin` is
+  `badmixesonly/bmo-mix-rack-333`; `upstream` is `kevkloud/bmo-mix-rack`. A
+  `gh workflow run` without `--repo` resolves to `upstream` and, on 8 Sep,
+  tried to dispatch a build against Kevin's repository — stopped only by a 403
+  for want of admin rights there. Pushes are fine: `git push origin <branch>`
+  names its remote. It is `gh` that resolves elsewhere, silently.
+
+  Pass `--repo badmixesonly/bmo-mix-rack-333` on every `gh` command, and see
+  `docs/ui-workflow-brief.md`'s constraints.
+
+  **Open, and not a code question.** Frosty is asking Kevin whether the
+  `upstream` remote is deliberate — whether he would rather everyone worked in
+  one repository than his plus a fork. Until that is settled, this stays a
+  flag: **do not** add a `gh repo set-default`, an alias or a wrapper. A fix
+  that hides the two-remote setup hides the question with it.
 
 ---
 
@@ -485,4 +500,4 @@ component bounds, and a meter's face is painted rather than placed.
 
 ---
 
-*Branch `ui-editor`, 41 commits on top of `main` at 6fdf8d9.*
+*Branch `ui-editor`, 42 commits on top of `main` at 6fdf8d9.*
