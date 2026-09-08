@@ -107,9 +107,23 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
+      # To re-solve preset levels after a DSP change, set
+      # BMO_PRINT_PRESET_LEVELS here and run ctest with -V rather than
+      # --output-on-failure: the tests then print every preset's measured
+      # delta instead of only the ones outside tolerance, and -V is required
+      # because --output-on-failure shows a test's stdout only when it fails,
+      # which suppresses exactly the output you want from a passing run.
+      # Both come straight back out afterwards, as they did in 0.2.1.
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
+      # Packaging inherits the implicit `if: success()`, so a failing test
+      # withholds the build. While BMO Opto was under active preset/level
+      # iteration, add-bmo-opto and its v0.x tags carried a carve-out that
+      # packaged on Build alone -- a failing level-match test there was
+      # usually a not-yet-retuned preset value rather than a reason to
+      # withhold something worth listening to. That carve-out is gone: the
+      # levels are solved and the branch is green.
       - name: Package
         shell: bash
         run: tools/packager/package.sh build out

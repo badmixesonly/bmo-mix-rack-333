@@ -104,7 +104,10 @@ ui::ModuleContext SingleModuleProcessor::makeContext()
 {
     return { engine.params(), def,
              [this] { return engine.meter().maxPeak(); },
-             [this] { return engine.meter().maxRms(); } };
+             [this] { return engine.meter().maxRms(); },
+             [this] { return engine.inputMeter().maxPeak(); },
+             [this] { return engine.inputMeter().maxRms(); },
+             [this] { return engine.gainReduction().get(); } };
 }
 
 //==============================================================================

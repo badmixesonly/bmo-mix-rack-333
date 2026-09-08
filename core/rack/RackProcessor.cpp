@@ -76,7 +76,10 @@ ui::ModuleContext RackProcessor::makeContext (int slot)
 
     return { engine->params(), engine->def(),
              [engine] { return engine->meter().maxPeak(); },
-             [engine] { return engine->meter().maxRms(); } };
+             [engine] { return engine->meter().maxRms(); },
+             [engine] { return engine->inputMeter().maxPeak(); },
+             [engine] { return engine->inputMeter().maxRms(); },
+             [engine] { return engine->gainReduction().get(); } };
 }
 
 //==============================================================================
