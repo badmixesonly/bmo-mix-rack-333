@@ -11,7 +11,7 @@ supposed to be able to do.
 
 ---
 
-## 1. The build, and two traps
+## 1. The build, and the one trap left
 
 Both former blockers are gone: cmake 4.4.3 is on the machine PATH, the
 licensed faces resolve from outside the repository, and `tools/snapshot`
@@ -193,6 +193,37 @@ source. Three times the *check* was wrong rather than the code, so:
   with different switch states, and a baseline that predated an intervening
   commit.
 
+0.2.3 added five more, each of which caught something that eyeballing a zoom
+had missed:
+
+- **Scan a line, do not squint at a crop.** Dump a run-length of one row or
+  column straight through the thing you are measuring — start, end, width,
+  exact hex. It is how the dark selector ring was found: at a glance it looked
+  like a ring, and the scanline showed `#8d8d98`, `#8e8e93`, `#8d8d98` running
+  together as one 21 px slab, because the hairlines and the face were the same
+  colour to within 1.01:1. No amount of looking at it would have produced that
+  number. Same tool proved three panels' rules land on the same two pixel rows.
+- **Hash every render before and after anything that should move nothing.** A
+  refactor that claims to be pure is a claim you can settle rather than argue:
+  render all five panels, refactor, render again, compare hashes. Byte-identical
+  or it was not a refactor.
+- **Both appearances, every time.** Half the faults on this branch existed in
+  one only. A change measured on the pale plate has not been checked.
+- **Check the opening state specifically.** Two of the worst faults were only
+  visible in Init — the high shelf's 12 kHz default put the gain's rest dot on
+  the band marker, and BMO Opto's COLOR read *off* while the DSP held it on.
+  Both are the first thing anyone sees and neither showed at any other setting.
+- **A ratio without a named ground is not a measurement.** Say what it is
+  against. "The marker is 4.67:1" was true and useless; against `ringFace`
+  rather than the plate it was the whole story.
+
+The helpers used for all of this were throwaway PowerShell in a scratchpad and
+did not survive the session: a crop-and-magnify, a run-length scanline for a
+row and for a column, an exact-colour histogram over a box, and a side-by-side
+compositor with labels. About twenty lines each over `System.Drawing`.
+Rebuilding them is half an hour; committing them under `tools/` so the next
+person does not is a good small first task.
+
 ---
 
 ## 7. Still open
@@ -216,7 +247,79 @@ source. Three times the *check* was wrong rather than the code, so:
   that half wants a module-by-module pass rather than another shared constant.
 - **Contrast and text-fit assertions.** Both bug classes that shipped in 0.2.1
   are pure functions of the tokens and a `resized()`, and neither is tested.
-  `docs/ui-workflow-brief.md` §4.
+  `docs/ui-workflow-brief.md` §4, and §8 below for how to build the harness
+  they both need.
+
+---
+
+## 8. The next two, in order
+
+`tests/` has nine suites and not one of them touches the UI. Everything in §6
+was done by hand. These are the two pieces that change that; do the first
+before the second, because the first is what fails when something breaks and
+the second only lets you look.
+
+### 8a. A UI test harness, and layout assertions on it
+
+**Why this one first.** 0.2.3 left three hand-matched alignments holding the
+rack together: BMO Util's two gaps, and the Saturator's adoption of BMO EQ's
+row heights. They are load-bearing for how a rack reads and nothing catches
+them. Add a band to BMO EQ, or change `kBandRow`, and every one of them drifts
+silently. That is the regression this repository is currently most exposed to.
+
+**The harness.** New `bmo_add_tool` suite — JUCE, not `bmo_add_dsp_tool`.
+Note that `docs/ui-workflow-brief.md` §4 is wrong on this point: it says
+contrast assertions "need no rendering at all — could run in the DSP-only job",
+and they cannot, because `Tokens.h` includes `juce_gui_basics`. No rendering is
+needed, but JUCE is. Construct a processor the way `tests/plugin/TestUtil.h`
+does, make its editor, `setBounds` at design size, and assert on component
+bounds. `tools/snapshot` already proves headless construction works on Windows,
+so the ground is not new.
+
+**What to assert, absolutely and against named numbers:**
+
+- Every panel that takes the input section puts its rule's centre at y **90**;
+  every panel that takes or reserves the output section puts its rule's centre
+  at y **566**, its switch row at **574-601**, its output knob row at
+  **602-679**. Those are `ui::ModulePanel`'s constants; the test is that the
+  panels actually land on them.
+- BMO Util reserves without adopting, so it is the one that proves the
+  reservation works. Assert its lower rule at 566 with no output knob present.
+- No control's bounds fall outside its panel, and no two controls in a column
+  overlap. `MAKEUP` clipping to `MAKEU` was a five-character overflow nobody
+  saw for a release.
+
+**Then text fit, on the same harness.** After `resized()`, assert every
+caption's `GlyphArrangement::getStringWidth` is inside its box. This is *not*
+blocked on the licensed fonts, which I assumed for most of a session and was
+wrong about: `CMakeLists.txt:58` fails the build outright on a missing `.otf`,
+so any build that succeeds has them.
+
+**Done looks like:** the suite passes; then change `kBandRow` from 112 to 111
+by hand and confirm it fails, naming the panel and the number. A layout test
+that has never been seen to fail is not evidence of anything.
+
+### 8b. Meter-mode injection
+
+`DynamicsMeter::Mode` is UI state set through `setMode`, not a parameter — and
+rightly, since `specs()` is frozen and append-only and a meter mode does not
+belong in a session. But it means `tools/snapshot` can only ever render `OUT`,
+so every VU change on this branch was verified in one mode of three, including
+0.2.3's resizing of the IN/GR/OUT row itself.
+
+The route is a virtual on `ui::ModulePanel` — `setUiState(key, value)`,
+returning false for anything it does not know — overridden by `OptoPanel` to
+accept `meter=IN|GR|OUT`, and an arg in `tools/snapshot/main.cpp` that routes
+`ui.<key>=<value>` to it. Roughly forty lines and it touches no DSP, no
+parameter and no panel geometry.
+
+Make it refuse what it does not understand rather than ignoring it. The tool
+already learned this once: a mistyped choice name used to come back 0.0 from
+`getFloatValue()` and render a plausible panel of entirely the wrong thing.
+`realValueFor` now refuses. `setUiState` should too.
+
+**Done looks like:** three renders of BMO Opto that differ, and the GR one
+showing a needle on a 0..24 dB scale rather than a VU one.
 
 ---
 
