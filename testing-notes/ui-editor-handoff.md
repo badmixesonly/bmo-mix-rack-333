@@ -4,10 +4,11 @@ What the `ui-editor` branch did, why each thing is the way it is, what was
 tried and thrown away, and what is still open. Written for someone picking
 this up cold.
 
-Twenty-three commits, no parameter, spec, preset or DSP file touched by any of
-them. All nine ctest suites pass at every commit. If you change anything here
-and a DSP test moves, something has gone wrong that this branch was not
-supposed to be able to do.
+Thirty-three commits, no parameter, spec, preset or DSP file touched by any of
+them. All ctest suites pass at every commit -- nine of them until 8 Sep, ten
+since `ui_layout` joined them. If you change anything here and a DSP test
+moves, something has gone wrong that this branch was not supposed to be able
+to do.
 
 ---
 
@@ -280,52 +281,70 @@ reaching for a screenshot and a squint.
 
 ---
 
-## 8. The next two, in order
+## 8. What is left
 
-`tests/` has nine suites and not one of them touches the UI. Everything in §6
-was done by hand. These are the two pieces that change that; do the first
-before the second, because the first is what fails when something breaks and
-the second only lets you look.
+`tests/` had nine suites and not one of them touched the UI. 8a below is now
+built and is the tenth; 8b is the piece still open.
 
-### 8a. A UI test harness, and layout assertions on it
+### 8a. A UI test harness, and layout assertions on it — **done, 8 Sep**
 
-**Why this one first.** 0.2.3 left three hand-matched alignments holding the
-rack together: BMO Util's two gaps, and the Saturator's adoption of BMO EQ's
-row heights. They are load-bearing for how a rack reads and nothing catches
-them. Add a band to BMO EQ, or change `kBandRow`, and every one of them drifts
-silently. That is the regression this repository is currently most exposed to.
+`tests/ui/LayoutTests.cpp`, wired in as `ui_layout`. A `bmo_add_tool` suite,
+not `bmo_add_dsp_tool`: nothing in it renders, but `Tokens.h` includes
+`juce_gui_basics`, so `docs/ui-workflow-brief.md` §4 is wrong that this could
+run in the DSP-only job. No processor gymnastics were needed — a panel is laid
+out by its editor's constructor at design size whatever the editor is scaled
+to afterwards, so constructing the editor and walking it is enough.
 
-**The harness.** New `bmo_add_tool` suite — JUCE, not `bmo_add_dsp_tool`.
-Note that `docs/ui-workflow-brief.md` §4 is wrong on this point: it says
-contrast assertions "need no rendering at all — could run in the DSP-only job",
-and they cannot, because `Tokens.h` includes `juce_gui_basics`. No rendering is
-needed, but JUCE is. Construct a processor the way `tests/plugin/TestUtil.h`
-does, make its editor, `setBounds` at design size, and assert on component
-bounds. `tools/snapshot` already proves headless construction works on Windows,
-so the ground is not new.
+What it pins, all as absolute rows:
 
-**What to assert, absolutely and against named numbers:**
+- **The shared ends.** Input knob 4..81 and a rule centred on 90; a rule
+  centred on 566, switches 574..601, output knob 602..679. EQ and the
+  Saturator take both sections. Util reserves the output one and adopts
+  neither half, and is asserted to have no OUTPUT knob — it is the case that
+  proves a reservation is worth anything.
+- **BMO EQ's band column**, row by row: 98, 226 and 354 at 112 tall, the low
+  cut at 482, and the column ending flush on 558. This is the one that
+  matters. Both sections come off the two ends *before* the bands get what is
+  left, so a one-pixel change to `kBandRow` moves every row below it while the
+  input knob, the output knob, the switch row and both shared rules stay
+  exactly where they were.
+- Nothing escapes its panel, no two controls overlap, every caption fits.
 
-- Every panel that takes the input section puts its rule's centre at y **90**;
-  every panel that takes or reserves the output section puts its rule's centre
-  at y **566**, its switch row at **574-601**, its output knob row at
-  **602-679**. Those are `ui::ModulePanel`'s constants; the test is that the
-  panels actually land on them.
-- BMO Util reserves without adopting, so it is the one that proves the
-  reservation works. Assert its lower rule at 566 with no output knob present.
-- No control's bounds fall outside its panel, and no two controls in a column
-  overlap. `MAKEUP` clipping to `MAKEU` was a five-character overflow nobody
-  saw for a release.
+**Both new assertion classes have been seen to fail**, which was the condition:
 
-**Then text fit, on the same harness.** After `resized()`, assert every
-caption's `GlyphArrangement::getStringWidth` is inside its box. This is *not*
-blocked on the licensed fonts, which I assumed for most of a session and was
-wrong about: `CMakeLists.txt:58` fails the build outright on a missing `.otf`,
-so any build that succeeds has them.
+    kBandRow 112 -> 111
+      FAIL: eq MID band top -- expected 226, got 225
+      FAIL: eq band column should end flush against the output rule,
+            and its foot -- expected 558, got 555
+    MAKEUP -> MAKEUPMAKEUP
+      FAIL: opto caption 'MAKEUPMAKEUP' overflows its box by 66.9 px
 
-**Done looks like:** the suite passes; then change `kBandRow` from 112 to 111
-by hand and confirm it fails, naming the panel and the number. A layout test
-that has never been seen to fail is not evidence of anything.
+Three things went in to make it possible, all UI-side and all pixel-neutral:
+
+- **`ModulePanel` owns the section rules now.** EQ, the Saturator and Util
+  each had a private `struct Rule`, a private vector and a byte-identical
+  `paintPanel`. `getRules()` is public because a rule is *painted* rather than
+  placed, so it is the one thing on a panel with no bounds a test can read —
+  and the rules are exactly what the panels are supposed to agree about.
+  `paintRules` is out of line in a new `ModulePanel.cpp`, because `ModuleDef.h`
+  includes `ModulePanel.h` and the header can therefore only forward-declare
+  `ModuleDef`.
+- **Controls name themselves** after the caption a reader sees, so the test
+  finds OUTPUT by the word printed on the panel. BMO EQ names its four bands
+  after the rules they sit under, being the only controls there with no
+  caption of their own.
+- **`PlainKnob::captionOverflow`**, with the caption box factored out so
+  `paint` and the assertion read the same box in the same font. A fit test
+  that measured it its own way could have agreed with the bug it exists to
+  catch.
+
+`ui_layout_tests --dump` prints every panel's controls and rules. Use it: the
+numbers above were read off the panels, not derived from the constants and
+then asserted against the derivation.
+
+**What it does not cover.** Switch label fit (only knob captions are measured),
+the rack's own composition, contrast ratios, and BMO Opto's meter modes, which
+cannot be laid out differently because they are not parameters — that is 8b.
 
 ### 8b. Meter-mode injection
 
@@ -351,4 +370,4 @@ showing a needle on a 0..24 dB scale rather than a VU one.
 
 ---
 
-*Branch `ui-editor`, 25 commits on top of `main` at 6fdf8d9.*
+*Branch `ui-editor`, 33 commits on top of `main` at 6fdf8d9.*
