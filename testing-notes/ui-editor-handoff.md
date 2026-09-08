@@ -218,11 +218,15 @@ had missed:
   rather than the plate it was the whole story.
 
 The helpers used for all of this were throwaway PowerShell in a scratchpad and
-did not survive the session: a crop-and-magnify, a run-length scanline for a
-row and for a column, an exact-colour histogram over a box, and a side-by-side
-compositor with labels. About twenty lines each over `System.Drawing`.
-Rebuilding them is half an hour; committing them under `tools/` so the next
-person does not is a good small first task.
+did not survive the session. **They are now `tools/inspect/` and do survive** —
+`scan`, `hist`, `crop` and `sheet`, plus `hash` and `ratio`, which the list
+above named as practices without a tool behind them. C# over `System.Drawing`, `csc`-built
+from one file, outside CMake for the reason `tools/measure/renders` is.
+
+Both findings above were re-derived with it as the check that it works: column
+260 of `ring-dark.png` scans as a 22 px slab, and `#497450` against `#317290`
+comes back 1.01:1 at 0.3 L\* apart. Read `tools/inspect/README.md` before
+reaching for a screenshot and a squint.
 
 ---
 
