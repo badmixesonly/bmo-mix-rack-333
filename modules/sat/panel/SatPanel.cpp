@@ -13,8 +13,8 @@ namespace
     constexpr int kOutputRow = 120;
     constexpr int kRule      = 20;
 
-    constexpr int kSwitchWidth  = 62;
-    constexpr int kSwitchHeight = 26;
+    constexpr int kSwitchWidth  = ui::Tokens::switchWidth;
+    constexpr int kSwitchHeight = ui::Tokens::switchHeight;
 }
 
 SatPanel::SatPanel (ui::ModuleContext ctx)

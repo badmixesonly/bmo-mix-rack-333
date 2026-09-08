@@ -24,10 +24,8 @@ namespace
     // height it does not need is better spent by the panel.
     constexpr int kMeterHeight = 116;
 
-    // Lifted from BMO Util so the switches are literally the same control at
-    // the same size across the suite -- see modules/util/panel/UtilPanel.cpp.
-    constexpr int kSwitchWidth  = 70;
-    constexpr int kSwitchHeight = 26;
+    constexpr int kSwitchWidth  = ui::Tokens::switchWidth;
+    constexpr int kSwitchHeight = ui::Tokens::switchHeight;
     constexpr int kSwitchGap    = 8;
 
     // 0.2.1 carried #9c71c3 here for the captions and the switches, because

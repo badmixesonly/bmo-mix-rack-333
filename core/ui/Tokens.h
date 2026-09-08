@@ -141,6 +141,21 @@ struct Tokens
     juce::Colour meterGr    { 0xff4fb8e8 };   ///< gain reduction, for the modules that show it
 
     //== Fixed, not themable ===================================================
+
+    /** Every switch in the suite, in px.
+
+        One constant rather than four, because four is what let them drift to
+        56x24, 62x26, 70x26 and 70x26 -- three sizes across four modules that
+        sit side by side in a rack. BMO Util and BMO Opto were already here;
+        BMO EQ's row was the one that looked undersized, 180 px of switches in
+        a 260 px well.
+
+        A layout value, so it lives with the corner radius and the stroke
+        weights rather than with the colours: a theme cannot reach it and so
+        cannot break a panel with it. */
+    static constexpr int switchWidth  = 70;
+    static constexpr int switchHeight = 26;
+
     static constexpr float corner       = 3.0f;
     static constexpr float hairlineWeight = 1.0f;
     static constexpr float knobStroke   = 2.2f;

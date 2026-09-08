@@ -14,8 +14,8 @@ namespace
     constexpr int kFilterRow = 76;
     constexpr int kSwitchRow = 28;
 
-    constexpr int kSwitchWidth  = 56;
-    constexpr int kSwitchHeight = 24;
+    constexpr int kSwitchWidth  = ui::Tokens::switchWidth;
+    constexpr int kSwitchHeight = ui::Tokens::switchHeight;
 }
 
 EqPanel::EqPanel (ui::ModuleContext ctx)

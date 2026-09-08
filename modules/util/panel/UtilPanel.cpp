@@ -11,8 +11,8 @@ namespace
     constexpr int kSwitchGap = 8;
     constexpr int kMeterRow  = 100;
 
-    constexpr int kSwitchWidth  = 70;
-    constexpr int kSwitchHeight = 26;
+    constexpr int kSwitchWidth  = ui::Tokens::switchWidth;
+    constexpr int kSwitchHeight = ui::Tokens::switchHeight;
 }
 
 UtilPanel::UtilPanel (ui::ModuleContext ctx)
