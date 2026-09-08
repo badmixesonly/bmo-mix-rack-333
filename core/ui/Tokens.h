@@ -28,17 +28,126 @@ struct Tokens
     juce::Colour text1      { 0xff6f6f6f };   ///< legends, values
     juce::Colour text2      { 0xff9a9a9a };   ///< secondary, dimmed, disabled
 
-    juce::Colour knobFace   { 0xff97ddff };   ///< utility knob caps, the selected legend
+    juce::Colour knobFace   { 0xff97ddff };   ///< utility knob caps
     juce::Colour knobEdge   { 0xffa6a6a6 };   ///< single-element rings, disengaged switches
-    juce::Colour pointer    { 0xffffffff };   ///< pointers, rings, unselected legends
+
+    /** What a character knob's cap is mixed half way to -- see faceOf.
+
+        White in both appearances today. It is still a per-appearance token
+        rather than the literal `Colours::white` it was inside faceOf() until
+        0.2.2, because that literal was the one part of the palette a theme
+        could not reach, and because the knob treatments are meant to be able
+        to differ per appearance even while they happen not to. */
+    juce::Colour knobTint   { 0xffffffff };
+
+    // pointer, ringFace and meterInk were one `pointer` token, #ffffff, until
+    // 0.2.2. It was doing five jobs at once, and they stopped agreeing the
+    // moment the plate was allowed to go dark: a needle wants maximum contrast
+    // against its own face, an annulus wants to read as a raised ring on the
+    // plate, and a knob's pointer answers to the cap rather than to either.
+
+    /** The pointer on a knob cap, and the one thing that really differs
+        between the two appearances.
+
+        White on the pale plate, and 1.39-1.49:1 against the caps it is drawn
+        on -- Frosty's call, taken with the number in front of him: it is the
+        suite's look and he would rather have it than the contrast. Near-black
+        on the dark plate, where the caps are the lightest thing in the window
+        and dark is the handsome choice as well as the legible one, at about
+        9.5:1. */
+    juce::Colour pointer    { 0xffffffff };
+
+    /** The selector-ring annulus on a band -- BMO EQ's frequency switches.
+
+        White on the pale plate, where it measures 1.15:1 and is defined by the
+        two hairline circles drawn around it rather than by its own value. That
+        is the suite's look and it stays. On the dark plate the same white ring
+        became the brightest thing in the window, so the dark set takes it to a
+        middle grey -- see darkTokens. */
+    juce::Colour ringFace   { 0xffffffff };
+    juce::Colour meterInk   { 0xffffffff };   ///< VU needle, ticks and printed scale
+
+    /** The plate a needle meter's scale is printed on.
+
+        Lightened from #3a3a3a in 0.2.2. White numbers were never the limit --
+        they still read 9.41:1 here, and would survive a face two steps
+        lighter again. What stops it is the hot zone: the amber that marks
+        0 VU and above is 4.68:1 on this face and 4.51:1 one step lighter, and
+        the red washes visibly toward pink as the face comes up. So the meter
+        is as light as its own warning colour allows, not as light as its
+        numbers allow.
+
+        A token rather than a panel constant since 0.2.2, which is what lets a
+        dark theme raise it above the plate -- a meter window that reads as lit
+        rather than as a hole. */
+    juce::Colour meterFace  { 0xff464649 };
+
     juce::Colour track      { 0xff4fb8e8 };   ///< dotted gain tracks and their plus/minus
     juce::Colour trackFill  { 0xff7fd0f2 };   ///< highlights derived from the track colour
 
-    juce::Colour switchOff  { 0xffa6a6a6 };
-    juce::Colour switchOn   { 0xfff08eb5 };   ///< an engaged switch, when not the accent
-    juce::Colour switchAlt  { 0xff4cacdc };   ///< the deeper azure of the Hi-Q switch
+    // Darkened from #a6a6a6 in 0.2.2: at the old value a disengaged switch
+    // put its white label at 2.43:1, which is close enough to the 1.98-2.55:1
+    // of an *engaged* one that on and off were told apart by hue alone.
+    juce::Colour switchOff  { 0xff6f7076 };
+
+    /** Secondary switches: Hi-Q, Auto, Mono. Module-specific functions, but
+        none of them is the module's bypass, so none takes the module's colour.
+
+        Was #4cacdc until 0.2.2, which sat 1.13:1 from `track` -- the same blue
+        by any measure that matters, arrived at twice. It now carries track's
+        value outright. Kept as its own token rather than folded into `track`
+        because the two mean different things and a theme may want to separate
+        them again -- equal here by intent, which is what `switchOn` was not:
+        a second name for BMO EQ's pink, one channel off it, and deleted in
+        0.2.2 once nothing was left using it. */
+    juce::Colour switchAlt  { 0xff4fb8e8 };
+
+    /** Polarity inversion, wherever it appears.
+
+        **The rule, for any module added later: a polarity switch is this
+        colour.** Not the module's accent, not switchAlt. It flips phase and
+        nothing else, it means exactly the same thing on every panel in the
+        suite, and it is the one control a person hunts for by sight rather
+        than by reading -- so it is the one that most has to look identical
+        everywhere. Before 0.2.2 it lit in BMO EQ's pink, the Saturator's
+        orange and Util's green.
+
+        White, so an engaged polarity switch is the brightest thing in a row
+        of switches and the state reads as an inversion: dark fill with a
+        light label off, light fill with a dark one on. It is the only lit
+        colour in the suite that carries no hue, which suits the only control
+        in the suite that is not an amount of anything. */
+    juce::Colour polarity   { 0xffffffff };
+
+    /** BMO Util's gain, and nothing else yet.
+
+        It behaves exactly like INPUT and OUTPUT -- same range, same control --
+        and until 0.2.3 it was drawn as one of them, in `track`, in the
+        `utility` style. That said it *was* one of them, and it is not: INPUT
+        and OUTPUT are the pair every module begins and ends with, trims either
+        side of whatever the module does. Util's gain is the thing Util does.
+        Same behaviour, different job, so it gets its own rules.
+
+        BMO Opto's old lavender, unused since that module went greyscale in
+        0.2.2. A placeholder that differentiates rather than a colour chosen
+        for this knob -- when one is chosen, change it here. */
+    juce::Colour utilGain   { 0xff9c71c3 };
 
     juce::Colour accent     { 0xfff08cb4 };   ///< the module's own colour; see ModuleDef
+
+    /** What a module uses in place of its accent when it is deliberately
+        showing no colour identity -- BMO Opto's Tele mode, which runs the
+        whole panel in greyscale so that Stressed reads as the louder of the
+        two by colour alone.
+
+        Not luminance-matched to any accent, and it cannot be: the four
+        accents survive pale knob caps at 1.2-1.3:1 against the plate because
+        hue separates them from it, and a grey has no hue to spend. Matched
+        for lightness this would be #b8b8b8 and its cap would land at 1.19:1
+        with nothing else to tell it from the faceplate. This is a step darker
+        so the cap reads at 1.28:1, inside the range the coloured caps already
+        occupy. */
+    juce::Colour neutral    { 0xffababab };
 
     juce::Colour meterLow   { 0xff6bbf7a };
     juce::Colour meterHigh  { 0xffe0b040 };
@@ -46,23 +155,176 @@ struct Tokens
     juce::Colour meterGr    { 0xff4fb8e8 };   ///< gain reduction, for the modules that show it
 
     //== Fixed, not themable ===================================================
+
+    /** Every switch in the suite, in px.
+
+        One constant rather than four, because four is what let them drift to
+        56x24, 62x26, 70x26 and 70x26 -- three sizes across four modules that
+        sit side by side in a rack. BMO Util and BMO Opto were already here;
+        BMO EQ's row was the one that looked undersized, 180 px of switches in
+        a 260 px well.
+
+        A layout value, so it lives with the corner radius and the stroke
+        weights rather than with the colours: a theme cannot reach it and so
+        cannot break a panel with it. */
+    static constexpr int switchWidth  = 70;
+    static constexpr int switchHeight = 26;
+
+    /** Between two switches, whether they sit in a row or a stack. Was 6 in
+        BMO EQ and the Saturator against 8 in Util and Opto -- the same drift
+        the sizes had, one number smaller. */
+    static constexpr int switchGap    = 8;
+
+    /** How wide a utility gain knob -- INPUT, OUTPUT, Util's GAIN -- may draw.
+
+        One number, because those three are the same control wherever they
+        appear and were drawing at four different sizes: 56 in BMO EQ, 78 and
+        98 in the Saturator, 104 in Util. The row each sits in still differs
+        per panel; this caps the knob inside it, so a taller row buys the
+        caption room rather than a bigger circle.
+
+        56 is what BMO EQ can afford and therefore what the suite can afford.
+        Its column carries three bands, a filter, a switch row and two gain
+        knobs inside the common 688, with four pixels to spare -- so it is the
+        panel that sets this number, and the others come down to meet it. */
+    static constexpr int gainKnobSide = 56;
+
+    /** Point size for INPUT's and OUTPUT's names, against 15 for a knob whose
+        setting you read off the panel.
+
+        These two are named so you can find them, not so you can watch them.
+        11 puts them a step under the 13 pt section legends, which is the
+        order they should be read in. */
+    static constexpr float gainCaptionSize = 11.0f;
+
     static constexpr float corner       = 3.0f;
     static constexpr float hairlineWeight = 1.0f;
     static constexpr float knobStroke   = 2.2f;
     static constexpr float trackGap     = 10.0f;   ///< face edge to the dotted track
+
+    /** Ring edge to the dotted track, for a gain that sits inside a selector.
+
+        Tighter than `trackGap` because the space is not the same space. A
+        utility knob has ten clear pixels between its face and its track; a
+        band's gain has a ring drawn around it and its legend clamped to the
+        cell height above that. */
+    static constexpr float concentricTrackGap = 4.5f;
     static constexpr float legendGap    = 12.0f;   ///< track to the legend
-    static constexpr float filterLegendGap = 20.0f; ///< a filter has no track, so one gap carries two
+    /** Knob edge to the legend on a filter. Half what it was: at 20 the
+        numbers read as a separate ring floating around the dial rather than as
+        its own markings. Frosty's call, on a render. Only BMO EQ's low cut is
+        a filter, so this reaches nothing else. */
+    static constexpr float filterLegendGap = 10.0f;
 };
 
-/** Pale version of an accent for a knob face: the accent halfway to white. */
+//== Derived colours ==========================================================
+//
+// A module states one colour, its accent, and everything else it needs is
+// computed from that colour and the plate underneath it. BMO Opto is why:
+// its lavender is unreadable as ink and unreadable under white text, so the
+// panel hardcoded #9c71c3 for its captions -- against the rule in
+// core/AGENTS.md that tokens are the only place colours live. It broke the
+// rule because the token it needed did not exist. Module six would have
+// hand-rolled its own hex for the same reason.
+//
+// Deriving against the *current* plate rather than a fixed one is also what
+// makes a dark theme nearly free: on #efefef the accents have to be darkened
+// hard to be legible, and on a dark plate all four already clear 7:1, so the
+// same call returns the accent untouched.
+
+/** WCAG 2.x contrast ratio, 1.0 to 21.0. Order does not matter. */
+float contrastRatio (juce::Colour, juce::Colour) noexcept;
+
+/** The accent, moved away from `ground` until it clears `minRatio` against
+    it -- darkened on a pale plate, lightened on a dark one. Hue is preserved,
+    so the result still reads as the module's own colour.
+
+    This is what a caption, a section legend and a selected legend are set in.
+    4.5:1 is the floor for text this size. */
+juce::Colour accentTextOn (juce::Colour accent, juce::Colour ground,
+                           float minRatio = 4.5f) noexcept;
+
+/** Ink for text drawn *on* a filled accent -- an engaged switch. A darkened
+    step of the fill's own hue rather than flat black, so the switch stays
+    monochromatic. White was 1.98-2.55:1 on the four accents. */
+juce::Colour onAccentOf (juce::Colour fill, float minRatio = 4.5f) noexcept;
+
+/** A module's own colour used as ink on the plate: a knob's caption, a section
+    legend, the selected position on a band. Paired with `faceOf`, and the two
+    trade places between the appearances.
+
+    On the pale plate the cap is a wash of the accent and the ink is the accent
+    stepped down until it reads -- the wash would vanish as text there.
+
+    On the dark plate they swap. The cap carries the module's colour at full
+    strength, which is what a knob wants on a dark panel, and the ink is the
+    wash, which is what text wants: 9.07-9.73:1 against the plate, against the
+    5.87-6.84:1 the raw accent managed. Both directions come out better than
+    they went in, which is why this is a swap and not a compromise. */
+juce::Colour accentInk (juce::Colour accent) noexcept;
+
+/** The current tokens: the built-in set for whichever appearance is chosen,
+    with whatever the user's theme file overrides on top. */
+const Tokens& tokens() noexcept;
+
+//== Appearance ===============================================================
+//
+// Light or dark, stored once per machine rather than per plugin instance and
+// per project. It is not a parameter: specs() is frozen and append-only, a
+// parameter would be automatable and saved into every session, and a look is
+// not something a session should carry. See modules/eq/params.h.
+//
+// Every open editor already polls for theme changes once a second, so the
+// choice reaches every instance -- standalone and in a rack, this plugin and
+// the one in the next track -- without any of them knowing about each other.
+
+/** The built-in dark palette. The light one is `Tokens {}`. */
+Tokens darkTokens() noexcept;
+
+/** Where the appearance is remembered: one small JSON file beside the themes. */
+juce::File uiPreferenceFile();
+
+bool isDarkMode() noexcept;
+
+/** Writes the preference and applies it here immediately; other open editors
+    pick it up on their next poll. */
+void setDarkMode (bool);
+
+/** Chooses an appearance for **this process only**: the machine-wide
+    preference is neither written nor read again, and the theme poll stops
+    touching the appearance.
+
+    `setDarkMode` is the one a user's click goes through, and it persists. This
+    one deliberately does not, because a tool that renders the dark palette
+    should not flip the appearance of every plugin open on the machine, and
+    should not leave a preference changed behind it if it falls over.
+
+    It exists because there was no other way to see the dark set without
+    changing that preference — which is a large part of why half the faults on
+    the ui-editor branch existed in one appearance only, against a house rule
+    that says to check both every time. See `tools/snapshot`'s
+    `appearance=dark|light`. */
+void overrideAppearance (bool shouldBeDark);
+
+/** A character knob's cap -- and see `accentInk`, which is the other half of
+    this and trades places with it between the appearances.
+
+    On the pale plate the cap is the accent washed half way to `knobTint`: the
+    accent at full strength would be a very loud knob on a near-white panel.
+    On the dark plate it is the accent itself, because there it is not loud, it
+    is the module's colour reading properly for the first time -- 5.87-6.84:1
+    against the plate with the pointer at 6.13-7.14:1 on top of it.
+
+    Mixing the accent toward the *dark plate* was tried first and rejected on
+    sight: pink went to a clean maroon and green to a deep green, but the
+    Saturator's orange landed on a brown. Lifting the accent's saturation was
+    tried second and measured fine, and the caps shouted. Neither number said
+    anything was wrong, which is the argument for rendering over computing. */
 inline juce::Colour faceOf (juce::Colour accent) noexcept
 {
-    return accent.interpolatedWith (juce::Colours::white, 0.5f);
+    return isDarkMode() ? accent
+                        : accent.interpolatedWith (tokens().knobTint, 0.5f);
 }
-
-/** The current tokens. The built-in set, with whatever the user's theme file
-    overrides on top. */
-const Tokens& tokens() noexcept;
 
 //== Theming (option A from the plan: a flat JSON file of token -> hex) ========
 //
@@ -87,7 +349,10 @@ bool pollTheme();
 /** Every token name the theme file may set, for writing a template. */
 juce::StringArray tokenNames();
 
-/** Applies a parsed theme object over the built-in tokens. Exposed for tests. */
-Tokens tokensFromJson (const juce::var& object);
+/** Applies a parsed theme object over `base`, which defaults to the light
+    built-in set. A theme is an overlay, not a whole palette, so choosing dark
+    and then hand-editing two colours works the way it reads. Exposed for
+    tests. */
+Tokens tokensFromJson (const juce::var& object, Tokens base = Tokens {});
 
 } // namespace bmo::ui

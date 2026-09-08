@@ -24,14 +24,20 @@ void BmoLookAndFeel::refreshColours()
     setColour (juce::PopupMenu::backgroundColourId,       t.plateEdge);
     setColour (juce::PopupMenu::textColourId,             t.text1);
     setColour (juce::PopupMenu::highlightedBackgroundColourId, t.trackFill);
-    setColour (juce::PopupMenu::highlightedTextColourId,  t.pointer);
+    setColour (juce::PopupMenu::highlightedTextColourId,  onAccentOf (t.trackFill));
 
     // The preset strip is built from TextButtons, which otherwise come out in
     // JUCE's default blue and fight the scheme.
     setColour (juce::TextButton::buttonColourId,   t.plate);
     setColour (juce::TextButton::buttonOnColourId, t.trackFill);
     setColour (juce::TextButton::textColourOffId,  t.text1);
-    setColour (juce::TextButton::textColourOnId,   t.pointer);
+    setColour (juce::TextButton::textColourOnId,   onAccentOf (t.trackFill));
+
+    // Left transparent so that "unset" is the common case: drawToggleButton
+    // derives an engaged switch's label from its own fill unless the switch
+    // names one. JUCE's own default here is opaque, which would have made
+    // every switch look like it had asked for something.
+    setColour (juce::ToggleButton::textColourId, juce::Colours::transparentBlack);
 
     setColour (juce::AlertWindow::backgroundColourId, t.plateEdge);
     setColour (juce::AlertWindow::textColourId,       t.text1);
@@ -57,8 +63,11 @@ void BmoLookAndFeel::drawDottedArc (juce::Graphics& g, juce::Point<float> centre
                                     float startAngle, float endAngle, juce::Colour colour,
                                     float dotSize)
 {
+    // std::abs, because a sweep may run backwards -- a control whose value
+    // rises anti-clockwise hands this a negative span, and the dot count came
+    // out negative and clamped to the minimum eight.
     const auto span = endAngle - startAngle;
-    const auto count = juce::jlimit (8, 96, juce::roundToInt (radius * span * 0.16f));
+    const auto count = juce::jlimit (8, 96, juce::roundToInt (radius * std::abs (span) * 0.16f));
 
     g.setColour (colour);
 
@@ -107,7 +116,7 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         ring.addCentredArc (centre.x, centre.y, mid, mid, 0.0f, 0.0f,
                             juce::MathConstants<float>::twoPi, true);
 
-        g.setColour (dim (t.pointer));
+        g.setColour (dim (t.ringFace));
         g.strokePath (ring, juce::PathStrokeType (thickness));
 
         g.setColour (dim (t.knobEdge));
@@ -120,7 +129,11 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         marker.addCentredArc (centre.x, centre.y, mid, mid, 0.0f,
                               angle - 0.10f, angle + 0.10f, true);
 
-        g.setColour (dim (t.knobFace));
+        // Which position the band is switched to. Derived against the ring it
+        // is drawn on, not the plate: as the shared knobFace azure it measured
+        // 1.49:1 on the white annulus, and this marker is the only thing on a
+        // band that says what frequency is selected.
+        g.setColour (dim (accentTextOn (moduleAccent, t.ringFace)));
         g.strokePath (marker, juce::PathStrokeType (thickness));
         return;
     }
@@ -137,11 +150,20 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         const auto given = knob != nullptr ? knob->getTrackRadius() : 0.0f;
         const auto track = given > 0.0f ? given : radius + Tokens::trackGap;
 
-        // The track stops just clear of each symbol rather than running dots
-        // through it.
-        constexpr float symbolClearance = 0.11f;
+        // Signed with the sweep. The inset pulls the symbols in from the ends;
+        // on a sweep that runs backwards, adding it to the start and taking it
+        // off the end pushes them out past the ends instead.
+        const auto symbolInset = endAngle >= startAngle ? 0.11f : -0.11f;
 
-        drawDottedArc (g, centre, track, startAngle + symbolClearance, endAngle - symbolClearance,
+        // The dotted ring stops short of the sweep's ends, and the plus and
+        // minus are placed on those two terminal dots rather than beyond them.
+        // They then read as the two ends of the ring itself, in its own
+        // rhythm, instead of as a pair of marks parked just outside it -- at
+        // this radius the old gap was about four pixels of nothing.
+        const auto minusAngle = startAngle + symbolInset;
+        const auto plusAngle  = endAngle   - symbolInset;
+
+        drawDottedArc (g, centre, track, minusAngle, plusAngle,
                        dim (accent.withAlpha (enabled ? 0.55f : 0.2f)), 1.6f);
 
         // The heavy dot marks the control's rest position and stays there: zero
@@ -161,18 +183,27 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         // drawing beats setting: they match each other exactly, at any size,
         // on any machine.
         {
-            const auto arm = 5.0f;
-            const auto weight = 2.6f;
+            // A gain sitting inside a selector ring has far less room for these
+            // than a knob with a bare face: its track runs in the gap between
+            // the ring's outer edge and the frequency legend, which is about
+            // eight and a half pixels. At the bare-face size the symbols need
+            // fourteen and are drawn straight over the ring. A knob that was
+            // given its track radius is one of those; one that works its own
+            // out is not.
+            const auto concentric = knob != nullptr && knob->getTrackRadius() > 0.0f;
+
+            const auto arm    = concentric ? 2.8f : 4.2f;
+            const auto weight = concentric ? 1.8f : 2.3f;
 
             g.setColour (dim (accent));
 
             if (range.getStart() < 0.0)
             {
-                const auto minusAt = at (startAngle, track);
+                const auto minusAt = at (minusAngle, track);
                 g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (minusAt));
             }
 
-            const auto plusAt = at (endAngle, track);
+            const auto plusAt = at (plusAngle, track);
             g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (plusAt));
             g.fillRect (juce::Rectangle<float> (weight, arm * 2.0f).withCentre (plusAt));
         }
@@ -194,11 +225,39 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
 }
 
 //==============================================================================
+juce::Rectangle<float> BmoLookAndFeel::toggleLabelBox (const juce::ToggleButton& button)
+{
+    return button.getLocalBounds().toFloat().reduced (3.0f);
+}
+
+juce::Font BmoLookAndFeel::toggleLabelFont (const juce::ToggleButton& button)
+{
+    return labelFont (toggleLabelBox (button).getHeight() * 0.62f, true);
+}
+
+float BmoLookAndFeel::toggleLabelOverflow (const juce::ToggleButton& button)
+{
+    const auto box  = toggleLabelBox (button);
+    const auto font = toggleLabelFont (button);
+    const auto text = button.getButtonText();
+
+    if (! text.contains (phaseGlyph()))
+        return juce::GlyphArrangement::getStringWidth (font, text) - box.getWidth();
+
+    // Drawn, not set: the circle is a path of radius height * 0.30, and
+    // anything left over -- " L", " R" -- is set beside it with 4 px of air.
+    const auto rest = text.replace (phaseGlyph(), "").trim();
+    const auto restWidth = rest.isEmpty() ? 0.0f
+                         : juce::GlyphArrangement::getStringWidth (font, rest) + 4.0f;
+
+    return box.getHeight() * 0.60f + restWidth - box.getWidth();
+}
+
 void BmoLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& button,
                                        bool shouldDrawHighlighted, bool shouldDrawDown)
 {
     const auto& t = tokens();
-    const auto bounds = button.getLocalBounds().toFloat().reduced (3.0f);
+    const auto bounds = toggleLabelBox (button);
     const auto on = button.getToggleState();
 
     // The switch's engaged colour is set by whoever made it: the module's
@@ -225,13 +284,25 @@ void BmoLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& bu
     g.setColour (fill);
     g.fillRoundedRectangle (bounds, Tokens::corner);
 
-    const auto ink = t.pointer.withAlpha (button.isEnabled() ? 1.0f : 0.4f);
+    // Ink derived from the fill it sits on rather than always white: white
+    // measured 1.98-2.55:1 on the four accents, and 2.43:1 on the old pale
+    // switchOff, so a switch's label was equally hard to read in both states
+    // and on/off was carried by hue alone.
+    //
+    // A switch may name its own engaged ink through textColourId, which
+    // refreshColours() clears so that "unset" is transparent and means
+    // "derive it". Polarity is why: its fill is white in every module, so
+    // deriving gives black in every module, and the label is the one part of
+    // that switch left free to say which module it belongs to.
+    const auto named = button.findColour (juce::ToggleButton::textColourId);
+    const auto ink = ((on && ! named.isTransparent()) ? named : onAccentOf (fill))
+                         .withAlpha (button.isEnabled() ? 1.0f : 0.4f);
 
     // The polarity switch is drawn, not set: typing the slashed O gives back
     // whatever the machine maps it to, which on several faces is a plain O and
     // says nothing.
     const auto text = button.getButtonText();
-    const auto font = labelFont (bounds.getHeight() * 0.62f, true);
+    const auto font = toggleLabelFont (button);
 
     if (text.contains (phaseGlyph()))
     {
