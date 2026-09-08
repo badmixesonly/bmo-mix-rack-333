@@ -30,12 +30,27 @@ PlainKnob::PlainKnob (juce::RangedAudioParameter& parameter, const juce::String&
                       Knob::Style style, float faceScale, juce::Colour accent, juce::Colour captionColourIn)
     : caption (captionText), captionColour (captionColourIn), accentColour (accent)
 {
+    // A component name, so a layout test can find this knob by the caption a
+    // reader sees. JUCE hands it to the accessibility layer as well.
+    setName (captionText);
+
     knob.setStyle (style);
     knob.setAccent (accent);
     knob.setFaceScale (faceScale);
     addAndMakeVisible (knob);
 
     attachment = std::make_unique<juce::SliderParameterAttachment> (parameter, knob);
+}
+
+juce::Rectangle<int> PlainKnob::captionBox() const
+{
+    return { 0, knob.getBottom(), getWidth(), captionRow() - 4 };
+}
+
+float PlainKnob::captionOverflow() const
+{
+    return juce::GlyphArrangement::getStringWidth (captionFont (captionSize), caption)
+             - (float) captionBox().getWidth();
 }
 
 void PlainKnob::paint (juce::Graphics& g)
@@ -75,7 +90,7 @@ void PlainKnob::paint (juce::Graphics& g)
     // knob centres in a taller area, and a caption pinned to the foot of the
     // cell would drift away from it by half the difference, and drift further
     // every time the type got smaller.
-    const auto box = juce::Rectangle<int> (0, knob.getBottom(), getWidth(), captionRow() - 4);
+    const auto box = captionBox();
 
     drawLabel (g, caption, box.toFloat(),
                juce::Justification::centred, captionFont (captionSize),
@@ -379,6 +394,7 @@ void ConcentricBand::resized()
 SwitchButton::SwitchButton (juce::RangedAudioParameter& parameter, const juce::String& text,
                             juce::Colour tint)
 {
+    setName (text);
     button.setButtonText (text);
     button.setColour (juce::ToggleButton::tickColourId, tint);
     addAndMakeVisible (button);

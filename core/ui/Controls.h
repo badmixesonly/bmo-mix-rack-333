@@ -50,6 +50,15 @@ public:
         component once the side is capped. */
     void setKnobSide (int maxSide);
 
+    /** How much wider the caption is than the room it is drawn in, in pixels.
+        Zero or less fits; anything above it is clipped on the panel.
+
+        Here rather than in the test that asserts on it, because it has to use
+        the same box and the same font `paint` does. BMO Opto's MAKEUP drew as
+        MAKEU for a full release -- a five-character overflow nobody saw -- and
+        a test that measured it its own way could have agreed with the bug. */
+    float captionOverflow() const;
+
     /** Point size for the name under the knob. 15 unless set.
 
         The row the name is drawn in follows it, and the name is drawn against
@@ -65,6 +74,10 @@ private:
         had when the number was fixed -- so a knob that never sets a size lays
         out exactly as it did. */
     int captionRow() const { return juce::roundToInt (captionSize * 1.2f) + 4; }
+
+    /** The box the caption is drawn in. One definition, read by `paint` and by
+        `captionOverflow`, so the drawing and the assertion cannot disagree. */
+    juce::Rectangle<int> captionBox() const;
 
     juce::String caption;
     juce::Colour captionColour;   ///< transparent means "derive from accentColour"

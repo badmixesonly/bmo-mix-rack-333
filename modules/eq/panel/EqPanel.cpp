@@ -43,6 +43,14 @@ EqPanel::EqPanel (ui::ModuleContext ctx)
     for (auto* k : { &inputGain, &outputLevel })
         styleTrimKnob (*k);
 
+    // A band is the one control here with no caption of its own, so it gets
+    // the name of the rule it sits under. tests/ui/LayoutTests.cpp pins this
+    // column to absolute rows and finds the bands by these names.
+    high.setName     ("HIGH");
+    mid.setName      ("MID");
+    low.setName      ("LOW");
+    highPass.setName ("LO-CUT");
+
     // Polarity is white in every module; its label is what says which module.
     phase.setActiveInkFrom (context.def.accent);
 }
