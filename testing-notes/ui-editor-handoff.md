@@ -261,10 +261,9 @@ reaching for a screenshot and a squint.
   face; the circle is even and the radius is at the cell's limit, so more room
   means a taller row, and BMO EQ has no vertical slack — measured, no empty
   band over 16 px anywhere on the panel.
-- **Meter modes cannot be rendered.** `IN` and `GR` are UI state rather than
-  parameters, so `tools/snapshot` can only ever show `OUT`. Every VU change on
-  this branch was verified in one mode of three. This is the one verification
-  hole left, and `docs/ui-workflow-brief.md` §2 is the fix.
+- **~~Meter modes cannot be rendered.~~ Closed 8 Sep** by §8b:
+  `snapshot opto out.png ui.meter=GR`. It found a fault on its first use --
+  in GR the needle rests on top of the `0` -- which is open below.
 - **Section rules line up at the ends and nowhere else.** The input and output
   sections are `ui::ModulePanel`'s now — `takeInputSection` off the top,
   `takeOutputSection` off the bottom — so every panel that opts in puts its
@@ -346,27 +345,47 @@ then asserted against the derivation.
 the rack's own composition, contrast ratios, and BMO Opto's meter modes, which
 cannot be laid out differently because they are not parameters — that is 8b.
 
-### 8b. Meter-mode injection
+### 8b. Meter-mode injection — **done, 8 Sep**
 
-`DynamicsMeter::Mode` is UI state set through `setMode`, not a parameter — and
-rightly, since `specs()` is frozen and append-only and a meter mode does not
-belong in a session. But it means `tools/snapshot` can only ever render `OUT`,
-so every VU change on this branch was verified in one mode of three, including
-0.2.3's resizing of the IN/GR/OUT row itself.
+`ui::ModulePanel::setUiState (key, value)` is virtual and returns false by
+default. `OptoPanel` takes `meter=IN|GR|OUT`. `tools/snapshot` routes
+`ui.<key>=<value>` to every panel it finds, and **accepted by none is fatal** —
+not a warning, unlike an unknown parameter, because a render that quietly
+ignored the mode it was asked for is a picture of the wrong thing that nothing
+downstream can tell from the right one.
 
-The route is a virtual on `ui::ModulePanel` — `setUiState(key, value)`,
-returning false for anything it does not know — overridden by `OptoPanel` to
-accept `meter=IN|GR|OUT`, and an arg in `tools/snapshot/main.cpp` that routes
-`ui.<key>=<value>` to it. Roughly forty lines and it touches no DSP, no
-parameter and no panel geometry.
+    snapshot opto out.png ui.meter=GR
 
-Make it refuse what it does not understand rather than ignoring it. The tool
-already learned this once: a mistyped choice name used to come back 0.0 from
-`getFloatValue()` and render a plausible panel of entirely the wrong thing.
-`realValueFor` now refuses. `setUiState` should too.
+Three renders that differ, GR on a 0..24 dB scale rather than a VU one:
 
-**Done looks like:** three renders of BMO Opto that differ, and the GR one
-showing a needle on a 0..24 dB scale rather than a VU one.
+    9f40036c894aaa3d  IN
+    e59f6036cde25477  GR
+    2ac0fc7753057b5e  OUT — unchanged from the baseline
+
+Opto's three `onClick` handlers were three copies of "set the mode, light one
+of three buttons"; they and `setUiState` now come through one
+`selectMeterMode`, so a mode set from the command line lands in exactly the
+state a click leaves.
+
+### And it immediately found one — **open, Frosty's call**
+
+**In GR, the needle passes straight through the `0` label.** The scale runs
+0..24 left to right, so at zero reduction the needle rests at the left end,
+which is exactly where the 0 is drawn. The two occupy the same pixels.
+
+This is the *default* state of that mode — a meter showing no reduction is
+what BMO Opto looks like whenever it is not working — and it is the third time
+this branch has been bitten by §6's **check the opening state specifically**,
+after the high shelf's rest dot landing on the band marker and COLOR reading
+off while the DSP held it on. On the VU scale the same corner is clear, because
+-20 sits well above where that needle rests.
+
+Nobody had seen it because until this commit the mode could not be rendered.
+
+Not fixed here: where a legend sits is character, and the options trade against
+each other — move the 0 inboard, drop it from the scale the way a VU has no
+label at its own left end, shorten the needle's tail, or start the arc further
+left. Worth a `sheet` of two or three candidates rather than a quiet pick.
 
 ---
 
