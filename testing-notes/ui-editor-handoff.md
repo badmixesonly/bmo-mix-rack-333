@@ -4,7 +4,7 @@ What the `ui-editor` branch did, why each thing is the way it is, what was
 tried and thrown away, and what is still open. Written for someone picking
 this up cold.
 
-Thirty-seven commits, no parameter, spec, preset or DSP file touched by any of
+Thirty-nine commits, no parameter, spec, preset or DSP file touched by any of
 them. All ctest suites pass at every commit -- nine of them until 8 Sep, ten
 since `ui_layout` joined them. If you change anything here and a DSP test
 moves, something has gone wrong that this branch was not supposed to be able
@@ -425,6 +425,37 @@ The meter draws identically in both appearances — `meterFace` is deliberately
 the same in each and `meterInk` has no dark variant — so this one is
 appearance-independent, unusually for this branch.
 
+### The GR scale, while the code was open — **Frosty's call, 8 Sep**
+
+Once the numbers were placed correctly the increments were revisited, and the
+scale is now fine where reduction is actually read and coarse where it is not.
+
+- Inked figures step 3 to 12 and 6 above it — **0 3 6 9 12 18 24** — with
+  unstruck ticks at **1 2 4 5** and **15 21**, so the arc reads as one
+  continuous scale while only the round figures are printed. Same rule as the
+  VU scale beside it.
+- The sweep gives 0..6 dB more room than a linear map, at an exponent of
+  **0.7**.
+
+The exponent is the part worth keeping. It is not decoration: the tightest
+inked pair is 9 to 12 and it clears **9.0 px**, where the same figures on an
+even sweep clear 7.8 and the `vuScale` comment treats about 6 as the point
+figures stop clearing. Weighting the sweep buys back more room than the extra
+figures cost — which is why this option is both the finest at the low end and
+the least crowded of the ones rendered.
+
+It also makes the needle **non-linear in dB**, moving further per dB at small
+reductions. That is the point of it, and VU already does the same. Display
+only: no DSP, no parameter, no spec.
+
+Candidates rendered before the call, with their tightest inked gap: step 4 even
+14.5 px, step 3 even 7.4, step 2 even 7.8, and this one 9.0.
+
+**Every default render is byte-identical after this change**, because the
+default meter mode is OUT and only the GR scale moved. The change can be seen
+solely through `ui.meter=GR` — which makes it the first piece of work on this
+branch that would have been invisible before §8b.
+
 ---
 
-*Branch `ui-editor`, 37 commits on top of `main` at 6fdf8d9.*
+*Branch `ui-editor`, 39 commits on top of `main` at 6fdf8d9.*
