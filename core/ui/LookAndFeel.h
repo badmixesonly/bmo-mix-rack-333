@@ -91,6 +91,23 @@ public:
         makes a list of names slower to read, so that keeps the system font. */
     juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override;
 
+    /** The box a toggle's label is drawn in, and the face it is set in.
+
+        One definition each, read by `drawToggleButton` and by the layout test
+        that asserts the label fits. Same discipline as
+        `PlainKnob::captionOverflow`: a fit test that derived the box its own
+        way could agree with the very bug it exists to catch. */
+    static juce::Rectangle<float> toggleLabelBox (const juce::ToggleButton&);
+    static juce::Font toggleLabelFont (const juce::ToggleButton&);
+
+    /** How much wider a toggle's label is than its box, in pixels; zero or
+        less fits.
+
+        A polarity switch is measured as what is actually drawn -- the slashed
+        circle is a path rather than a glyph, so its diameter is counted and
+        whatever is set beside it is added. */
+    static float toggleLabelOverflow (const juce::ToggleButton&);
+
     /** A ring of dots, used for the track around a gain control. */
     static void drawDottedArc (juce::Graphics&, juce::Point<float> centre, float radius,
                                float startAngle, float endAngle, juce::Colour, float dotSize);

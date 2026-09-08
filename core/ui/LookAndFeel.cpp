@@ -225,11 +225,39 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
 }
 
 //==============================================================================
+juce::Rectangle<float> BmoLookAndFeel::toggleLabelBox (const juce::ToggleButton& button)
+{
+    return button.getLocalBounds().toFloat().reduced (3.0f);
+}
+
+juce::Font BmoLookAndFeel::toggleLabelFont (const juce::ToggleButton& button)
+{
+    return labelFont (toggleLabelBox (button).getHeight() * 0.62f, true);
+}
+
+float BmoLookAndFeel::toggleLabelOverflow (const juce::ToggleButton& button)
+{
+    const auto box  = toggleLabelBox (button);
+    const auto font = toggleLabelFont (button);
+    const auto text = button.getButtonText();
+
+    if (! text.contains (phaseGlyph()))
+        return juce::GlyphArrangement::getStringWidth (font, text) - box.getWidth();
+
+    // Drawn, not set: the circle is a path of radius height * 0.30, and
+    // anything left over -- " L", " R" -- is set beside it with 4 px of air.
+    const auto rest = text.replace (phaseGlyph(), "").trim();
+    const auto restWidth = rest.isEmpty() ? 0.0f
+                         : juce::GlyphArrangement::getStringWidth (font, rest) + 4.0f;
+
+    return box.getHeight() * 0.60f + restWidth - box.getWidth();
+}
+
 void BmoLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& button,
                                        bool shouldDrawHighlighted, bool shouldDrawDown)
 {
     const auto& t = tokens();
-    const auto bounds = button.getLocalBounds().toFloat().reduced (3.0f);
+    const auto bounds = toggleLabelBox (button);
     const auto on = button.getToggleState();
 
     // The switch's engaged colour is set by whoever made it: the module's
@@ -274,7 +302,7 @@ void BmoLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& bu
     // whatever the machine maps it to, which on several faces is a plain O and
     // says nothing.
     const auto text = button.getButtonText();
-    const auto font = labelFont (bounds.getHeight() * 0.62f, true);
+    const auto font = toggleLabelFont (button);
 
     if (text.contains (phaseGlyph()))
     {

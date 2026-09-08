@@ -97,6 +97,18 @@ void collectKnobs (juce::Component& root, std::vector<bmo::ui::PlainKnob*>& out)
     }
 }
 
+/** Every SwitchButton under `root`. */
+void collectSwitches (juce::Component& root, std::vector<bmo::ui::SwitchButton*>& out)
+{
+    for (auto* child : root.getChildren())
+    {
+        if (auto* sw = dynamic_cast<bmo::ui::SwitchButton*> (child))
+            out.push_back (sw);
+
+        collectSwitches (*child, out);
+    }
+}
+
 //== The numbers ===============================================================
 //
 // ui::ModulePanel's own constants, written out as the literals its header
@@ -323,6 +335,99 @@ void checkCaptionsFit (bmo::ui::ModulePanel& panel, const juce::String& who)
     }
 }
 
+/** Every switch label fits its switch.
+
+    Switches are one size across the whole suite -- Tokens::switchWidth -- so a
+    label is only ever as wide as the word someone chose. Nothing measured
+    that until now; the knob captions were covered and the switches were not,
+    which is half the text on a panel. */
+void checkSwitchLabelsFit (bmo::ui::ModulePanel& panel, const juce::String& who)
+{
+    std::vector<bmo::ui::SwitchButton*> switches;
+    collectSwitches (panel, switches);
+
+    for (auto* sw : switches)
+    {
+        const auto overflow = sw->labelOverflow();
+
+        check (overflow <= 0.0f,
+               who + " switch '" + sw->getName() + "' label overflows its box by "
+                   + juce::String (overflow, 1) + " px");
+    }
+}
+
+//== The meter scales ==========================================================
+
+/** A printed scale is well formed.
+
+    These are the cheap invariants — no rendering, no component, just the
+    table. They exist because the reduction scale's fractions stopped being
+    computed on 8 Sep and became thirteen numbers typed by hand, and a
+    transposed pair in that list is invisible: the needle would simply run
+    backwards over a stretch of the dial and every other test would pass.
+
+    What is *not* checked here is crowding, which is the thing that actually
+    decides whether a figure can be added. That is a pixel question — it
+    depends on the label ring radius and on how many digits each figure has —
+    so `kMinInkedGap` below is a floor to catch someone jamming figures in, not
+    the real limit. Measure a new figure with `tools/inspect` before trusting
+    it; `testing-notes/ui-editor-handoff.md` carries the numbers. */
+void checkScale (const std::vector<bmo::ui::DynamicsMeter::ScalePoint>& scale,
+                 const juce::String& who, float lastValue)
+{
+    if (scale.size() < 2)
+    {
+        check (false, who + " scale needs at least two points");
+        return;
+    }
+
+    // The ends are the sweep. A scale that did not start at 0 or reach 1 would
+    // leave part of the dial unreachable by the needle.
+    check (scale.front().fraction == 0.0f,
+           who + " scale should start at fraction 0, starts at "
+               + juce::String (scale.front().fraction, 3));
+    check (scale.back().fraction == 1.0f,
+           who + " scale should end at fraction 1, ends at "
+               + juce::String (scale.back().fraction, 3));
+    check (scale.back().value == lastValue,
+           who + " scale should end at " + juce::String (lastValue, 1)
+               + ", ends at " + juce::String (scale.back().value, 1));
+
+    // Both axes strictly increasing. This is the one that catches a typo.
+    for (size_t i = 1; i < scale.size(); ++i)
+    {
+        check (scale[i].value > scale[i - 1].value,
+               who + " scale values must increase: " + juce::String (scale[i - 1].value, 1)
+                   + " then " + juce::String (scale[i].value, 1));
+
+        check (scale[i].fraction > scale[i - 1].fraction,
+               who + " scale fractions must increase: " + juce::String (scale[i - 1].fraction, 3)
+                   + " then " + juce::String (scale[i].fraction, 3)
+                   + " (at " + juce::String (scale[i].value, 1) + ")");
+    }
+
+    // A floor, not the real limit. See the note above.
+    constexpr float kMinInkedGap = 0.10f;
+
+    const bmo::ui::DynamicsMeter::ScalePoint* previousInked = nullptr;
+
+    for (const auto& p : scale)
+    {
+        if (! p.numbered)
+            continue;
+
+        if (previousInked != nullptr)
+            check (p.fraction - previousInked->fraction >= kMinInkedGap,
+                   who + " printed figures " + juce::String (previousInked->value, 1)
+                       + " and " + juce::String (p.value, 1) + " are only "
+                       + juce::String (p.fraction - previousInked->fraction, 3)
+                       + " of the sweep apart, under the " + juce::String (kMinInkedGap, 2)
+                       + " floor -- measure it before printing both");
+
+        previousInked = &p;
+    }
+}
+
 //== Driving it ================================================================
 
 struct Product
@@ -361,6 +466,92 @@ void withPanel (const Product& product, Fn&& body)
 }
 
 } // namespace
+
+//== The rack ==================================================================
+
+/** The rack is why the shared rows matter at all.
+
+    Each panel being internally correct is not the same as a rack reading as
+    one surface: put one slot a few pixels lower and every shared rule
+    misaligns while every per-panel assertion above still passes. So this
+    asserts the two things that turn panel-local rows into rack-wide
+    alignment -- that the slots sit on one baseline, and that the rules which
+    are supposed to line up actually land on the same absolute row.
+
+    testing-notes/ui-editor-handoff.md calls these hand-matched alignments
+    load-bearing for how a rack reads, and until now nothing watched them. */
+void checkRack (juce::Component& editor)
+{
+    std::vector<bmo::ui::ModulePanel*> panels;
+    collectPanels (editor, panels);
+
+    if (panels.size() != 4)
+    {
+        check (false, "rack should have four panels, has " + juce::String ((int) panels.size()));
+        return;
+    }
+
+    // One baseline. Every slot's panel is placed at the same y and the same
+    // height, which is what makes a panel-local row a rack-wide row.
+    const auto top = panels.front()->getY();
+
+    for (auto* panel : panels)
+    {
+        checkEquals (panel->getY(), top, "rack slot top");
+        checkEquals (panel->getHeight(), bmo::ui::ModulePanel::kContentHeight, "rack slot height");
+    }
+
+    // The panels tile without a gap or an overlap, so the plate reads as one
+    // surface rather than four cards.
+    auto ordered = panels;
+    std::sort (ordered.begin(), ordered.end(),
+               [] (auto* a, auto* b) { return a->getX() < b->getX(); });
+
+    for (size_t i = 1; i < ordered.size(); ++i)
+        checkEquals (ordered[i]->getX(), ordered[i - 1]->getRight(),
+                     "rack slot " + juce::String ((int) i) + " should start where the one before ends");
+
+    // The shared rules, as absolute rack rows rather than as "the same as each
+    // other" -- comparing them to one another would pass on a rack that put
+    // every slot equally wrong, which is the trap tests/dsp/OptoDspTests.cpp
+    // was written to avoid.
+    //
+    // A slot's panel starts under the product header and the slot bar:
+    // 28 + 24 = 52. So the output line is 52 + 566 and the input line 52 + 90.
+    constexpr int kSlotTop = 52;
+
+    checkEquals (top, kSlotTop, "rack slot top, absolutely");
+
+    int withOutputRule = 0, withInputRule = 0;
+
+    for (auto* panel : ordered)
+    {
+        const auto rules = ruleCentres (*panel);
+
+        for (auto centre : rules)
+        {
+            if (centre == kOutputRuleCentre)
+            {
+                ++withOutputRule;
+                checkEquals (panel->getY() + centre, kSlotTop + kOutputRuleCentre,
+                             "rack output rule row");
+            }
+            else if (centre == kInputRuleCentre)
+            {
+                ++withInputRule;
+                checkEquals (panel->getY() + centre, kSlotTop + kInputRuleCentre,
+                             "rack input rule row");
+            }
+        }
+    }
+
+    // util, eq and sat all put a rule on the output line; opto takes neither
+    // section and reserves nothing. eq and sat take the input section, util
+    // does not. If a module changes its mind about that, this is where it
+    // shows up rather than in a screenshot.
+    checkEquals (withOutputRule, 3, "rack panels sharing the output line");
+    checkEquals (withInputRule,  2, "rack panels sharing the input line");
+}
 
 /** Prints a panel's controls and rules. `ui_layout_tests --dump` is how you
     find out what a panel actually does before writing a number down about it,
@@ -408,9 +599,10 @@ int main (int argc, char** argv)
     for (const auto& product : all)
         withPanel (product, [&] (bmo::ui::ModulePanel& panel)
         {
-            checkWithinPanel  (panel, product.who);
-            checkNoOverlap    (panel, product.who);
-            checkCaptionsFit  (panel, product.who);
+            checkWithinPanel     (panel, product.who);
+            checkNoOverlap       (panel, product.who);
+            checkCaptionsFit     (panel, product.who);
+            checkSwitchLabelsFit (panel, product.who);
 
             checkEquals (panel.getHeight(), bmo::ui::ModulePanel::kContentHeight,
                          juce::String (product.who) + " panel height");
@@ -440,6 +632,48 @@ int main (int argc, char** argv)
         checkOutputRule             (panel, "util");
         checkReservesWithoutAdopting (panel, "util");
     });
+
+    // The meter scales. No component and no rendering: these are pure tables,
+    // and the reduction one is hand-placed, which is why it is worth checking.
+    checkScale (bmo::ui::DynamicsMeter::vuScale(), "VU", 3.0f);
+    checkScale (bmo::ui::DynamicsMeter::reductionScale(), "reduction", 24.0f);
+
+    // And the rack, which is the reason any of the shared rows exist.
+    {
+        auto rack = createRack();
+        rack->prepareToPlay (48000.0, 512);
+
+        rack->clearChain();
+
+        for (const auto* id : { "util", "eq", "sat", "opto" })
+            if (auto* def = rack->findModule (id))
+                rack->addModule (*def);
+            else
+                check (false, juce::String ("rack has no module ") + id);
+
+        std::unique_ptr<juce::AudioProcessorEditor> editor (rack->createEditorAndMakeActive());
+
+        if (editor == nullptr)
+            check (false, "rack has no editor");
+        else
+        {
+            checkRack (*editor);
+
+            std::vector<bmo::ui::ModulePanel*> panels;
+            collectPanels (*editor, panels);
+
+            for (auto* panel : panels)
+            {
+                checkWithinPanel     (*panel, "rack slot");
+                checkNoOverlap       (*panel, "rack slot");
+                checkCaptionsFit     (*panel, "rack slot");
+                checkSwitchLabelsFit (*panel, "rack slot");
+            }
+
+            rack->editorBeingDeleted (editor.get());
+            editor.reset();
+        }
+    }
 
     if (failures == 0)
         std::cout << "All ui layout tests passed.\n";

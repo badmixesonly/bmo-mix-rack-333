@@ -205,12 +205,20 @@ public:
     /** True while setLockedOn(true) is holding the switch engaged. */
     bool isLockedOn() const noexcept { return locked; }
 
+    /** How much wider the label is than the room it has, in pixels; zero or
+        less fits. The knob-caption equivalent is PlainKnob::captionOverflow,
+        and this exists for the same reason: MAKEUP clipped to MAKEU for a
+        whole release because nothing measured it. A switch's text is drawn by
+        the look and feel, so the measurement lives there too. */
+    float labelOverflow() const { return BmoLookAndFeel::toggleLabelOverflow (button); }
+
     /** Set the drawn state without writing to the parameter. For restoring a
         switch to what its parameter says after a lock lifts. */
     void setToggleStateSilently (bool);
 
 private:
     bool locked = false;
+
 
     juce::ToggleButton button;
     std::unique_ptr<juce::ButtonParameterAttachment> attachment;
@@ -305,19 +313,32 @@ public:
         constructed: a needle meter needs a dark one whatever the mode. */
     void setColours (juce::Colour accent, juce::Colour hot) noexcept;
 
-private:
-    void timerCallback() override;
-
-    /** One control point on the printed scale: a value in the mode's own
-        unit (dB relative to the VU reference, or dB of gain reduction),
-        where it sits across the needle's sweep, 0..1, and whether it is
-        numbered.
+    /** One control point on the printed scale: a value in the mode's own unit
+        (dB relative to the VU reference, or dB of gain reduction), where it
+        sits across the needle's sweep, 0..1, and whether it is numbered.
 
         Not every tick is numbered, because a VU scale crowds hard from -3
         upwards and printing all of it there is what made the numbers
-        unreadable. Hardware faceplates do the same: every tick is struck,
-        only the round ones are inked. */
+        unreadable, and the reduction scale is deliberately coarse above 12.
+        Hardware faceplates do the same: every tick is struck, only the round
+        ones are inked. */
     struct ScalePoint { float value; float fraction; bool numbered = true; };
+
+    /** The two printed scales.
+
+        Public because a scale is *painted* rather than placed, so it has no
+        bounds a layout test can read -- the same reason
+        `ui::ModulePanel::getRules` is public.
+
+        It earns it here: the reduction scale's fractions are hand-placed
+        rather than computed, so a typo in that table is silent and a render is
+        the only thing that would show it. Monotonicity and the endpoints can
+        be asserted without rendering anything. */
+    static const std::vector<ScalePoint>& vuScale();
+    static const std::vector<ScalePoint>& reductionScale();
+
+private:
+    void timerCallback() override;
 
     /** A std::vector rather than a juce::Array because the scales are written
         out as a braced list of braced pairs, and juce::Array's initialiser-list

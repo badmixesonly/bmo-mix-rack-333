@@ -584,10 +584,8 @@ float DynamicsMeter::fractionFor (float value, const std::vector<ScalePoint>& sc
     return scale.back().fraction;
 }
 
-void DynamicsMeter::paint (juce::Graphics& g)
+const std::vector<DynamicsMeter::ScalePoint>& DynamicsMeter::vuScale()
 {
-    const auto& t = tokens();
-
     // Approximates a classic VU faceplate: compressed toward -20, spread out
     // from 0 to +3, where 0 VU sits noticeably right of centre rather than
     // in the middle of the sweep. Not one real meter's calibration data --
@@ -606,12 +604,18 @@ void DynamicsMeter::paint (juce::Graphics& g)
     // clears by about 6 px, and every figure added between them takes that
     // back. Hardware faceplates ink only the round figures for the same
     // reason, and every tick is still struck here.
-    static const std::vector<ScalePoint> vuScale {
+    static const std::vector<ScalePoint> scale {
         { -30.0f, 0.00f, false },
         { -20.0f, 0.10f }, { -15.0f, 0.27f, false }, { -10.0f, 0.41f }, { -7.0f, 0.50f, false }, { -5.0f, 0.58f },
         { -3.0f, 0.67f, false }, { -2.0f, 0.72f, false }, { -1.0f, 0.78f, false }, { 0.0f, 0.85f },
         { 1.0f, 0.90f, false }, { 2.0f, 0.95f, false }, { 3.0f, 1.00f },
     };
+
+    return scale;
+}
+
+const std::vector<DynamicsMeter::ScalePoint>& DynamicsMeter::reductionScale()
+{
     // Reduction is read where it is small: two or three dB is a decision, and
     // twenty is a fact you already knew. So this scale is fine at the bottom
     // and coarse at the top, in two ways at once -- the inked figures step 3
@@ -654,7 +658,7 @@ void DynamicsMeter::paint (juce::Graphics& g)
     // The needle is non-linear in dB as a result -- it moves further per dB at
     // small reductions, which is the point of all of this, and which VU
     // already does. Display only: no DSP, no parameter, no spec.
-    static const std::vector<ScalePoint> grScale {
+    static const std::vector<ScalePoint> scale {
         { 0.0f,  0.000f },        { 1.0f,  0.100f, false }, { 2.0f,  0.190f, false },
         { 3.0f,  0.265f },        { 4.0f,  0.335f, false }, { 5.0f,  0.400f, false },
         { 6.0f,  0.460f },        { 9.0f,  0.555f, false },
@@ -662,6 +666,13 @@ void DynamicsMeter::paint (juce::Graphics& g)
         { 18.0f, 0.820f },        { 21.0f, 0.912f, false },
         { kGrRangeDb, 1.000f },
     };
+
+    return scale;
+}
+
+void DynamicsMeter::paint (juce::Graphics& g)
+{
+    const auto& t = tokens();
 
     const auto isReduction = mode == Mode::reduction;
 
@@ -750,7 +761,7 @@ void DynamicsMeter::paint (juce::Graphics& g)
     // Scale ticks and numbers. Split into two paths so the 0 VU and above
     // zone -- hotColour, a classic VU meter's red printed in the module's
     // own colour instead -- strokes separately from the rest of the scale.
-    const auto& scale = isReduction ? grScale : vuScale;
+    const auto& scale = isReduction ? reductionScale() : vuScale();
     juce::Path ticks, hotTicks;
 
     for (const auto& p : scale)
