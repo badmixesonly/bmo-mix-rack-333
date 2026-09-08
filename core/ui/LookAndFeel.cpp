@@ -147,11 +147,17 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         const auto given = knob != nullptr ? knob->getTrackRadius() : 0.0f;
         const auto track = given > 0.0f ? given : radius + Tokens::trackGap;
 
-        // The track stops just clear of each symbol rather than running dots
-        // through it.
-        constexpr float symbolClearance = 0.11f;
+        constexpr float symbolInset = 0.11f;
 
-        drawDottedArc (g, centre, track, startAngle + symbolClearance, endAngle - symbolClearance,
+        // The dotted ring stops short of the sweep's ends, and the plus and
+        // minus are placed on those two terminal dots rather than beyond them.
+        // They then read as the two ends of the ring itself, in its own
+        // rhythm, instead of as a pair of marks parked just outside it -- at
+        // this radius the old gap was about four pixels of nothing.
+        const auto minusAngle = startAngle + symbolInset;
+        const auto plusAngle  = endAngle   - symbolInset;
+
+        drawDottedArc (g, centre, track, minusAngle, plusAngle,
                        dim (accent.withAlpha (enabled ? 0.55f : 0.2f)), 1.6f);
 
         // The heavy dot marks the control's rest position and stays there: zero
@@ -186,11 +192,11 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
 
             if (range.getStart() < 0.0)
             {
-                const auto minusAt = at (startAngle, track);
+                const auto minusAt = at (minusAngle, track);
                 g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (minusAt));
             }
 
-            const auto plusAt = at (endAngle, track);
+            const auto plusAt = at (plusAngle, track);
             g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (plusAt));
             g.fillRect (juce::Rectangle<float> (weight, arm * 2.0f).withCentre (plusAt));
         }
