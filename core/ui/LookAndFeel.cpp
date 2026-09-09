@@ -166,17 +166,62 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         drawDottedArc (g, centre, track, minusAngle, plusAngle,
                        dim (accent.withAlpha (enabled ? 0.55f : 0.2f)), 1.6f);
 
-        // The heavy dot marks the control's rest position and stays there: zero
-        // on a control that cuts and boosts, the bottom of the sweep on one
-        // that only goes up.
+        // The heavy dot marks where the control rests -- its default, which is
+        // where double-clicking it already puts it back.
+        //
+        // That value is not ours to set: `juce::SliderParameterAttachment`
+        // calls `setDoubleClickReturnValue` with the parameter's own default
+        // when it attaches, so every attached knob in the suite already
+        // carries it. Reading it back here rather than deriving the default a
+        // second time is the point -- the mark and the gesture are then one
+        // fact, and cannot drift apart. A slider with no attachment keeps the
+        // old behaviour rather than losing its dot.
+        //
+        // It used to mark *zero*, clamped into range. On a control that cuts
+        // and boosts those are the same point, which is why this went unseen
+        // for so long: the comment in ConcentricBand already says the dot is
+        // "where the pointer rests", and on BMO EQ's bipolar band gain it was.
+        // On a control that only goes up they are not the same point at all.
+        // The Saturator's TONE and BMO EQ's MIX both default to their
+        // *maximum*, so the dot sat at the far end of the dial from anywhere
+        // the control had ever been, and every panel opened with its pointers
+        // apparently parked away from their own marked rest positions.
+        //
+        // valueToProportionOfLength rather than arithmetic across the range:
+        // it is the same mapping the pointer goes through, so a skewed control
+        // would keep the two together. Nothing in the suite is skewed today,
+        // which is exactly why it is worth spending the call now.
         const auto range = slider.getRange();
-        const auto zero  = range.getLength() > 0.0
-                             ? (float) juce::jlimit (0.0, 1.0, (0.0 - range.getStart()) / range.getLength())
-                             : 0.5f;
+        const auto rest  = slider.isDoubleClickReturnEnabled()
+                             ? slider.getDoubleClickReturnValue()
+                             : juce::jlimit (range.getStart(), range.getEnd(), 0.0);
+        const auto restPos = range.getLength() > 0.0
+                               ? (float) juce::jlimit (0.0, 1.0, slider.valueToProportionOfLength (rest))
+                               : 0.5f;
 
-        g.setColour (dim (accent));
-        g.fillEllipse (juce::Rectangle<float> (5.0f, 5.0f)
-                           .withCentre (at (startAngle + zero * (endAngle - startAngle), track)));
+        // A control whose default *is* one of its ends puts the dot on top of
+        // the symbol already marking that end -- the Saturator's TONE and MIX
+        // both rest at maximum, and rendered, the dot and the plus fused into
+        // one malformed glyph. The end symbol wins that argument: it says
+        // which way the control increases, which is what you need before you
+        // turn it, and a knob resting at an end already shows that by where
+        // its pointer sits when the panel opens.
+        //
+        // Measured as a pixel clearance converted to an angle at this knob's
+        // own track radius, because the arc a given gap subtends depends on
+        // the radius and these knobs run from 36 px to 53. Seven pixels is the
+        // 5 px dot and the 8.4 px plus just clearing each other.
+        const auto restAngle = startAngle + restPos * (endAngle - startAngle);
+        const auto clearArc  = 7.0f / juce::jmax (track, 1.0f);
+
+        const auto collides = std::abs (restAngle - plusAngle)  < clearArc
+                           || std::abs (restAngle - minusAngle) < clearArc;
+
+        if (! collides)
+        {
+            g.setColour (dim (accent));
+            g.fillEllipse (juce::Rectangle<float> (5.0f, 5.0f).withCentre (at (restAngle, track)));
+        }
 
         // Drawn rather than set. Neither panel face has a minus sign that
         // matches its plus, and two strokes and a bar are the one case where
@@ -197,11 +242,19 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
 
             g.setColour (dim (accent));
 
-            if (range.getStart() < 0.0)
-            {
-                const auto minusAt = at (minusAngle, track);
-                g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (minusAt));
-            }
+            // Both ends, on every tracked knob. The minus used to appear only
+            // where the control's range went below zero, which read the pair
+            // as "negative and positive" -- so a knob that only goes up got a
+            // plus and a bare arc end.
+            //
+            // They mean **less and more**, which is how a hardware faceplate
+            // marks a knob and is true of every control here: the Saturator's
+            // DRIVE runs from less drive to more, and nothing about that
+            // claims it cuts. Frosty's call, taken once the rest dot stopped
+            // sitting on the bottom of the sweep and stopped anchoring that
+            // end by accident.
+            const auto minusAt = at (minusAngle, track);
+            g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (minusAt));
 
             const auto plusAt = at (plusAngle, track);
             g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (plusAt));
