@@ -122,8 +122,14 @@ Rendered before and after, and diffed by pixel rather than by eye:
 - **EQ, Opto** — byte-identical. Correct: EQ's only affected parameter, MIX,
   has no control on the panel, and none of Opto's are unipolar with a
   non-minimum default.
-- DRIVE's dot measures **−30°** against a predicted −27.7° at 6° bin
+- DRIVE's dot measures **−30°** against a predicted **−28.8°** at 6° bin
   resolution; TONE and MIX show no dot cluster at all.
+
+  The sweep is JUCE's default, `1.2π` to `2.8π` — **−144° to +144°** clockwise
+  from twelve, 288° in all. Worth stating because it is easy to read the
+  symbols' own positions as the sweep's ends: the 0.11 rad inset puts the minus
+  and plus at ∓137.7°, and a first pass at these figures took ∓138° for the
+  sweep itself and had every prediction about 1° out as a result.
 - `ctest` 10/10 on `main`'s four modules.
 
 **Measure, do not look.** The original diagnosis was reached with a
@@ -137,9 +143,20 @@ when a toolchain is present.
 Not done here, deliberately: this branch fixes the drawing, and the questions
 below are Kevin's and Frosty's together.
 
-- **Dimension is not covered.** It is not on `main`. The fix reaches it as soon
-  as the two branches meet, and its panel should be re-rendered then — it has
-  the most to gain and nobody has seen it with correct dots.
+- **Dimension is not covered by this branch**, because it is not on `main`. The
+  fix reaches it as soon as the two branches meet.
+
+  **Previewed, though.** The two were merged locally — clean, no conflicts —
+  and Dimension's panel rendered with the fix in place. Five of its nine knobs
+  move, and at Init the rest dots now land under their own pointers: CENTS and
+  FREQ upper-left, DEPTH and WIDTH straight up, ROTATE and ASYM at twelve.
+  DIFFUSE and SHUFFLE default to their minimums, so they show a minus there and
+  no dot. It reads as a panel whose opening state was chosen rather than
+  arrived at, which is the whole point of the change.
+
+  That preview is also the argument for landing this **before** Dimension's
+  listening pass: section 4 of `dim-testing-checklist.md` asks whether the panel
+  reads as a set of controls, and it is about to read differently.
 - **Nothing tests this.** `ui_layout` asserts component bounds, and a rest dot
   is *painted* rather than placed, so no assertion could have caught it — the
   same gap recorded against the GR scale's appearance. A test that a knob's
@@ -148,6 +165,14 @@ below are Kevin's and Frosty's together.
 - **EQ has a `Mix` parameter with no control on the panel.** Noticed in
   passing, unrelated to this fix, unexplained. Worth someone confirming that is
   deliberate.
-- **The other end of the question.** If a default lands *near* but not on an
-  end symbol, the dot is drawn close to it. Nothing renders badly today, but
-  the clearance rule is a threshold and thresholds want a rendered ladder.
+- **~~The other end of the question.~~ Measured.** A default that lands *near*
+  but not on an end symbol draws a dot close to it, and the worst case in the
+  suite is BMO Dimension's RATE: 0.05–5.0 with a default of 0.40, so 7.1% along
+  its own sweep and the nearest thing to a collision that is not one.
+
+  Rendered and measured on the merged branch: the dot centres at **−121.7°**
+  and the minus at **−138.0°**, **20.8 px apart** at that knob's track radius,
+  against a 7 px suppression threshold. Clear, and visibly so. The threshold is
+  therefore calibrated by a real case rather than only by the one it suppresses
+  — but it is still a threshold, and a control defaulting to 2–3% of its range
+  would sit inside it. There is no such control today.
