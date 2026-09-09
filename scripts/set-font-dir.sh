@@ -16,19 +16,62 @@
 # licensed face for a future build.
 
 set -euo pipefail
-cd "$(dirname "$0")/.."
+
+# Resolve our own directory with parameter expansion rather than dirname. The
+# cut-down git bundled inside GitHub Desktop ships bash but no coreutils, and
+# there `$(dirname "$0")` came back empty, so this turned into `cd /..` and
+# every path below resolved against the root of the MSYS tree instead of the
+# repository. It did not fail: a missing command inside a command substitution
+# does not trip set -e when the substitution is an argument, so the script went
+# on to write its marker into git's own install directory and report success.
+self_dir=${0%/*}
+if [[ $self_dir == "$0" ]]; then
+    self_dir=.
+fi
+cd "$self_dir/.."
 
 readonly MARKER=.bmo-fontdir
 readonly FACES=(TG-MinervaBlack-Black.otf TG-Blender.otf)
 
 # CMake cannot read an MSYS/Cygwin path like /c/Users/... , so record a real
 # Windows path when we are on Git Bash. Elsewhere the plain path is correct.
+#
+# cygpath is the right tool for that and is present in a full Git for Windows,
+# but not in the git inside GitHub Desktop -- which is the only git on a
+# machine nobody has installed Git for Windows on. The old fallback there
+# printed the MSYS path unchanged, so the marker was written with a path CMake
+# cannot read and the next configure stopped on a font it could not find,
+# naming the folder that does hold it. Do the conversion ourselves, and refuse
+# rather than record something we know will not resolve.
 to_cmake_path() {
     if command -v cygpath >/dev/null 2>&1; then
         cygpath -m "$1"
-    else
-        printf '%s' "$1"
+        return
     fi
+
+    case "$1" in
+        /?/*)
+            # /c/Users/you/Fonts -> C:/Users/you/Fonts. ${drive^^} is bash's
+            # own uppercase, so this needs no tr either.
+            local drive=${1:1:1}
+            printf '%s:/%s' "${drive^^}" "${1:3}"
+            ;;
+        /*)
+            if [[ ${OSTYPE:-} == msys* || ${OSTYPE:-} == cygwin* ]]; then
+                echo "Cannot record $1 in a form CMake can read." >&2
+                echo >&2
+                echo "It is an MSYS path and cygpath is not installed, so it" >&2
+                echo "cannot be turned into a Windows one. Either install Git" >&2
+                echo "for Windows, which carries cygpath, or pass the folder" >&2
+                echo "as a Windows path: scripts/set-font-dir.sh C:/path/to/fonts" >&2
+                return 1
+            fi
+            printf '%s' "$1"
+            ;;
+        *)
+            printf '%s' "$1"
+            ;;
+    esac
 }
 
 case "${1:-}" in
@@ -89,8 +132,13 @@ if [[ $dir == "$repo"/* || $dir == "$repo" ]]; then
     echo "         can ever pick them up. Recording it anyway." >&2
 fi
 
-to_cmake_path "$dir" > "$MARKER"
-printf '\n' >> "$MARKER"
+# Convert before opening the marker, not into it. A redirection truncates its
+# file before the command on the left runs, so converting straight into the
+# marker would leave an empty one behind on any failure -- and an empty marker
+# is worse than no marker, because CMake reads it and looks for the faces in
+# the repository root rather than falling back to assets/fonts/.
+cmake_dir=$(to_cmake_path "$dir")
+printf '%s\n' "$cmake_dir" > "$MARKER"
 
 echo "Font folder recorded in $MARKER:"
 echo "    $(<"$MARKER")"
