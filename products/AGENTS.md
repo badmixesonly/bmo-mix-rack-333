@@ -16,6 +16,7 @@ Permanent. Allocate here before the first build of anything new.
 | BMO Saturator | `sat` | `Bsat` | `com.lt3audio.bmosaturator` | `.bmosat` |
 | BMO Util | `util` | `Butl` | `com.lt3audio.bmoutil` | `.bmoutil` |
 | BMO Opto | `opto` | `Bopt` | `com.lt3audio.bmoopto` | `.bmoopto` |
+| BMO Dimension | `dim` | `Bdim` | `com.lt3audio.bmodimension` | `.bmodim` |
 | BMO Mix Rack | -- | `Brck` | `com.lt3audio.bmomixrack` | `.bmorack` |
 
 Manufacturer code `LT3a`, company "LT3 Audio", preset root `LT3 Audio/`.
@@ -28,6 +29,18 @@ reduction, as on a real opto cell, not before it) with a program-dependent
 release time -- the harder and longer it has been driven, the slower it lets
 go -- and a knee that hardens as CRUSH increases. See `modules/opto/AGENTS`
 notes at the top of `modules/opto/dsp/DspCore.h` for the model.
+
+BMO Dimension is a stereo imager in three stages, all of which process the
+**side signal only**: a detune stage that manufactures side content from a
+mono source, a modulated all-pass that decorrelates it, and an S1-style
+imager that scales and steers it. Because `L + R = 2M`, a side-only chain
+cancels in the mono sum by construction rather than by testing -- which is
+the reason the topology is arranged that way. The detune stage is
+bypassable, so one module covers a mono vocal and an already-wide bus.
+
+It takes the lavender `#d4a4ff` that BMO Opto carried until 0.2.2 and gave
+up when its panel went greyscale. Nothing else uses it; see
+`modules/opto/Module.cpp` for why it was free.
 
 Reserved for later products (not built, do not reuse): `Bfet` FET comp,
 `Bdyn` dynamics, `Bdes` de-esser, `Bovr` overdrive,

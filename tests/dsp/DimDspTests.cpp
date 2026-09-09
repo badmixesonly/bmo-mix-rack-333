@@ -1,0 +1,293 @@
+/*
+    BMO Dimension's DSP, JUCE-free.
+
+    The headline assertion is the mono sum. Every stage in this module works on
+    the side signal alone, so `L + R` out has to equal `L + R` in -- exactly,
+    sample for sample, at any width, any shuffle, any diffusion, and with the
+    detune stage running. That is not a tolerance to be tuned; it is what the
+    topology is for, and if it ever stops holding, something has been wired into
+    the mid path that should not be there.
+
+    Rotation and asymmetry are the two controls that deliberately leave that
+    guarantee, and there are tests below asserting that they do -- an exception
+    nobody has written down is indistinguishable from a bug.
+*/
+
+#include "modules/dim/dsp/DimDsp.h"
+#include <cmath>
+#include <iostream>
+#include <vector>
+
+using namespace bmo::dim;
+
+namespace
+{
+    int failures = 0;
+
+    void check (bool ok, const char* what)
+    {
+        if (! ok) { std::cerr << "FAIL: " << what << '\n'; ++failures; }
+    }
+
+    bool near (float a, float b, float tol = 1.0e-4f) { return std::abs (a - b) <= tol; }
+
+    struct Settings
+    {
+        float width = 100.0f;
+        float shuffle = 1.0f;
+        float shuffleFreq = 700.0f;
+        float detune = 10.0f;
+        bool  detuneOn = false;
+        float diffuse = 0.0f;
+        float rate = 0.40f;
+        float depth = 50.0f;
+        float rotation = 0.0f;
+        float asymmetry = 0.0f;
+    };
+
+    struct Run { std::vector<float> l, r; };
+
+    /** Runs a signal through the DSP. The input is a tone rather than DC so
+        the all-pass and the shuffler have something with phase to act on --
+        a constant would pass several of these stages trivially and prove
+        nothing about them. */
+    Run run (const Settings& s, float ampL, float ampR, int n = 8192)
+    {
+        DimDsp dsp;
+
+        const float v[Index::count] {
+            s.width, s.shuffle, s.shuffleFreq,
+            s.detune, s.detuneOn ? 1.0f : 0.0f,
+            s.diffuse, s.rate, s.depth,
+            s.rotation, s.asymmetry
+        };
+
+        dsp.setParams (v, Index::count);
+        dsp.prepare (48000.0, 512, 2);
+        dsp.setParams (v, Index::count);
+
+        std::vector<float> l ((size_t) n), r ((size_t) n);
+
+        for (int i = 0; i < n; ++i)
+        {
+            const auto t = (float) i / 48000.0f;
+            const auto tone = std::sin (2.0f * 3.14159265f * 220.0f * t);
+            l[(size_t) i] = ampL * tone;
+            r[(size_t) i] = ampR * std::sin (2.0f * 3.14159265f * 330.0f * t);
+        }
+
+        float* ch[2] { l.data(), r.data() };
+        dsp.process (ch, 2, n);
+
+        return { l, r };
+    }
+
+    /** The mono sum of a run, against the mono sum of the same input. */
+    float worstMonoError (const Settings& s, float ampL, float ampR)
+    {
+        constexpr int n = 8192;
+        auto out = run (s, ampL, ampR, n);
+
+        float worst = 0.0f;
+
+        for (int i = 0; i < n; ++i)
+        {
+            const auto t = (float) i / 48000.0f;
+            const auto inL = ampL * std::sin (2.0f * 3.14159265f * 220.0f * t);
+            const auto inR = ampR * std::sin (2.0f * 3.14159265f * 330.0f * t);
+
+            const auto err = std::abs ((out.l[(size_t) i] + out.r[(size_t) i]) - (inL + inR));
+            worst = std::max (worst, err);
+        }
+
+        return worst;
+    }
+
+    /** How much side content a run carries, as a peak. */
+    float peakSide (const Run& out)
+    {
+        float peak = 0.0f;
+
+        for (size_t i = 0; i < out.l.size(); ++i)
+            peak = std::max (peak, std::abs (0.5f * (out.l[i] - out.r[i])));
+
+        return peak;
+    }
+}
+
+int main()
+{
+    //== The mono sum ==========================================================
+    // One assertion per stage, and then all of them at once. The tolerance is
+    // float rounding, not a fudge factor: the mid path is literally untouched,
+    // so these are exact up to the arithmetic.
+
+    check (worstMonoError ({}, 0.5f, 0.3f) < 1.0e-6f,
+           "defaults leave the mono sum exact");
+
+    {
+        Settings s; s.width = 200.0f;
+        check (worstMonoError (s, 0.5f, 0.3f) < 1.0e-6f, "width 200 does not touch the mono sum");
+    }
+    {
+        Settings s; s.width = 0.0f;
+        check (worstMonoError (s, 0.5f, 0.3f) < 1.0e-6f, "width 0 does not touch the mono sum");
+    }
+    {
+        Settings s; s.shuffle = 3.0f; s.shuffleFreq = 650.0f;
+        check (worstMonoError (s, 0.5f, 0.3f) < 1.0e-6f, "full shuffle does not touch the mono sum");
+    }
+    {
+        Settings s; s.diffuse = 100.0f; s.depth = 100.0f; s.rate = 2.0f;
+        check (worstMonoError (s, 0.5f, 0.3f) < 1.0e-6f, "full diffusion does not touch the mono sum");
+    }
+    {
+        // The one that matters most, and the one a conventional spreader fails:
+        // detuning left against right combs in mono. Injecting the detuned
+        // difference into the side signal alone cancels instead.
+        Settings s; s.detuneOn = true; s.detune = 25.0f;
+        check (worstMonoError (s, 0.5f, 0.3f) < 1.0e-6f, "detune does not touch the mono sum");
+    }
+    {
+        Settings s;
+        s.width = 175.0f; s.shuffle = 2.4f; s.diffuse = 80.0f;
+        s.depth = 70.0f; s.detuneOn = true; s.detune = 14.0f;
+        check (worstMonoError (s, 0.5f, 0.3f) < 1.0e-6f,
+               "every stage at once still leaves the mono sum exact");
+    }
+
+    //== The two documented exceptions ========================================
+    // These must NOT be mono-exact. If one of them ever starts passing the
+    // test above, it has stopped doing its job.
+
+    {
+        Settings s; s.rotation = 30.0f;
+        check (worstMonoError (s, 0.5f, 0.3f) > 1.0e-3f,
+               "rotation changes the mono sum, as it must");
+    }
+    {
+        Settings s; s.asymmetry = 50.0f;
+        check (worstMonoError (s, 0.5f, 0.3f) > 1.0e-3f,
+               "asymmetry changes the mono sum, as it must");
+    }
+    {
+        Settings s; s.rotation = 0.0f; s.asymmetry = 0.0f;
+        check (worstMonoError (s, 0.5f, 0.3f) < 1.0e-6f,
+               "both exceptions are identity at their defaults");
+    }
+
+    //== Width =================================================================
+    {
+        Settings s; s.width = 0.0f;
+        auto out = run (s, 0.5f, 0.3f);
+        check (peakSide (out) < 1.0e-5f, "width 0 collapses to mono");
+    }
+    {
+        auto unity  = run ({}, 0.5f, 0.3f);
+        Settings s; s.width = 200.0f;
+        auto doubled = run (s, 0.5f, 0.3f);
+        check (near (peakSide (doubled), 2.0f * peakSide (unity), 1.0e-3f),
+               "width 200 doubles the side signal");
+    }
+
+    //== The generate stage ====================================================
+    // The whole reason the stage exists: on a mono source there is no side
+    // content for the other two stages to work on, and this is what makes some.
+
+    {
+        // Mono in, detune out: S stays exactly zero, because an all-pass of
+        // zero is zero and a width control on nothing is nothing.
+        Settings s; s.width = 200.0f; s.diffuse = 100.0f;
+        auto out = run (s, 0.5f, 0.5f);
+
+        // Both channels fed the same tone would need equal amplitudes; run()
+        // gives them different frequencies, so drive it directly instead.
+        DimDsp dsp;
+        const float v[Index::count] { 200.0f, 1.0f, 700.0f, 10.0f, 0.0f, 100.0f, 0.4f, 50.0f, 0.0f, 0.0f };
+        dsp.setParams (v, Index::count);
+        dsp.prepare (48000.0, 512, 2);
+        dsp.setParams (v, Index::count);
+
+        constexpr int n = 8192;
+        std::vector<float> l ((size_t) n), r ((size_t) n);
+
+        for (int i = 0; i < n; ++i)
+        {
+            const auto t = (float) i / 48000.0f;
+            l[(size_t) i] = r[(size_t) i] = 0.5f * std::sin (2.0f * 3.14159265f * 220.0f * t);
+        }
+
+        float* ch[2] { l.data(), r.data() };
+        dsp.process (ch, 2, n);
+
+        float peak = 0.0f;
+        for (int i = 0; i < n; ++i)
+            peak = std::max (peak, std::abs (0.5f * (l[(size_t) i] - r[(size_t) i])));
+
+        check (peak < 1.0e-5f, "a mono source stays mono with detune off, whatever else is set");
+    }
+    {
+        // Same input, detune on: side content now exists.
+        DimDsp dsp;
+        const float v[Index::count] { 100.0f, 1.0f, 700.0f, 15.0f, 1.0f, 0.0f, 0.4f, 50.0f, 0.0f, 0.0f };
+        dsp.setParams (v, Index::count);
+        dsp.prepare (48000.0, 512, 2);
+        dsp.setParams (v, Index::count);
+
+        constexpr int n = 48000;
+        std::vector<float> l ((size_t) n), r ((size_t) n);
+
+        for (int i = 0; i < n; ++i)
+        {
+            const auto t = (float) i / 48000.0f;
+            l[(size_t) i] = r[(size_t) i] = 0.5f * std::sin (2.0f * 3.14159265f * 220.0f * t);
+        }
+
+        float* ch[2] { l.data(), r.data() };
+        dsp.process (ch, 2, n);
+
+        float peak = 0.0f;
+        for (int i = 0; i < n; ++i)
+            peak = std::max (peak, std::abs (0.5f * (l[(size_t) i] - r[(size_t) i])));
+
+        check (peak > 0.01f, "detune manufactures side content from a mono source");
+    }
+
+    //== Shuffle ===============================================================
+    {
+        // At 1.0 the low and high bands sum back to the input, so the stage is
+        // a wire rather than a near-wire. Asserted absolutely.
+        auto a = run ({}, 0.5f, 0.3f);
+        Settings s; s.shuffle = 1.0f; s.shuffleFreq = 350.0f;
+        auto b = run (s, 0.5f, 0.3f);
+
+        float worst = 0.0f;
+        for (size_t i = 0; i < a.l.size(); ++i)
+            worst = std::max (worst, std::abs (a.l[i] - b.l[i]));
+
+        check (worst < 1.0e-6f, "shuffle 1.0 is exactly a wire at any frequency");
+    }
+    {
+        Settings s; s.shuffle = 3.0f;
+        auto shuffled = run (s, 0.5f, 0.3f);
+        auto flat     = run ({}, 0.5f, 0.3f);
+        check (peakSide (shuffled) > peakSide (flat), "shuffle above 1.0 widens the low end");
+    }
+
+    //== Latency ===============================================================
+    {
+        DimDsp dsp;
+        const float v[Index::count] { 100.0f, 1.0f, 700.0f, 25.0f, 1.0f, 100.0f, 0.4f, 50.0f, 0.0f, 0.0f };
+        check (dsp.latencyForParams (v, Index::count) == 0,
+               "latency is zero with the detune stage running");
+
+        const float off[Index::count] { 100.0f, 1.0f, 700.0f, 10.0f, 0.0f, 0.0f, 0.4f, 50.0f, 0.0f, 0.0f };
+        check (dsp.latencyForParams (off, Index::count) == 0,
+               "latency is zero with it bypassed, so switching never renegotiates PDC");
+    }
+
+    if (failures == 0)
+        std::cout << "dim_dsp: all checks passed\n";
+
+    return failures == 0 ? 0 : 1;
+}

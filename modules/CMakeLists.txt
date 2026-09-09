@@ -51,3 +51,10 @@ bmo_add_module(opto
     UI_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/opto/panel/OptoPanel.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/opto/Module.cpp)
+
+bmo_add_module(dim
+    DSP_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/dim/dsp/DspCore.cpp
+    UI_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/dim/panel/DimPanel.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/dim/Module.cpp)
