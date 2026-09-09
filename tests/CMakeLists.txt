@@ -39,3 +39,10 @@ add_test(NAME opto COMMAND opto_tests)
 bmo_add_tool(rack_tests plugin/RackTests.cpp ${BMO_ROOT}/products/rack/Registry.cpp)
 target_link_libraries(rack_tests PRIVATE bmo_eq bmo_sat bmo_util bmo_opto)
 add_test(NAME rack COMMAND rack_tests)
+
+# Layout assertions on the real panels. JUCE, not bmo_add_dsp_tool: no
+# rendering happens, but Tokens.h includes juce_gui_basics, so a UI assertion
+# cannot run in the DSP-only job whatever docs/ui-workflow-brief.md §4 says.
+bmo_add_tool(ui_layout_tests ui/LayoutTests.cpp ${BMO_ROOT}/products/rack/Registry.cpp)
+target_link_libraries(ui_layout_tests PRIVATE bmo_eq bmo_sat bmo_util bmo_opto)
+add_test(NAME ui_layout COMMAND ui_layout_tests)

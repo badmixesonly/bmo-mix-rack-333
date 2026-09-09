@@ -150,6 +150,7 @@ void RackEditor::rackChainChanged()
 void RackEditor::rebuildViews()
 {
     views.clear();
+    seams.clear();
 
     for (int s = 0; s < proc.getNumModules(); ++s)
     {
@@ -160,6 +161,15 @@ void RackEditor::rebuildViews()
         plate.addAndMakeVisible (*view.bar);
         plate.addAndMakeVisible (*view.panel);
         views.push_back (std::move (view));
+    }
+
+    // One per boundary, so none after the last module: the add strip is filled
+    // with `well` and separates itself. Added after the panels so they draw on
+    // top of them rather than under.
+    for (int s = 1; s < (int) views.size(); ++s)
+    {
+        seams.push_back (std::make_unique<Seam>());
+        plate.addAndMakeVisible (*seams.back());
     }
 
     layoutPlate();
@@ -198,6 +208,14 @@ void RackEditor::layoutPlate()
 
         views[(size_t) s].bar  ->setBounds (x, kHeader, width, kSlotBar);
         views[(size_t) s].panel->setBounds (x, kHeader + kSlotBar, width, ui::ModulePanel::kContentHeight);
+
+        // The seam belongs to the boundary on this slot's left, so slot 0 has
+        // none and seams[s - 1] is the one between s - 1 and s. It starts below
+        // the slot bar, which already carries its own edge.
+        if (s > 0)
+            seams[(size_t) (s - 1)]->setBounds (x, kHeader + kSlotBar, 1,
+                                                ui::ModulePanel::kContentHeight);
+
         x += width;
     }
 

@@ -4,9 +4,11 @@ build-*/
 build-*.log
 cmake-build-*/
 
-# Licensed typefaces: see assets/fonts/README.md
+# Licensed typefaces: see assets/fonts/README.md. The .otf files live outside
+# the repo entirely; .bmo-fontdir records where, and is per-machine.
 assets/fonts/*.otf
 assets/fonts/*.ttf
+.bmo-fontdir
 
 # Planning documents and tester packages stay local
 plans/
@@ -21,3 +23,8 @@ snapshots/
 .idea/
 *.swp
 *.log
+
+# Compiled local analysis harnesses. Both are csc-built from a single .cs and
+# deliberately outside CMake; see each one's README.
+tools/measure/renders/*.exe
+tools/inspect/*.exe
