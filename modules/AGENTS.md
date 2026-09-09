@@ -11,7 +11,25 @@ modules/<id>/
   panel/<Name>Panel.h/.cpp a ModulePanel; builds controls from context.params
   presets/FactoryPresets.h factory() -> vector<FactoryPreset>, Init first
   Module.h/.cpp            module() -> const ModuleDef&
+  AGENTS.md, README.md     what that folder cannot be read off its code
 ```
+
+## Per-module notes
+
+Root `AGENTS.md` asks every new module to carry its own `AGENTS.md` and
+`README.md`, and to be linked from here so the reading chain holds. What
+belongs there is what a contributor would otherwise have to re-derive -- the
+invariant a module is built on, the laws it rejected and why, the faults its
+own tests could not see. What belongs *here* is anything every module shares.
+
+- [`dim/AGENTS.md`](dim/AGENTS.md) -- BMO Dimension. Side-only topology,
+  Gerzon's asymmetry shear and its named fallback, and the width throb that
+  is still open.
+
+The four older modules predate the rule and have none. That is a gap rather
+than a decision, and worth closing per module when one is next opened up
+rather than in one sweep -- these files are only worth having if what is in
+them was written by someone who had just been in the code.
 
 ## Adding a module
 
