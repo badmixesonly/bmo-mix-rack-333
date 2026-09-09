@@ -115,7 +115,10 @@ inline const ParamSpecs& specs()
         // ASYMMETRY: left against right, with centre material left where it
         // is. Gerzon's control, and the one the S1 was the first product to
         // ship -- it is not a pan, and it is the reason this module is not
-        // just a width knob with a crossover.
+        // just a width knob with a crossover. The S1's manual is the source
+        // for the law and is quoted at the point of use; see the shear in
+        // modules/dim/dsp/DspCore.h, and the test that asserts a dead-centre
+        // source comes through it unmoved.
         S::floatParam (kAsymmetry, "Asymmetry", -100.0f, 100.0f, 1.0f, 0.0f, F::Percent),
     };
 

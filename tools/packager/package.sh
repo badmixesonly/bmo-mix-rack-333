@@ -24,7 +24,23 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 rm -rf "$out"
 mkdir -p "$out/VST3" "$out/Standalone"
 
-products=("BMO EQ" "BMO Saturator" "BMO Util" "BMO Opto" "BMO Mix Rack")
+# Discovered from the build tree, not listed here. A hardcoded list has now
+# silently dropped a whole product twice -- BMO Opto, and BMO Dimension after
+# it -- because adding a module touches modules/, products/ and the registry
+# and never touches this file, so nothing fails when it is forgotten. The
+# artefacts are the same thing the rest of this script already goes looking
+# for; asking them what exists cannot drift from what was built.
+products=()
+while IFS= read -r name; do
+    products+=("$name")
+done < <(find "$build" -type d -name '*.vst3' | sed 's#.*/##; s#\.vst3$##' | sort -u)
+
+if [ ${#products[@]} -eq 0 ]; then
+    echo "no VST3 bundles found under $build"
+    find "$build" -name '*_artefacts' | head
+    exit 1
+fi
+
 found=0
 
 for name in "${products[@]}"; do
@@ -49,13 +65,26 @@ fi
 
 cp "$root/LICENSE" "$out/LICENSE.txt"
 
-cat > "$out/README.txt" <<'TXT'
+# Names the products that actually got staged, for the same reason the array
+# above is discovered: a second hand-maintained list is a second thing to
+# forget.
+contents=$(printf '%s, ' "${products[@]}")
+contents=${contents%, }
+
+# Two heredocs, and the split is not cosmetic: the second one has to stay
+# quoted, because the Windows install path ends in a backslash and an
+# unquoted heredoc would read that as a line continuation and eat the blank
+# line after it.
+cat > "$out/README.txt" <<TXT
 BMO (Bad Mixes Only) by LT3a -- tester build
 
 Contents
-  VST3/         BMO EQ, BMO Saturator, BMO Util, BMO Opto, BMO Mix Rack
+  VST3/         $contents
   AU/           the same, as Audio Units (macOS only)
   Standalone/   each product as an app, for a quick look without a DAW
+TXT
+
+cat >> "$out/README.txt" <<'TXT'
 
 Install
   macOS

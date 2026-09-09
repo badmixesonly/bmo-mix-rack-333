@@ -176,6 +176,144 @@ int main()
                "both exceptions are identity at their defaults");
     }
 
+    //== Asymmetry keeps the centre where it is ================================
+    // The S1's manual is explicit that this is what separates the control from
+    // a balance: it "does not affect central mono in-phase sounds in any way",
+    // and "differs from conventional balance control in that it keeps center
+    // sounds in the center". A source with no side content has to come through
+    // untouched -- level and position both -- at any setting.
+    //
+    // This shipped as an unequal output trim, which is a balance control, and
+    // put a dead-centre 0.5/0.5 source at 0.75/0.25. Nothing caught it, because
+    // every test above feeds a source that already has side content.
+    {
+        for (float a : { -100.0f, -50.0f, 25.0f, 100.0f })
+        {
+            DimDsp dsp;
+            const float v[Index::count] { 100.0f, 1.0f, 700.0f, 10.0f, 0.0f,
+                                          0.0f, 0.4f, 50.0f, 0.0f, a };
+            dsp.setParams (v, Index::count);
+            dsp.prepare (48000.0, 512, 2);
+            dsp.setParams (v, Index::count);
+
+            constexpr int n = 4096;
+            std::vector<float> l ((size_t) n), r ((size_t) n);
+
+            for (int i = 0; i < n; ++i)
+            {
+                const auto t = (float) i / 48000.0f;
+                l[(size_t) i] = r[(size_t) i] = 0.5f * std::sin (2.0f * 3.14159265f * 220.0f * t);
+            }
+
+            float* ch[2] { l.data(), r.data() };
+            dsp.process (ch, 2, n);
+
+            float worstSide = 0.0f, worstLevel = 0.0f;
+
+            for (int i = 0; i < n; ++i)
+            {
+                const auto t = (float) i / 48000.0f;
+                const auto in = 0.5f * std::sin (2.0f * 3.14159265f * 220.0f * t);
+
+                worstSide  = std::max (worstSide,  std::abs (0.5f * (l[(size_t) i] - r[(size_t) i])));
+                worstLevel = std::max (worstLevel, std::abs (l[(size_t) i] - in));
+            }
+
+            check (worstSide < 1.0e-6f,
+                   "asymmetry leaves a centred source centred");
+            check (worstLevel < 1.0e-6f,
+                   "asymmetry leaves a centred source at its own level");
+        }
+    }
+    {
+        // ...and still does its job on material that is off centre, in the
+        // stereo image and in the mono sum together.
+        Settings s; s.asymmetry = 50.0f;
+        auto skewed = run (s, 0.5f, 0.3f);
+        auto flat   = run ({}, 0.5f, 0.3f);
+
+        float worst = 0.0f;
+        for (size_t i = 0; i < flat.l.size(); ++i)
+            worst = std::max (worst, std::abs (skewed.l[i] - flat.l[i]));
+
+        check (worst > 1.0e-3f, "asymmetry does change off-centre material");
+    }
+
+    //== A mono instance is a wire ============================================
+    // SingleModuleProcessor::isBusesLayoutSupported accepts a mono layout, so
+    // this path is reachable from a host. There is no stereo image on one
+    // channel to work on, and the generate stage would fold its two voices
+    // straight back into it -- the comb the whole topology exists to avoid.
+    {
+        DimDsp dsp;
+        const float v[Index::count] { 175.0f, 2.4f, 650.0f, 15.0f, 1.0f,
+                                      80.0f, 0.4f, 70.0f, 30.0f, 100.0f };
+        dsp.setParams (v, Index::count);
+        dsp.prepare (48000.0, 512, 1);
+        dsp.setParams (v, Index::count);
+
+        constexpr int n = 8192;
+        std::vector<float> m ((size_t) n), ref ((size_t) n);
+
+        for (int i = 0; i < n; ++i)
+        {
+            const auto t = (float) i / 48000.0f;
+            m[(size_t) i] = ref[(size_t) i] = 0.5f * std::sin (2.0f * 3.14159265f * 220.0f * t);
+        }
+
+        float* ch[1] { m.data() };
+        dsp.process (ch, 1, n);
+
+        float worst = 0.0f;
+        for (int i = 0; i < n; ++i)
+            worst = std::max (worst, std::abs (m[(size_t) i] - ref[(size_t) i]));
+
+        check (worst == 0.0f, "a mono instance passes through untouched, every stage on");
+    }
+
+    //== The detune stage does not replay what it last held ===================
+    // The voice buffers carry 30 ms. Switching the stage out, letting a second
+    // go by and switching it back in used to burst that 30 ms back out at
+    // whatever level it was captured -- 0.90 peak, measured, over silence.
+    {
+        DimDsp dsp;
+        const float on[Index::count]  { 100.0f, 1.0f, 700.0f, 10.0f, 1.0f,
+                                        0.0f, 0.4f, 50.0f, 0.0f, 0.0f };
+        const float off[Index::count] { 100.0f, 1.0f, 700.0f, 10.0f, 0.0f,
+                                        0.0f, 0.4f, 50.0f, 0.0f, 0.0f };
+
+        dsp.setParams (on, Index::count);
+        dsp.prepare (48000.0, 512, 2);
+        dsp.setParams (on, Index::count);
+
+        constexpr int n = 48000;
+        std::vector<float> l ((size_t) n), r ((size_t) n);
+        float* ch[2] { l.data(), r.data() };
+
+        for (int i = 0; i < n; ++i)          // a loud second, to fill the voices
+        {
+            const auto t = (float) i / 48000.0f;
+            l[(size_t) i] = r[(size_t) i] = 0.9f * std::sin (2.0f * 3.14159265f * 1000.0f * t);
+        }
+        dsp.process (ch, 2, n);
+
+        dsp.setParams (off, Index::count);   // out, and a second of silence
+        std::fill (l.begin(), l.end(), 0.0f);
+        std::fill (r.begin(), r.end(), 0.0f);
+        dsp.process (ch, 2, n);
+
+        dsp.setParams (on, Index::count);    // back in, still silent
+        std::fill (l.begin(), l.end(), 0.0f);
+        std::fill (r.begin(), r.end(), 0.0f);
+        dsp.process (ch, 2, 4096);
+
+        float peak = 0.0f;
+        for (int i = 0; i < 4096; ++i)
+            peak = std::max (peak, std::abs (0.5f * (l[(size_t) i] - r[(size_t) i])));
+
+        check (peak < 1.0e-6f, "re-engaging detune over silence stays silent");
+    }
+
     //== Width =================================================================
     {
         Settings s; s.width = 0.0f;
