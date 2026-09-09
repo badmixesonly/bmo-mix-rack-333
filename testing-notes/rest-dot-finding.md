@@ -90,6 +90,27 @@ Measured as a pixel clearance converted to an angle at each knob's own track
 radius, because these knobs run 36–53 px and a fixed angle would not hold
 across them.
 
+### And then the low end was bare
+
+Moving the dot off the minimum exposed something it had been hiding: the dot
+used to sit at the bottom of the sweep and anchor that end by accident. With it
+gone, a knob that only goes up had a `+` at one end of its track and nothing at
+the other, because the minus was drawn only where `range.getStart() < 0`.
+
+**Frosty's call: both ends carry a symbol on every tracked knob.** `−` and `+`
+mean **less and more**, which is how a hardware faceplate marks a knob and is
+true of every control in the suite — the Saturator's DRIVE runs from less drive
+to more, and nothing about that claims it cuts. The old reading, "negative and
+positive", is what left the unipolar controls half-marked.
+
+This supersedes the rule stated at `PlainKnob` in `core/ui/Controls.h`, which
+said a knob carries "a plus one side and, where it cuts, a minus the other".
+That doc comment is updated with it.
+
+It also means a unipolar control whose default *is* its minimum — DIFFUSE,
+SHUFFLE, BMO Opto's CRUSH — now shows `−` there and no dot, by the collision
+rule above. That is the rule working, not an exception to it.
+
 ## 4. Verified
 
 Rendered before and after, and diffed by pixel rather than by eye:

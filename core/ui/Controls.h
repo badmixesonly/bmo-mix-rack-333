@@ -10,8 +10,11 @@
 namespace bmo::ui
 {
 
-/** A knob with its name underneath and nothing else: no number, only a plus
-    one side and, where it cuts, a minus the other. */
+/** A knob with its name underneath and nothing else: no number, only a minus
+    at one end of its track and a plus at the other. They mean less and more,
+    not negative and positive, so both ends carry one whatever the parameter's
+    range is -- and a heavy dot marks where the control rests, unless that is
+    an end a symbol already marks. */
 class PlainKnob final : public juce::Component
 {
 public:

@@ -214,8 +214,8 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         const auto restAngle = startAngle + restPos * (endAngle - startAngle);
         const auto clearArc  = 7.0f / juce::jmax (track, 1.0f);
 
-        const auto collides = std::abs (restAngle - plusAngle) < clearArc
-                           || (range.getStart() < 0.0 && std::abs (restAngle - minusAngle) < clearArc);
+        const auto collides = std::abs (restAngle - plusAngle)  < clearArc
+                           || std::abs (restAngle - minusAngle) < clearArc;
 
         if (! collides)
         {
@@ -242,11 +242,19 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
 
             g.setColour (dim (accent));
 
-            if (range.getStart() < 0.0)
-            {
-                const auto minusAt = at (minusAngle, track);
-                g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (minusAt));
-            }
+            // Both ends, on every tracked knob. The minus used to appear only
+            // where the control's range went below zero, which read the pair
+            // as "negative and positive" -- so a knob that only goes up got a
+            // plus and a bare arc end.
+            //
+            // They mean **less and more**, which is how a hardware faceplate
+            // marks a knob and is true of every control here: the Saturator's
+            // DRIVE runs from less drive to more, and nothing about that
+            // claims it cuts. Frosty's call, taken once the rest dot stopped
+            // sitting on the bottom of the sweep and stopped anchoring that
+            // end by accident.
+            const auto minusAt = at (minusAngle, track);
+            g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (minusAt));
 
             const auto plusAt = at (plusAngle, track);
             g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (plusAt));
