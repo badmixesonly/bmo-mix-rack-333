@@ -200,6 +200,10 @@ that shape for anything new that needs to know the set of products.
 
 ### Two modules being written at once
 
+Prefer not to. The first question is whether the second module can wait for
+the first to be heard in a DAW, and usually it can -- a module that turns
+out to need rework drags anything stacked on it. If it can wait, stop here.
+
 Every file above is shared, and `RackTests.cpp` asserts an exact registry
 size, so two branches adding a module in parallel will conflict on most of
 them and fail on that one.

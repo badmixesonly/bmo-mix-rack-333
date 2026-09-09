@@ -47,13 +47,75 @@ Reserved for later products (not built, do not reuse): `Bpar` parametric EQ
 `Bdyn` dynamics, `Bdes` de-esser, `Bovr` overdrive,
 `Bcmp` compressor, `Bdly` delay, `Brvb` reverb.
 
-**BMO Parametric needs its line against BMO EQ drawn before its first
-build, not after.** BMO EQ is already an EQ -- three fixed bands and two
-filters, reached for by character. A second EQ that does not say in one
-sentence why it is not that one will compete with it for the same slot in a
-user's head, and the two will get the same automation lanes opened by
-mistake. Surgical against character is a real distinction; write it here
-first.
+## BMO EQ and BMO Parametric — settle the name before building the module
+
+**Status: BMO Parametric is deferred until BMO Dimension passes its Ableton
+pass.** Nothing is being built. `Bpar`, the bundle id, the preset extension
+and the teal are held, not spent.
+
+**The two do not fight over function.** BMO EQ is a Neve 1084 model:
+frequency selectors are *stepped* choice parameters, the curve shapes come
+out of the LC network in `modules/eq/dsp/EqNetwork.h` rather than from
+coefficients, there is no continuous Q anywhere -- only a Hi-Q toggle on the
+mid -- and it saturates and oversamples. A parametric EQ is continuous
+frequency, continuous Q, and clean. Those are two different instruments and
+a mix wants both.
+
+**They fight over the name, and the name is backwards.** "BMO EQ" claims
+the generic word while being the *specific* product, and "BMO Parametric"
+reads as a variant while being the general-purpose one. Someone scanning a
+device list will reach for BMO EQ expecting a full EQ, find stepped
+frequencies and no Q, and conclude the suite is missing something it is not.
+
+**The fix is to rename BMO EQ so its name says what it is.** "BMO Vintage
+EQ" works. **"BMO Console EQ" is better** -- it is literally a console
+channel EQ, and "vintage" is a word about marketing rather than about
+behaviour, so it tells a user nothing when they are choosing between two
+equalisers. Either beats leaving the generic word on the specific product.
+Do not rename BMO Parametric to solve this; the general-purpose one is the
+one entitled to plain naming.
+
+**Rename it after the Ableton pass and before BMO Parametric starts.** Not
+before: BMO EQ is in the build under test right now, and changing its name
+mid-cycle muddies a test that is about Dimension. Not later either -- the
+cost of this rename is proportional to how many testers are on the old name,
+so it only ever gets more expensive. It is also the *second* rename in this
+product's life, after FrostyEQ, which is an argument for doing it once more
+and never again rather than for flinching.
+
+### What the rename touches
+
+| | change | effect |
+|---|---|---|
+| `products/eq/Product.h` | `ProductInfo::name`, `PresetInfo::folderName` | header text, preset folder |
+| `products/eq/CMakeLists.txt` | `PRODUCT_NAME` | DAW display name, `.vst3` filename |
+| `modules/eq/params.h` | `kModuleName` | the name in a rack slot |
+| the identity + accent tables here, `README.md`, packager README | strings | |
+
+### What must NOT change
+
+- **Plugin code `Fsty` and bundle id `com.lt3audio.frostyeq`.** They are
+  already carrying FrostyEQ's identity so that old sessions open. They carry
+  it through this rename too. A display name is not an identity.
+- **Module id `eq`.** It is in saved state, rack presets and automation.
+  Ids and display names are already decoupled everywhere -- `util` is "BMO
+  Util", `dim` is "BMO Dimension" -- so `eq` staying `eq` under a new display
+  name is the existing pattern, not an exception. BMO Parametric takes `par`.
+- **The parameter schema.** Untouched; this is a label change.
+
+### The one real code change
+
+`PresetInfo` carries exactly **one** legacy pair, and BMO EQ has already
+spent it on `("FrostyEQ", ".frostyeq")`. A second rename needs a second hop,
+so either `PresetInfo` grows a chain of legacy names, or the FrostyEQ hop is
+dropped on the grounds that anyone who ran BMO EQ once has already been
+migrated. **Dropping it is the wrong call** -- it silently strands any
+tester who skipped a release, and the whole point of `migrateLegacy()` is
+that nobody has to have been paying attention. Grow the chain.
+
+Users will also have to delete the old `BMO EQ.vst3`, exactly as they did
+for `FrostyEQ.vst3`, or the DAW lists both. The packager README already has
+a section for this; it gains a second paragraph.
 
 ## Accents
 
