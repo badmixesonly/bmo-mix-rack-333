@@ -3,6 +3,21 @@
 Every colour the suite draws with, measured on the ground it is actually
 drawn on — and the direction chosen off the back of it.
 
+> **This is evidence, not a registry. Accents are allocated in
+> `products/AGENTS.md`.**
+>
+> Two things below are known stale and are left in place because the
+> measurements around them are still good. `#d4a4ff` is listed against BMO
+> Opto: Opto gave that colour up in 0.2.2 when its panel went greyscale, and
+> BMO Dimension has it now. And the 7:1 figures were taken on a `#202024`
+> plate, where `darkTokens()` ships `#2e2e32` — on the plate that actually
+> ships nothing clears 7:1, though everything clears 4.5:1 comfortably. A
+> ratio without its plate named is not an absolute, which is the house rule
+> this document is otherwise built on.
+>
+> Reading this file as an allocation list is what nearly cost BMO Dimension
+> the lavender. Check `products/AGENTS.md` for what is spoken for.
+
 Measured 2026-09-08 on branch `ui-editor`, from the literal values in
 `core/ui/Tokens.h`, `modules/*/Module.cpp` and
 `modules/opto/panel/OptoPanel.cpp`. Panel observations are read from 2×

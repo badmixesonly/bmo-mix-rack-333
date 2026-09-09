@@ -173,6 +173,47 @@ modules/<id>/
 10. `scripts/build.sh --snapshots` and look at the panel, standalone and in
     the rack.
 
+### Every shared file a new module touches
+
+Steps 7 to 9 are spread across eight files that already exist, and nothing
+fails if one is missed -- the build stays green and the module is simply
+absent from whatever that file feeds. `tools/packager/package.sh` dropped
+BMO Opto and then BMO Dimension exactly that way, and the second one was
+only caught because a review went looking. Work down this list:
+
+| file | what it feeds | how it fails if missed |
+|---|---|---|
+| `modules/CMakeLists.txt` | the module library | link error, loud |
+| `products/<id>/` (3 files) | the standalone plugin | no standalone, silent |
+| `products/CMakeLists.txt` | that product's build | no standalone, silent |
+| `products/rack/Registry.cpp` | the rack's add menu | not hostable, silent |
+| `products/rack/CMakeLists.txt` | the rack's link line | link error, loud |
+| `products/AGENTS.md` | id, code, bundle, **accent** | nothing; drifts |
+| `tests/CMakeLists.txt` | both test targets | untested, silent |
+| `tests/plugin/RackTests.cpp` | `registry.size()`, `kBanks` | **fails, loud** |
+| `tests/ui/LayoutTests.cpp` | caption fit + overlap | unchecked, silent |
+| `tools/snapshot/main.cpp` | `snapshot <id>` | no render, loud on use |
+
+`tools/packager/package.sh` is deliberately **not** on this list any more:
+it discovers products by globbing the build tree, so it cannot drift. Prefer
+that shape for anything new that needs to know the set of products.
+
+### Two modules being written at once
+
+Every file above is shared, and `RackTests.cpp` asserts an exact registry
+size, so two branches adding a module in parallel will conflict on most of
+them and fail on that one.
+
+**Stack the second branch on the first rather than branching both from
+`main`.** One build then contains both modules, which is what makes a single
+round of DAW testing possible at all -- parallel branches cannot produce that
+artifact without an integration merge first. The shared files also get
+edited once, on top of current content, instead of twice in two directions.
+
+The cost is that the upper branch carries the lower one's commits and needs
+a rebase if the lower one changes. That is cheaper than resolving eight
+files.
+
 ## Changing a module
 
 - Adding a parameter: append to `specs()`, bump `kVersionHint`, give it a
