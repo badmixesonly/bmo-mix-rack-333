@@ -176,6 +176,70 @@ int main()
                "both exceptions are identity at their defaults");
     }
 
+    //== Rotation turns the way a pan knob turns ==============================
+    // The two tests above are sign-agnostic: they ask whether rotation moves
+    // the mono sum, which is true whichever way it turns. So nothing here
+    // caught the sign being inverted, and it reached a listening pass with
+    // + moving the image LEFT -- the opposite of every pan control -- before
+    // an ear found it on 2026-09-09.
+    //
+    // The S1 manual fixes the rotation law and says nothing about the knob's
+    // direction, so the sign is a free choice rather than something derivable.
+    // A free choice is exactly what needs pinning down: there is no formula to
+    // re-derive it from, only this.
+    //
+    // Measured on a dead-centre source, +30 degrees: L 0.1464, R 0.5464.
+    {
+        // Both channels identical, so the source has no side content and any
+        // L/R difference in the output is the rotation's doing.
+        const auto peaksAt = [] (float degrees, float& peakL, float& peakR)
+        {
+            constexpr int n = 8192;
+            DimDsp dsp;
+
+            const float v[Index::count] {
+                100.0f, 1.0f, 700.0f, 10.0f, 0.0f,
+                0.0f, 0.40f, 50.0f, degrees, 0.0f
+            };
+
+            dsp.setParams (v, Index::count);
+            dsp.prepare (48000.0, 512, 2);
+            dsp.setParams (v, Index::count);
+
+            std::vector<float> l ((size_t) n), r ((size_t) n);
+            for (int i = 0; i < n; ++i)
+            {
+                const auto tone = 0.4f * std::sin (2.0f * 3.14159265f * 220.0f
+                                                   * (float) i / 48000.0f);
+                l[(size_t) i] = tone;
+                r[(size_t) i] = tone;
+            }
+
+            float* ch[2] { l.data(), r.data() };
+            dsp.process (ch, 2, n);
+
+            // Second half only: the smoothers reach the target well inside
+            // the first, and a ramp would drag the peak toward centre.
+            peakL = peakR = 0.0f;
+            for (int i = n / 2; i < n; ++i)
+            {
+                peakL = std::max (peakL, std::abs (l[(size_t) i]));
+                peakR = std::max (peakR, std::abs (r[(size_t) i]));
+            }
+        };
+
+        float l = 0.0f, r = 0.0f;
+
+        peaksAt (+30.0f, l, r);
+        check (r > l * 1.5f, "positive rotation moves a centre source RIGHT");
+
+        peaksAt (-30.0f, l, r);
+        check (l > r * 1.5f, "negative rotation moves a centre source LEFT");
+
+        peaksAt (0.0f, l, r);
+        check (std::abs (l - r) < 1.0e-6f, "zero rotation leaves it centred");
+    }
+
     //== Asymmetry keeps the centre where it is ================================
     // The S1's manual is explicit that this is what separates the control from
     // a balance: it "does not affect central mono in-phase sounds in any way",

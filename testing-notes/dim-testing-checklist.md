@@ -105,9 +105,12 @@ Nothing here is a bug; it is whether the panel reads.
   2026-09-09: neither was audible enough to earn the space, so both lost their
   controls and are fixed at their defaults.** The panel is seven knobs and a
   switch now. `PlainKnob::setKnobEnabled` is still unused suite-wide.
-- ~~ROTATE +30° moves the image LEFT~~ **Settled 2026-09-09: confirmed
-  backwards by ear, and the sign is negated — + now moves the image right,
-  like a pan knob.** Awaiting a confirming listen on a build that contains it.
+- ~~ROTATE +30° moves the image LEFT~~ **Settled. Confirmed backwards by ear
+  2026-09-09, sign negated, and the fix confirmed by ear on the `bc89293`
+  build 2026-09-10 — + moves the image right, like a pan knob.** Measured on a
+  dead-centre source: +30° gives L 0.1464 / R 0.5464, −30° the mirror, 0°
+  exactly centred. `tests/dsp/DimDspTests.cpp` now asserts the direction, and
+  that assertion fails against the old sign.
 - **No output trim, and up to +15.5 dB available**: SHUFFLE 3.0 × WIDTH 200 %
   on anti-phase 80 Hz took a 0.5 peak to 2.98. Every other module has an
   output stage. Does Dimension need one?
