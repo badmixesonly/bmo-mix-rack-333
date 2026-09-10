@@ -139,8 +139,11 @@ wired conventionally like Chorus-Ensemble.
       level and tone.
 - [ ] Gain-match, then A/B in stereo. Which reads wider at matched level?
 - [ ] **Sum to mono.** The same comb check as 05.
-- [ ] On a mono vocal, compare the **throb** specifically. Shimmer or tremolo,
-      against a reference that is already accepted?
+- [x] On a mono vocal, compare the **throb** specifically — steady width, or
+      audible tremolo? Not "shimmer or tremolo": shimmer is not the target and
+      CLA Vocals is a reference for how the problem was solved elsewhere, not a
+      standard to match. *2026-09-09: not an audible throb, no shimmer, no high
+      end added. Passes.*
 
 ## 07. What the meter should and should not say
 

@@ -33,8 +33,13 @@ image **swing**. Here the mid is a wire, so when the side nulls the image
 **collapses to mono and reopens**. That is the price of the mono-safety, and
 nobody has heard it yet.
 
-- On a **mono vocal**, DETUNE on, CENTS 10: does it read as MicroPitch-style
-  shimmer, or as an audible tremolo/flutter of the width?
+- On a **mono vocal**, DETUNE on, CENTS 10: does the width read as steady, or
+  as an audible tremolo/flutter? **Width is the target and shimmer is not** —
+  MicroPitch is a research reference for how others solved this, not a
+  standard to match, and its high-end sparkle is the part this module does not
+  want. Widened with no shimmer is the pass.
+  *Answered 2026-09-09: not an audible throb, slight tremolo at most, no high
+  end added, no shimmer. Passes.*
 - Does it get better or worse as CENTS goes up? The measurement says the
   throb gets *faster and shallower* — which is backwards from what a user
   would expect, since the gentle setting throbs hardest.

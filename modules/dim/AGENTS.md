@@ -110,8 +110,12 @@ claim on the colour** — accents are allocated in `products/AGENTS.md` now.
   complementary sum and the image swings; here the mid is a wire, so the image
   **collapses to mono and reopens**. 19.6 dB peak-to-trough at the default,
   34.6 dB on a 110 Hz tone, and it gets *faster and shallower* as CENTS rises —
-  backwards from what a user expects. No test can settle whether it reads as
-  shimmer or as tremolo. This is why the branch is a draft.
+  backwards from what a user expects. **Settled by ear 2026-09-09: not an
+  audible throb, a slight tremolo at most, and no shimmer or added high end —
+  which is the wanted result, since width without shimmer is the brief.** The
+  measurement disagreed: 16.1 % of windows in the host bounce read anti-phase,
+  which the meter pass lists under Do Not Want To See. It described the signal
+  correctly and predicted the wrong cost.
 - **WIDTH at 0 silently disables everything above it**, DETUNE included, since
   WIDTH is downstream of generate. Measured: peak side 0.00000.
 - **No output trim, and up to +15.5 dB available.** Every other module has an

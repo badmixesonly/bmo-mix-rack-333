@@ -330,10 +330,19 @@ To See — but the ear cleared it.** The metric found a real property of the
 signal and was wrong about what it would cost. Worth remembering the next time
 a correlation figure is treated as a verdict rather than as a description.
 
-The "no shimmer, no high end added" half is a separate finding and is not a
-pass: it says Dimension does **not** do what MicroPitch is reached for. It
-widens without adding sparkle. That is a voicing observation to record, not a
-defect — but it means "MicroPitch-style" is the wrong pitch for this module.
+**"No high end added, no shimmer" is the second half of the pass, not a
+caveat.** Width without shimmer is the intended result. MicroPitch was a
+research reference — how the problem has been solved elsewhere — and was never
+the target; the shimmer is the part of it this module deliberately does not
+want. Getting width without it is the design working.
+
+Note that the test documents get this backwards. `dim-testing-checklist.md` §1
+asks "does it read as MicroPitch-style shimmer, or as an audible
+tremolo/flutter", and `dim-meter-pass.md` §06 repeats it — both phrase shimmer
+as the good outcome and leave no way to record "widened, no shimmer, correct".
+Corrected in both. **A checklist that names a reference product in the question
+invites the reader to score against that product rather than against the
+brief.**
 
 ### ROTATE was backwards, and is fixed
 

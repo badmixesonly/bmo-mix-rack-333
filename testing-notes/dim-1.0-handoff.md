@@ -217,11 +217,13 @@ In the conventional wiring the mid takes the complementary sum, so when the
 side nulls the mid peaks and the image **swings**. Here the mid is a wire,
 so when the side nulls the image **collapses to mono and reopens**. That is
 the price of the mono-safety, it is undocumented anywhere else, and no test
-can settle whether it reads as MicroPitch-style shimmer or as an audible
-tremolo of the width.
+can settle whether the width reads as steady or as an audible tremolo.
 
-**This is why the branch is a draft.** See
-`testing-notes/dim-testing-checklist.md`, where it is item 1.
+**Settled by ear 2026-09-09: it passes.** Not an audible throb, a slight
+tremolo at most, and no shimmer or added high end. MicroPitch is a research
+reference for how others solved this, never a target — the shimmer is the part
+this module does not want, so width without it is the design working, not a
+shortfall. See `testing-notes/dim-bench-state-2026-09-09.md`.
 
 ### Smaller, all in the checklist
 
