@@ -12,8 +12,11 @@ namespace
     constexpr int kBigKnobHeight = 150;
 
     // Everything else is paired two to a row. 64 is between BMO EQ's 56 and
-    // Opto's 92, and it is what ten controls in a 220 px column can afford --
-    // the alternative was nine knobs at full size in a panel 300 px too short.
+    // Opto's 92, and it is what the column can afford. Sized when there were
+    // ten controls here; there are eight since RATE and DEPTH lost theirs, so
+    // the pairs could grow -- deliberately not done, because 64 is the size
+    // the rest of the suite's paired knobs use and matching them across
+    // modules is worth more than the spare pixels.
     constexpr int kPairKnobSide   = 64;
     constexpr int kPairKnobHeight = 104;
 

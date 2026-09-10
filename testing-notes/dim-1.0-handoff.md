@@ -233,9 +233,10 @@ shortfall. See `testing-notes/dim-bench-state-2026-09-09.md`.
 - **No output trim, and up to +15.5 dB available.** SHUFFLE 3.0 × WIDTH
   200 % on anti-phase 80 Hz took a 0.5 peak to 2.98. Every other module has
   an output stage.
-- **RATE and DEPTH are dead at the DIFFUSE 0 % default** — three of ten
-  knobs do nothing on a fresh insert. `PlainKnob::setKnobEnabled` exists and
-  nothing in the suite uses it yet.
+- ~~RATE and DEPTH are dead at the DIFFUSE 0 % default~~ **Settled 2026-09-09:
+  both lost their controls and are fixed at their defaults, 0.40 Hz and 50 %.**
+  The parameters stay in `params.h`; the IDs are permanent. Seven knobs and a
+  switch now. `PlainKnob::setKnobEnabled` remains unused suite-wide.
 - **A goniometer is the meter this panel wants** and is deliberately absent.
   `ui::ModuleContext` hands a panel five `std::function<float()>` and
   `ModuleEngine` fills them from `Meter` classes that reduce a block to a

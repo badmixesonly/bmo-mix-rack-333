@@ -32,8 +32,9 @@ namespace bmo::dim
     WIDTH sits in the middle at full size, where Opto puts its meter. It is the
     control this panel is opened for, it is the only one anybody reaches for
     without thinking, and it is the only knob here that earns 92 px. Everything
-    else is paired at 64, which is between BMO EQ's 56 and Opto's 92 and is what
-    ten controls in a 220 px column can afford.
+    else is paired at 64, which is between BMO EQ's 56 and Opto's 92. That was
+    sized for ten controls; there are eight now, and it stays at 64 to match
+    the rest of the suite rather than growing into the space.
 
     DETUNE is a switch rather than a zero position on the CENTS knob. The stage
     it gates is the only part of the module that manufactures signal rather than

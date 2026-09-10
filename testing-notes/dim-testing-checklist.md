@@ -1,10 +1,17 @@
 # BMO Dimension — Ableton testing checklist
 
-Build under test: `add-bmo-dimension`, on top of `ee6721d` plus the review
-pass. VST3 bundles come from the GitHub Actions run's **BMO-Windows**
-artifact — Dimension is in the package now, which it was not in `ee6721d`
-(`tools/packager/package.sh` drove a hardcoded product list and had already
-dropped BMO Opto the same way once; it reads the build tree now).
+Build under test: `frosty-add-bmo-dimension`. VST3 bundles come from the GitHub
+Actions run's **BMO-Windows** artifact — Dimension is in the package now, which
+it was not in `ee6721d` (`tools/packager/package.sh` drove a hardcoded product
+list and had already dropped BMO Opto the same way once; it reads the build
+tree now).
+
+**Take the artifact from the newest green run and install it LAST**, after any
+local building. `scripts/build.sh` builds Debug, and `CMakeLists.txt:35` makes
+every non-Release build copy itself over `C:\Program Files\Common Files\VST3\`
+— so a build silently replaces the tester install with a Debug binary. **The
+file sizes match, so only a hash catches it.** Quit Live first; it holds
+loaded bundles open, which protects them and leaves the rest clobbered.
 
 This is "what to listen for", in priority order. The things a test can
 settle are settled — 12/12 ctest, mono sum exact to 2.4e-7 at 44.1/48/96 kHz,
@@ -94,12 +101,13 @@ Nothing here is a bug; it is whether the panel reads.
   Measured: peak side 0.00000. Does that trip you up in use?
 - **CENTS is paired with DIFFUSE** on one row under the DETUNE switch, and
   the switch gates only CENTS. Does the row read as one gated pair?
-- **RATE and DEPTH do nothing at the DIFFUSE 0 % default** — three of ten
-  knobs are dead on a fresh insert. Worth dimming inactive knobs?
-  `PlainKnob::setKnobEnabled` exists and nothing in the suite uses it yet.
-- **ROTATE +30° moves the image LEFT.** The S1 manual specifies the law but
-  not the sign, so this is a free choice — and currently the opposite of a
-  pan knob. One line to flip.
+- ~~RATE and DEPTH do nothing at the DIFFUSE 0 % default~~ **Settled
+  2026-09-09: neither was audible enough to earn the space, so both lost their
+  controls and are fixed at their defaults.** The panel is seven knobs and a
+  switch now. `PlainKnob::setKnobEnabled` is still unused suite-wide.
+- ~~ROTATE +30° moves the image LEFT~~ **Settled 2026-09-09: confirmed
+  backwards by ear, and the sign is negated — + now moves the image right,
+  like a pan knob.** Awaiting a confirming listen on a build that contains it.
 - **No output trim, and up to +15.5 dB available**: SHUFFLE 3.0 × WIDTH 200 %
   on anti-phase 80 Hz took a 0.5 peak to 2.98. Every other module has an
   output stage. Does Dimension need one?
