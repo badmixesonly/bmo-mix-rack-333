@@ -8,9 +8,12 @@ target_link_libraries(measure_sat PRIVATE bmo_sat_dsp)
 bmo_add_dsp_tool(measure_opto ${CMAKE_CURRENT_SOURCE_DIR}/measure/opto/main.cpp)
 target_link_libraries(measure_opto PRIVATE bmo_opto_dsp)
 
+bmo_add_dsp_tool(measure_dim  ${CMAKE_CURRENT_SOURCE_DIR}/measure/dim/main.cpp)
+target_link_libraries(measure_dim PRIVATE bmo_dim_dsp)
+
 if(NOT BMO_DSP_ONLY)
     bmo_add_tool(snapshot
         ${CMAKE_CURRENT_SOURCE_DIR}/snapshot/main.cpp
         ${BMO_ROOT}/products/rack/Registry.cpp)
-    target_link_libraries(snapshot PRIVATE bmo_eq bmo_sat bmo_util bmo_opto)
+    target_link_libraries(snapshot PRIVATE bmo_eq bmo_sat bmo_util bmo_opto bmo_dim)
 endif()

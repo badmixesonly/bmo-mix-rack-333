@@ -40,6 +40,8 @@ namespace
         { "sat",  { "input_gain", "drive", "mix", "output_level",
                     "sat_in", "phase", "auto_gain", "oversampling", "tone" } },
         { "opto", { "crush", "level", "mode", "link", "color" } },
+        { "dim",  { "width", "shuffle", "shuffle_freq", "detune", "detune_on",
+                    "diffuse", "rate", "depth", "rotation", "asymmetry" } },
     };
 
     std::vector<juce::String> chainIds (RackProcessor& rack)
@@ -75,7 +77,7 @@ int main()
         auto rack = createRack();
         const auto& registry = rack->getRegistry();
 
-        check (registry.size() == 4, "the registry holds util, eq, sat and opto");
+        check (registry.size() == 5, "the registry holds util, eq, sat, opto and dim");
 
         for (auto* def : registry)
         {

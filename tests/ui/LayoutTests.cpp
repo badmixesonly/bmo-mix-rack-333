@@ -16,6 +16,7 @@
 // at design size regardless of what the editor is later scaled to, so
 // constructing the editor is enough to ask where everything landed.
 
+#include "products/dim/Product.h"
 #include "products/eq/Product.h"
 #include "products/opto/Product.h"
 #include "products/sat/Product.h"
@@ -586,6 +587,7 @@ int main (int argc, char** argv)
         { "sat",  +[] () -> std::unique_ptr<juce::AudioProcessor> { return createSat(); } },
         { "util", +[] () -> std::unique_ptr<juce::AudioProcessor> { return createUtil(); } },
         { "opto", +[] () -> std::unique_ptr<juce::AudioProcessor> { return createOpto(); } },
+        { "dim",  +[] () -> std::unique_ptr<juce::AudioProcessor> { return createDim(); } },
     };
 
     if (dumping)

@@ -11,7 +11,25 @@ modules/<id>/
   panel/<Name>Panel.h/.cpp a ModulePanel; builds controls from context.params
   presets/FactoryPresets.h factory() -> vector<FactoryPreset>, Init first
   Module.h/.cpp            module() -> const ModuleDef&
+  AGENTS.md, README.md     what that folder cannot be read off its code
 ```
+
+## Per-module notes
+
+Root `AGENTS.md` asks every new module to carry its own `AGENTS.md` and
+`README.md`, and to be linked from here so the reading chain holds. What
+belongs there is what a contributor would otherwise have to re-derive -- the
+invariant a module is built on, the laws it rejected and why, the faults its
+own tests could not see. What belongs *here* is anything every module shares.
+
+- [`dim/AGENTS.md`](dim/AGENTS.md) -- BMO Dimension. Side-only topology,
+  Gerzon's asymmetry shear and its named fallback, and the width throb that
+  is still open.
+
+The four older modules predate the rule and have none. That is a gap rather
+than a decision, and worth closing per module when one is next opened up
+rather than in one sweep -- these files are only worth having if what is in
+them was written by someone who had just been in the code.
 
 ## Adding a module
 
@@ -172,6 +190,51 @@ modules/<id>/
    the module's bank to `kBanks` in `RackTests.cpp`.
 10. `scripts/build.sh --snapshots` and look at the panel, standalone and in
     the rack.
+
+### Every shared file a new module touches
+
+Steps 7 to 9 are spread across eight files that already exist, and nothing
+fails if one is missed -- the build stays green and the module is simply
+absent from whatever that file feeds. `tools/packager/package.sh` dropped
+BMO Opto and then BMO Dimension exactly that way, and the second one was
+only caught because a review went looking. Work down this list:
+
+| file | what it feeds | how it fails if missed |
+|---|---|---|
+| `modules/CMakeLists.txt` | the module library | link error, loud |
+| `products/<id>/` (3 files) | the standalone plugin | no standalone, silent |
+| `products/CMakeLists.txt` | that product's build | no standalone, silent |
+| `products/rack/Registry.cpp` | the rack's add menu | not hostable, silent |
+| `products/rack/CMakeLists.txt` | the rack's link line | link error, loud |
+| `products/AGENTS.md` | id, code, bundle, **accent** | nothing; drifts |
+| `tests/CMakeLists.txt` | both test targets | untested, silent |
+| `tests/plugin/RackTests.cpp` | `registry.size()`, `kBanks` | **fails, loud** |
+| `tests/ui/LayoutTests.cpp` | caption fit + overlap | unchecked, silent |
+| `tools/snapshot/main.cpp` | `snapshot <id>` | no render, loud on use |
+
+`tools/packager/package.sh` is deliberately **not** on this list any more:
+it discovers products by globbing the build tree, so it cannot drift. Prefer
+that shape for anything new that needs to know the set of products.
+
+### Two modules being written at once
+
+Prefer not to. The first question is whether the second module can wait for
+the first to be heard in a DAW, and usually it can -- a module that turns
+out to need rework drags anything stacked on it. If it can wait, stop here.
+
+Every file above is shared, and `RackTests.cpp` asserts an exact registry
+size, so two branches adding a module in parallel will conflict on most of
+them and fail on that one.
+
+**Stack the second branch on the first rather than branching both from
+`main`.** One build then contains both modules, which is what makes a single
+round of DAW testing possible at all -- parallel branches cannot produce that
+artifact without an integration merge first. The shared files also get
+edited once, on top of current content, instead of twice in two directions.
+
+The cost is that the upper branch carries the lower one's commits and needs
+a rebase if the lower one changes. That is cheaper than resolving eight
+files.
 
 ## Changing a module
 

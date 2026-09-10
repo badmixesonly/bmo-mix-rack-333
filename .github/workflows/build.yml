@@ -69,7 +69,27 @@ jobs:
           BLENDER: ${{ secrets.FONT_TG_BLENDER_B64 }}
         run: |
           if [ -z "$MINERVA" ] || [ -z "$BLENDER" ]; then
-            echo "The font secrets are not set on this repository. See assets/fonts/README.md."
+            echo "No font secrets reached this run."
+            echo
+            echo "Two different things cause that, and this step cannot tell them"
+            echo "apart -- an unset secret and a withheld one both arrive empty."
+            echo "Check the runner header above: 'Secret source: None' means the"
+            echo "second case, not the first."
+            echo
+            echo "  1. A pull request from a fork. GitHub does not pass repository"
+            echo "     secrets to fork PRs, so they can be set perfectly well and"
+            echo "     still not arrive. Push the branch to this repository and"
+            echo "     open the pull request from there; that run gets them."
+            echo
+            echo "  2. FONT_TG_MINERVA_BLACK_B64 and FONT_TG_BLENDER_B64 are"
+            echo "     genuinely unset here. assets/fonts/README.md says how to"
+            echo "     set them."
+            echo
+            echo "  event:     ${{ github.event_name }}"
+            echo "  this repo: ${{ github.repository }}"
+            echo "  head repo: ${{ github.event.pull_request.head.repo.full_name || github.repository }}"
+            echo
+            echo "If those last two differ, it is case 1."
             exit 1
           fi
           mkdir -p assets/fonts
