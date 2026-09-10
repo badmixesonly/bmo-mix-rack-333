@@ -36,11 +36,12 @@ whatever the side chain does. It is a good guard against someone later wiring
 into the mid path, which is what it is for. It is **not** evidence the DSP
 sounds good, and it should not be quoted as though it were.
 
-## Four things a green suite did not catch
+## Five things a green suite did not catch
 
-All four were live in the first commit with 12/12 passing. Each has an
-assertion now; the point of listing them is that the *class* of fault survived
-a full suite.
+The first four were live in the first commit with 12/12 passing; the fifth
+was put there by the fix for the first. Each has an assertion now. The point
+of listing them is that the *class* of fault survived a full suite — and that
+three of the five are DETUNE switch transitions.
 
 | fault | what it did | why nothing caught it |
 |---|---|---|
@@ -48,11 +49,27 @@ a full suite.
 | mono instance combed itself | generate manufactured side content and summed it back into the one channel: +1.17 dB, 0.671 sample error | no test used a mono layout |
 | asymmetry moved the centre | a dead-centre 0.5/0.5 source came out 0.75/0.25 | every mono-sum test fed a source that *already had* side content |
 | DETUNE switched off in one sample | the voices' difference, which is the whole side signal on a mono source, dropped out at once: a 0.49 step on a 0.5 tone, 32× the tone's own largest move | the switch test ran over silence, where a step has nothing to step from — and the listening pass did not hear it |
+| DETUNE switched on into cleared buffers | clearing the buffers (the fix for row one) left a zeroed region the two voices reached ~15 ms later, a few samples apart; for those samples one had signal and the other did not: a 0.18 step, 11.7× | same blind spot as the row above; this was in the build the listening pass cleared |
 
-The DETUNE switch is a fade now, on the same 8 ms as every other control. The
-voice buffers are cleared on re-engage **only if the fade-out had finished**:
-catch the tail of one and the voices are still running on live audio, so
-clearing them there would put the step back. `dim_dsp` asserts both halves.
+**DETUNE fades out and comes straight back in** — instant on is Frosty's call
+from the 2026-09-10 ear test. The fade-out is the same 8 ms as every other
+control. What makes instant-on click-free:
+
+- **The voices never stop.** They run with the stage in or out, so their
+  buffers always hold the last 30 ms of live audio — never stale (row one),
+  never zeroed (row five). Do not move them back inside the level check to
+  save the CPU; `dim_dsp` fails if you do.
+- **Engaging from fully off restarts both voices at the same point of their
+  sweep.** Fed the same input, they are then identical, so their difference —
+  the width — starts at exactly zero and grows as the opposite detunes pull
+  them apart. That is why the level can jump straight to 1.
+- **Engaging during a fade-out's tail** (within ~110 ms) does neither: the
+  voices are mid-sweep and contributing, so it glides back up from where the
+  fade had got to.
+
+`dim_dsp` asserts off, on-from-off, on-mid-fade and instant, and each part
+above has been removed in turn to confirm a test fails. `measure_dim pass`
+prints all three switch steps.
 
 The mono guard is the early return at the top of `DspCore::process`. **A stereo
 imager on a mono bus has to be left as a wire** — `isBusesLayoutSupported`

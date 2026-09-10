@@ -75,6 +75,13 @@ public:
         phase = 0.0f;
     }
 
+    /** Back to the start of the sweep, keeping what the buffer holds. Two
+        voices that have been fed the same input and are restarted together
+        produce identical output until their opposite detunes pull them apart
+        -- which is what lets DETUNE come back in instantly. See
+        DspCore::setParams. */
+    void restart() noexcept { phase = 0.0f; }
+
     /** cents > 0 shifts up, < 0 down. */
     void setCents (float cents) noexcept
     {
@@ -260,7 +267,8 @@ public:
         rotSm.prepare (sampleRate, 8.0);
         asymSm.prepare (sampleRate, 8.0);
 
-        // The DETUNE switch fades on the same 8 ms. See setParams.
+        // DETUNE fades out on the same 8 ms, and comes back in instantly.
+        // See setParams.
         detuneSm.prepare (sampleRate, 8.0);
 
         reset();
@@ -278,25 +286,44 @@ public:
 
     void setParams (const Params& p)
     {
-        // The DETUNE switch is a fade, not a gate. Gated, switching the stage
-        // out dropped the voices' difference in one sample -- and on a mono
-        // source that difference is the whole side signal. Measured at the
-        // peak of the beat: a 0.49 step on a 0.5 tone, 32x the largest move
-        // the tone makes by itself. Nobody heard it on the listening pass;
-        // it is a click by any measure, so it fades.
+        // DETUNE fades out and comes straight back in.
         //
-        // The voice buffers hold up to 30 ms of whatever last went through
-        // them, and they stop running once the fade-out reaches zero.
-        // Re-engaging over a quiet passage replayed that: measured at 0.90
-        // peak out of a buffer filled a second earlier. So they are cleared
-        // on the way in -- but only if the fade-out had finished. A re-engage
-        // that catches the tail of one finds the voices still running on live
-        // audio, and clearing them then would be the step the fade removes.
-        // ~3k float writes on a control change, never in the steady state.
+        // Out: gated, switching the stage out dropped the voices' difference
+        // in one sample -- and on a mono source that difference is the whole
+        // side signal. Measured at the peak of the beat: a 0.49 step on a 0.5
+        // tone, 32x the largest move the tone makes by itself. So it fades,
+        // on the same 8 ms as every other control.
+        //
+        // In: instant, which is Frosty's call from the 2026-09-10 ear test.
+        // What makes that safe is that the voices never stop -- process()
+        // runs them with the stage in or out, so their buffers always hold
+        // the last 30 ms of live audio. Both earlier ways of handling those
+        // buffers clicked on the way in:
+        //
+        //   left stale     replayed a buffer filled a second earlier: 0.90
+        //                  peak out of silence
+        //   cleared to 0   the voices reached the edge of the cleared region
+        //                  ~15 ms later, a few samples apart, so for those
+        //                  samples one had signal and the other did not: a
+        //                  0.18 step on a 0.5 tone, 11.7x. This was in the
+        //                  build that passed the 2026-09-09 listening pass,
+        //                  and nobody heard it either.
+        //
+        // With live buffers there is no edge. Restarting both voices at the
+        // same point of their sweep makes them identical, so their difference
+        // -- the width -- starts at exactly zero and grows as their opposite
+        // detunes pull them apart. That is what lets the level jump straight
+        // to full without a step.
+        //
+        // A re-engage that catches the tail of a fade-out is the exception.
+        // The voices are mid-sweep and still contributing, so restarting them
+        // would itself be a step; that case glides back up from wherever the
+        // fade had got to.
         if (p.detuneOn && ! params.detuneOn && detuneSm.value() == 0.0f)
         {
-            up.reset();
-            down.reset();
+            up.restart();
+            down.restart();
+            detuneSm.snap (1.0f);
         }
 
         params = p;
@@ -365,17 +392,19 @@ public:
             // -- Generate ----------------------------------------------------
             // Detune reads the mid, because on a mono source that is the only
             // thing there. The two shifted voices differenced give side content
-            // that did not exist a sample ago. Faded in and out rather than
-            // gated -- see setParams. At either end the smoother snaps to
-            // exactly 0 or 1, so a settled stage is bit-identical to a gate.
+            // that did not exist a sample ago.
+            //
+            // The voices run whether the stage is in or out, so their buffers
+            // are never stale and never empty -- see setParams for the two
+            // clicks each of those caused. The level fades out and snaps
+            // straight back in; at either end it is exactly 0 or 1, so a
+            // settled stage is bit-identical to a gate.
+            const auto upOut   = up.process (mid);
+            const auto downOut = down.process (mid);
             const auto detuneGain = detuneSm.tick();
 
             if (detuneGain > 0.0f)
-            {
-                const auto a = up.process (mid);
-                const auto b = down.process (mid);
-                side += detuneGain * 0.5f * (a - b);
-            }
+                side += detuneGain * 0.5f * (upOut - downOut);
 
             // -- Diffuse -----------------------------------------------------
             const auto diffuse = diffuseSm.tick();
@@ -475,6 +504,11 @@ public:
             r[i] = mid - side;
         }
     }
+
+    /** The generate stage's current level: 0 out, 1 in, between while it
+        fades out. Read-only, for tests -- it is what "instant on" is
+        asserted against. */
+    float detuneLevel() const noexcept { return detuneSm.value(); }
 
 private:
     /** The knob's percentage as the shear coefficient, at half scale.

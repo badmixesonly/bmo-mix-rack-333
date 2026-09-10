@@ -452,11 +452,51 @@ int main()
         check (worstStepFrom (render (peakAt, 0), peakAt) < 1.5f * steadyStep,
                "switching detune off mid-beat is not a click");
 
-        // Back on before the fade-out has finished: the voices are still
-        // running on live audio, so clearing them here would be the step the
-        // fade exists to remove.
+        // Back on before the fade-out has finished: the voices are mid-sweep
+        // and still contributing, so restarting them here -- which is what
+        // makes a switch-on from fully off instant -- would itself be a step.
         check (worstStepFrom (render (peakAt, 240), peakAt) < 1.5f * steadyStep,
                "switching detune back on mid-fade is not a click");
+
+        // Back on from fully off, well after the fade-out has finished, at a
+        // peak of the tone -- the worst sample for anything that restarts
+        // from silence, because that sample is the first one a restarted
+        // voice has to reach.
+        int onAt = settle + tail;
+        for (int i = onAt; i < settle + tail + 220; ++i)
+            if (std::abs (dry[(size_t) i]) > std::abs (dry[(size_t) onAt]))
+                onAt = i;
+
+        const auto reengaged = render (settle, onAt - settle);
+
+        check (worstStepFrom (reengaged, onAt) < 1.5f * steadyStep,
+               "switching detune on from fully off is not a click");
+
+        // And instant, which is Frosty's call from the 2026-09-10 ear test:
+        // fade out, but come straight back in. The output cannot show this on
+        // its own -- the width starts from zero either way and grows as the
+        // voices drift apart -- so ask the stage for its level directly.
+        {
+            DimDsp dsp;
+            dsp.setParams (on, Index::count);
+            dsp.prepare (48000.0, 512, 2);
+
+            std::vector<float> l (dry), r (dry);
+            float* ch[2] { l.data(), r.data() };
+
+            dsp.setParams (on, Index::count);
+            dsp.process (ch, 2, settle);
+
+            ch[0] += settle; ch[1] += settle;
+            dsp.setParams (off, Index::count);
+            dsp.process (ch, 2, tail);
+
+            check (dsp.getCore().detuneLevel() == 0.0f, "detune has faded fully out");
+
+            dsp.setParams (on, Index::count);
+            check (dsp.getCore().detuneLevel() == 1.0f,
+                   "switching detune on from fully off is instant");
+        }
     }
 
     //== Width =================================================================
