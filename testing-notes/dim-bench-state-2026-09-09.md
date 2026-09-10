@@ -393,9 +393,25 @@ reachable, so nothing downstream catches an over.
 
 Also deferred, and lower stakes:
 
-- **§3 host mechanics** — loading as a **BMO Mix Rack slot module** (only
-  tested as a track insert), DETUNE toggled repeatedly over a quiet passage,
-  WIDTH automated across its range. The DSP equivalents all pass offline.
+- **§3 host mechanics** — ~~loading as a BMO Mix Rack slot module, DETUNE
+  toggled repeatedly~~ **done 2026-09-10, see below.** Still open: WIDTH
+  automated across its range. The DSP equivalent passes offline.
+
+> **2026-09-10 — DETUNE switch checks, in the host.** Frosty, on the desktop,
+> right after PR #4's review, on the build with the review fixes (DETUNE fades
+> in and out on 8 ms):
+>
+> - **toggles over loud, sustained material** — pass
+> - **double-tap** (off and on inside the ~110 ms fade-out) — pass
+> - **DETUNE On automation**, including in a Mix Rack slot — pass
+>
+> *"all passed with flying colors."* The same session's verdict on the fade
+> itself: *"ear test passes, but i prefer instant on."* So the fade-in was
+> replaced by an instant on, in `frosty-dim-detune-instant-on`. That branch
+> leaves switch-off and the double-tap path exactly as tested here. The one
+> path it changes — switch-on from fully off — has **not** been heard in a
+> host yet. It measures 1.00× against the 9.87× tick the tested build had
+> ~15 ms after switching on, which nobody heard either.
 - **§4 panel questions**, which are now stale: they described a nine-knob
   layout and it is seven knobs and a switch since RATE and DEPTH went. Re-ask
   them against the current render.
@@ -414,9 +430,10 @@ Everything the checklist calls "what only ears can answer":
 - **§1 the throb** — shimmer or tremolo, on a mono vocal at CENTS 10. **This
   gates the PR.** Record what you heard, with settings, before proposing a fix.
 - **§2 ASYMMETRY** — receding, or phasey/hollow.
-- **§3** the host-level checks: DETUNE toggled over a quiet passage, mono
-  track, WIDTH automation. The DSP-level equivalents pass in ctest; what is
-  untested is the real host at real buffer sizes.
+- **§3** the host-level checks: ~~DETUNE toggled over a quiet passage~~
+  (done 2026-09-10 over loud material, see §8), mono track, WIDTH automation.
+  The DSP-level equivalents pass in ctest; what is untested is the real host at
+  real buffer sizes.
 - **§5 presets** — whether the three DETUNE presets separate.
 - **meter pass §02** the polarity-null bench in the real host, and §04–06 the
   A/B comparisons. §6 above settles the DSP half of §02 offline; what it cannot
