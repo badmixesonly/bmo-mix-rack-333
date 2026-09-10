@@ -398,21 +398,30 @@ Also deferred, and lower stakes:
   automated across its range. The DSP equivalent passes offline.
 
 > **2026-09-10 — DETUNE switch checks, in the host.** Frosty, on **ICE QUEEN**
-> (desktop), right after PR #4's review, on the build with the review fixes
-> (DETUNE fades in and out on 8 ms):
+> (desktop), right after PR #4's review:
 >
 > - **toggles over loud, sustained material** — pass
-> - **double-tap** (off and on inside the ~110 ms fade-out) — pass
+> - **double-tap** (off and on quickly) — pass
 > - **DETUNE On automation**, including in a Mix Rack slot — pass
 >
-> *"all passed with flying colors."* The same session's verdict on the fade
-> itself: *"ear test passes, but i prefer instant on."* So the fade-in was
-> replaced by an instant on, in `frosty-dim-detune-instant-on`. That branch
-> leaves switch-off and the double-tap path exactly as tested here. The one
-> path it changes — switch-on from fully off — has **not** been heard in a
-> host yet. It measures 1.00× against the 9.87× tick the tested build had
-> ~15 ms after switching on, which nobody heard either. (Measured offline with
-> `measure_dim pass` on **AURORA**, 2026-09-10.)
+> *"all passed with flying colors."*
+>
+> **Which build.** ICE QUEEN's only installed BMO Dimension at the time was a
+> CI build — 4,203,008 bytes, SHA-256 `10AD74B9…904D06BD` — installed
+> 2026-09-09 20:22, 20 s after the CI run for `bc89293` finished. That is
+> **before the review fixes**; every build containing them finished after
+> 01:04 on 2026-09-10. So these passes most likely cover the **pre-review
+> switch**: a hard cut going out (0.49 on a 0.5 tone, 32×) and an instant
+> switch-on with the ~15 ms tick (0.18, 11.7×). Neither was audible in real
+> use, which is worth knowing in itself. It also means the **8 ms fade-out has
+> not been heard**. The same session's *"ear test passes, but i prefer instant
+> on"* was then said of a build that was already instant-on. Frosty to confirm.
+>
+> `frosty-dim-detune-instant-on` keeps the fade-out and makes switch-on
+> instant with no tick: 1.00×, against 9.87× on main. Neither of its switch
+> paths has been heard in a host. (All the ×-figures above were measured
+> offline with `measure_dim pass` on ICE QUEEN, 2026-09-10.)
+
 - **§4 panel questions**, which are now stale: they described a nine-knob
   layout and it is seven knobs and a switch since RATE and DEPTH went. Re-ask
   them against the current render.
