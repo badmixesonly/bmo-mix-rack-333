@@ -4,6 +4,53 @@ This is the BMO plugin suite by LT3a: three modules (EQ, Saturator, Util),
 one rack, and the shared code under `core/`. Read this first; then the
 `AGENTS.md` in whichever of `core/`, `modules/`, `products/` you are touching.
 
+## Which machine you are on
+
+Frosty works on two Windows machines:
+
+| name | machine |
+|---|---|
+| **AURORA** | laptop |
+| **ICE QUEEN** | desktop |
+
+They have the **same user folder and repo path**
+(`C:\Users\stefr\bmo-mix-rack-333`), and Windows reports the same computer
+name on both. Nothing in a path or a hostname tells them apart. So each
+machine names itself in its own user-level `C:\Users\stefr\.claude\CLAUDE.md`,
+which is machine-local and never committed. AURORA's was set up on
+2026-09-10.
+
+**On ICE QUEEN, if that file does not name the machine, create it.** Confirm
+with Frosty that this is the desktop before writing it; do not decide from
+the paths. Use this, which mirrors AURORA's:
+
+```markdown
+# This machine: ICE QUEEN
+
+This is **ICE QUEEN**, Frosty's **desktop**. Frosty's laptop is **AURORA**.
+
+The two machines have the same user folder (`C:\Users\stefr`), the same repo
+paths, and Windows reports the same computer name on both. Nothing in a path or
+a hostname tells them apart; this file is the only thing that does. It is
+machine-local on purpose: do not copy it to AURORA, and do not commit it
+anywhere.
+
+- **Say where work happened.** When you record where something was done — a
+  build, a test, a measurement, an install, a listening result — in a handoff
+  doc, `testing-notes/`, a PR description, or a summary to Frosty, name the
+  machine: "on ICE QUEEN". Name AURORA only when Frosty says the work happened
+  there.
+- **Never infer AURORA from this disk.** Installed plugins, build trees and
+  local files here are ICE QUEEN's alone. If it matters what AURORA has, ask.
+```
+
+**Why it matters:** a record of where something happened is only useful if it
+names the machine. On 2026-09-10 a session on AURORA read AURORA's installed
+VST3 — a pre-review build — as evidence of what Frosty had heard in host tests
+on ICE QUEEN, and nearly recorded a pass against the wrong build. When you
+write down where a build, test, install or listening result happened, in
+`testing-notes/`, a handoff or a PR, name the machine.
+
 ## What must not change
 
 A saved session references these, so they are permanent once shipped:

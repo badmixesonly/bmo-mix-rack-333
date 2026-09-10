@@ -397,9 +397,9 @@ Also deferred, and lower stakes:
   toggled repeatedly~~ **done 2026-09-10, see below.** Still open: WIDTH
   automated across its range. The DSP equivalent passes offline.
 
-> **2026-09-10 — DETUNE switch checks, in the host.** Frosty, on the desktop,
-> right after PR #4's review, on the build with the review fixes (DETUNE fades
-> in and out on 8 ms):
+> **2026-09-10 — DETUNE switch checks, in the host.** Frosty, on **ICE QUEEN**
+> (desktop), right after PR #4's review, on the build with the review fixes
+> (DETUNE fades in and out on 8 ms):
 >
 > - **toggles over loud, sustained material** — pass
 > - **double-tap** (off and on inside the ~110 ms fade-out) — pass
@@ -411,7 +411,8 @@ Also deferred, and lower stakes:
 > leaves switch-off and the double-tap path exactly as tested here. The one
 > path it changes — switch-on from fully off — has **not** been heard in a
 > host yet. It measures 1.00× against the 9.87× tick the tested build had
-> ~15 ms after switching on, which nobody heard either.
+> ~15 ms after switching on, which nobody heard either. (Measured offline with
+> `measure_dim pass` on **AURORA**, 2026-09-10.)
 - **§4 panel questions**, which are now stale: they described a nine-knob
   layout and it is seven knobs and a switch since RATE and DEPTH went. Re-ask
   them against the current render.
