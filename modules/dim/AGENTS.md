@@ -147,7 +147,21 @@ claim on the colour** — accents are allocated in `products/AGENTS.md` now.
 
 ## Where the numbers come from
 
-`tests/dsp/DimDspTests.cpp` plus throwaway harnesses driving `bmo::dim::DspCore`
-directly — it is JUCE-free, so it links against nothing. **There is no
-`tools/measure/dim`**, unlike `measure_eq`, `measure_sat` and `measure_opto`.
-This module should probably grow one before its voicing is argued about again.
+`tests/dsp/DimDspTests.cpp` and **`tools/measure/dim`**, which drives
+`bmo::dim::DspCore` directly — it is JUCE-free, so it links against nothing.
+
+This file used to say there was no such tool and that the module should grow
+one "before its voicing is argued about again". The voicing was argued about
+on 2026-09-09 and four throwaway harnesses were written to settle it, so the
+tool now exists with those folded in. `tools/measure/dim/README.md` says what
+each mode is for; each one is the answer to a specific way of being wrong, and
+all four happened during that pass:
+
+- **`source`** — is the file even usable for the test? A mono source cannot
+  exercise ASYMMETRY, and one nearly got used for it.
+- **`pass`** — the meter pass offline. Predicted the host bounce to within
+  2 points of the anti-phase share.
+- **`corr`** — correlation of a bounce, level-gated, because ungated it
+  reports the dither between phrases.
+- **`comb`** — per-frame band deviation. A time-averaged spectrum cannot see
+  a *moving* comb and reported none where there was a 19.78 dB one.
