@@ -4,6 +4,51 @@ This is the BMO plugin suite by LT3a: three modules (EQ, Saturator, Util),
 one rack, and the shared code under `core/`. Read this first; then the
 `AGENTS.md` in whichever of `core/`, `modules/`, `products/` you are touching.
 
+## Which machine you are on
+
+Frosty works on two Windows machines:
+
+| name | machine | user folder |
+|---|---|---|
+| **ICE QUEEN** | desktop | `C:\Users\stefr` |
+| **AURORA** | laptop | `C:\Users\thesp` |
+
+Windows reports the same computer name on both, so the hostname is no help.
+The user folder in your working path tells you which one you are on. Each
+machine also names itself in its own user-level `~\.claude\CLAUDE.md`, which
+is machine-local and never committed. ICE QUEEN's was set up on 2026-09-10.
+
+**On AURORA, if `C:\Users\thesp\.claude\CLAUDE.md` does not name the machine,
+create it.** Confirm with Frosty that this is the laptop before writing it.
+Use this, which mirrors ICE QUEEN's:
+
+```markdown
+# This machine: AURORA
+
+This is **AURORA**, Frosty's **laptop**, user folder `C:\Users\thesp`.
+Frosty's desktop is **ICE QUEEN**, user folder `C:\Users\stefr`. Windows
+reports the same computer name on both, so the user folder and this file are
+what tell them apart. This file is machine-local on purpose: do not copy it to
+ICE QUEEN, and do not commit it anywhere.
+
+- **Say where work happened.** When you record where something was done — a
+  build, a test, a measurement, an install, a listening result — in a handoff
+  doc, `testing-notes/`, a PR description, or a summary to Frosty, name the
+  machine: "on AURORA". Name ICE QUEEN only when Frosty says the work happened
+  there.
+- **Never infer ICE QUEEN from this disk.** Installed plugins, build trees and
+  local files here are AURORA's alone. If it matters what ICE QUEEN has, ask.
+```
+
+**Why it matters:** a record of where something happened is only useful if it
+names the machine. On 2026-09-10 a session on ICE QUEEN was wrongly taken to be
+on the laptop. For a while it recorded its own measurements, and Frosty's host
+tests, against the wrong machine — and discounted the installed plugin that
+showed which build had been tested. When you write down where a build, test,
+install or listening result happened, in `testing-notes/`, a handoff or a PR,
+name the machine. Where it matters which build was heard, check the installed
+binary on that machine by date and SHA-256.
+
 ## What must not change
 
 A saved session references these, so they are permanent once shipped:

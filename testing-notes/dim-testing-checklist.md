@@ -84,10 +84,28 @@ up there and whose width is non-monotonic.
 
 ## 3. Does it work at all
 
+> **⚠️ Flagged for ear review — the DETUNE fades, as of 2026-09-10.** The
+> 8 ms fade-out (`a5e91be`) and the instant-on that replaced the fade-in
+> (`cfdeeff`) have **not been heard in a host**. The 2026-09-10 host passes on
+> ICE QUEEN were most likely on the pre-review build, which was still the one
+> installed there (see `dim-bench-state-2026-09-09.md` §8). Both measure clean
+> offline. Clear this flag, with the build's SHA-256 and the machine, once
+> Frosty has heard the items below on a build that contains both.
+
 - Loads in a track, and in BMO Mix Rack as a slot module. No crashes.
-- **Toggle DETUNE repeatedly during a quiet passage.** The voice buffers
-  used to hold 30 ms of stale audio and burst it back out on re-engage —
-  measured at 0.90 peak over silence. Should be silent now.
+- **Toggle DETUNE over sustained, loud mono material** — a held vocal note or
+  a pad — at several points. A quiet passage cannot show a switch step; this
+  item said "quiet passage" until 2026-09-10 and missed two. DETUNE fades out
+  over 8 ms and comes straight back in. Listen for a click going out, and for
+  a bump or tick about 15 ms after going in (what the old cleared-buffer
+  version did, 0.18 on a 0.5 tone).
+- **Double-tap DETUNE** (off and on within ~110 ms): that path glides back up
+  instead of restarting, and should be just as clean.
+- **Off for a second or more, then on over a quiet passage.** The voice
+  buffers used to hold 30 ms of stale audio and burst it back out on
+  re-engage — 0.90 peak over silence. Should be silent.
+- **Automate DETUNE On** at real buffer sizes, as a track insert and in a
+  Mix Rack slot.
 - **Put it on a mono track.** It should be a wire — a stereo imager has no
   image to work on. It used to comb the channel instead.
 - Automate WIDTH across its range: no stepping, no zipper.

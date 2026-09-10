@@ -393,9 +393,35 @@ reachable, so nothing downstream catches an over.
 
 Also deferred, and lower stakes:
 
-- **§3 host mechanics** — loading as a **BMO Mix Rack slot module** (only
-  tested as a track insert), DETUNE toggled repeatedly over a quiet passage,
-  WIDTH automated across its range. The DSP equivalents all pass offline.
+- **§3 host mechanics** — ~~loading as a BMO Mix Rack slot module, DETUNE
+  toggled repeatedly~~ **done 2026-09-10, see below.** Still open: WIDTH
+  automated across its range. The DSP equivalent passes offline.
+
+> **2026-09-10 — DETUNE switch checks, in the host.** Frosty, on **ICE QUEEN**
+> (desktop), right after PR #4's review:
+>
+> - **toggles over loud, sustained material** — pass
+> - **double-tap** (off and on quickly) — pass
+> - **DETUNE On automation**, including in a Mix Rack slot — pass
+>
+> *"all passed with flying colors."*
+>
+> **Which build.** ICE QUEEN's only installed BMO Dimension at the time was a
+> CI build — 4,203,008 bytes, SHA-256 `10AD74B9…904D06BD` — installed
+> 2026-09-09 20:22, 20 s after the CI run for `bc89293` finished. That is
+> **before the review fixes**; every build containing them finished after
+> 01:04 on 2026-09-10. So these passes most likely cover the **pre-review
+> switch**: a hard cut going out (0.49 on a 0.5 tone, 32×) and an instant
+> switch-on with the ~15 ms tick (0.18, 11.7×). Neither was audible in real
+> use, which is worth knowing in itself. It also means the **8 ms fade-out has
+> not been heard**. The same session's *"ear test passes, but i prefer instant
+> on"* was then said of a build that was already instant-on. Frosty to confirm.
+>
+> `frosty-dim-detune-instant-on` keeps the fade-out and makes switch-on
+> instant with no tick: 1.00×, against 9.87× on main. Neither of its switch
+> paths has been heard in a host. (All the ×-figures above were measured
+> offline with `measure_dim pass` on ICE QUEEN, 2026-09-10.)
+
 - **§4 panel questions**, which are now stale: they described a nine-knob
   layout and it is seven knobs and a switch since RATE and DEPTH went. Re-ask
   them against the current render.
@@ -414,9 +440,10 @@ Everything the checklist calls "what only ears can answer":
 - **§1 the throb** — shimmer or tremolo, on a mono vocal at CENTS 10. **This
   gates the PR.** Record what you heard, with settings, before proposing a fix.
 - **§2 ASYMMETRY** — receding, or phasey/hollow.
-- **§3** the host-level checks: DETUNE toggled over a quiet passage, mono
-  track, WIDTH automation. The DSP-level equivalents pass in ctest; what is
-  untested is the real host at real buffer sizes.
+- **§3** the host-level checks: ~~DETUNE toggled over a quiet passage~~
+  (done 2026-09-10 over loud material, see §8), mono track, WIDTH automation.
+  The DSP-level equivalents pass in ctest; what is untested is the real host at
+  real buffer sizes.
 - **§5 presets** — whether the three DETUNE presets separate.
 - **meter pass §02** the polarity-null bench in the real host, and §04–06 the
   A/B comparisons. §6 above settles the DSP half of §02 offline; what it cannot
