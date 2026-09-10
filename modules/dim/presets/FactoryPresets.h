@@ -17,6 +17,12 @@ namespace bmo::dim
     along the one line that matters here -- whether the source already has
     side content. The three that turn detune on are the ones that work on a
     mono track; the others need a stereo source to do anything at all.
+
+    **No preset sets RATE or DEPTH.** Neither has a control since the
+    2026-09-09 listening pass, and a value the panel cannot show is one the
+    user cannot see, undo, or know they are saving into a preset of their own.
+    Three presets here set them until review caught it, which made "fixed at
+    their defaults" false on three of seven. DimTests asserts it now.
 */
 inline const std::vector<FactoryPreset>& factory()
 {
@@ -28,16 +34,15 @@ inline const std::vector<FactoryPreset>& factory()
                           { kWidth, 130.0f } } },
 
         { "Mono to Stereo", { { kDetuneOn, 1.0f }, { kDetune, 8.0f },
-                              { kDiffuse, 40.0f }, { kDepth, 45.0f } } },
+                              { kDiffuse, 40.0f } } },
 
         { "Thicken", { { kDetuneOn, 1.0f }, { kDetune, 5.0f },
-                       { kDiffuse, 25.0f }, { kRate, 0.20f } } },
+                       { kDiffuse, 25.0f } } },
 
         // Needs a stereo source: these only scale and steer what is there.
         { "Bass Shuffle", { { kShuffle, 2.0f }, { kShuffleFreq, 650.0f } } },
 
-        { "Diffuse Pad", { { kDiffuse, 70.0f }, { kDepth, 60.0f },
-                           { kRate, 0.25f }, { kWidth, 140.0f } } },
+        { "Diffuse Pad", { { kDiffuse, 70.0f }, { kWidth, 140.0f } } },
 
         { "Narrow", { { kWidth, 60.0f } } },
     };

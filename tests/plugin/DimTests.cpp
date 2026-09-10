@@ -114,6 +114,14 @@ int main()
         check (! P::factory().empty(), "there are factory presets");
         check (juce::String (P::factory().front().name) == "Init", "Init is first");
         check (P::factory().front().settings.empty(), "Init is every default");
+
+        // RATE and DEPTH have no controls, so a preset that moves them leaves
+        // a value on the instance the panel cannot show or put back.
+        for (const auto& preset : P::factory())
+            for (const auto& s : preset.settings)
+                check (juce::String (s.id) != P::kRate && juce::String (s.id) != P::kDepth,
+                       juce::String ("factory preset '") + preset.name
+                           + "' does not set " + s.id + ", which has no control");
     }
 
     return finish ("BMO Dimension");
