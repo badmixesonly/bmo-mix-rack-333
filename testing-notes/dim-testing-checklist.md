@@ -84,6 +84,14 @@ up there and whose width is non-monotonic.
 
 ## 3. Does it work at all
 
+> **⚠️ Flagged for ear review — the DETUNE fades, as of 2026-09-10.** The
+> 8 ms fade-out (`a5e91be`) and the instant-on that replaced the fade-in
+> (`cfdeeff`) have **not been heard in a host**. The 2026-09-10 host passes on
+> ICE QUEEN were most likely on the pre-review build, which was still the one
+> installed there (see `dim-bench-state-2026-09-09.md` §8). Both measure clean
+> offline. Clear this flag, with the build's SHA-256 and the machine, once
+> Frosty has heard the items below on a build that contains both.
+
 - Loads in a track, and in BMO Mix Rack as a slot module. No crashes.
 - **Toggle DETUNE over sustained, loud mono material** — a held vocal note or
   a pad — at several points. A quiet passage cannot show a switch step; this
