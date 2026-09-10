@@ -32,13 +32,14 @@ manual puts the useful range at 1.6–2.5 below about 650–700 Hz.
 setting. The range stops at 25 rather than MicroPitch's 50, because past about
 25 it stops widening and starts sounding out of tune.
 
-**DIFFUSE**, **RATE**, **DEPTH** — how much side signal goes through the
-all-pass network, and the LFO sweeping it. Slow by default: this is a widener,
-and an audible sweep is a different job.
+**DIFFUSE** — how much side signal goes through the all-pass network. Its LFO
+rate and depth are fixed at 0.40 Hz and 50 %: neither was audible enough to
+earn a control, so neither has one. Slow on purpose — this is a widener, and an
+audible sweep is a different job.
 
 **ROTATE** — the whole soundfield turned, without changing the relative levels
-of anything standing on it. Note it currently moves the image **left** for
-positive degrees, which is the opposite of a pan knob.
+of anything standing on it. Positive degrees move the image **right**, like a
+pan knob.
 
 **ASYM** — left against right, with centre material left exactly where it is.
 This is not a balance control and not a pan; a dead-centre vocal does not move
@@ -61,8 +62,8 @@ The rest split on one line: whether your source already has side content.
 
 - **WIDTH at 0 turns the whole module off**, DETUNE included — width sits
   downstream of everything else.
-- **RATE and DEPTH do nothing until DIFFUSE is up.** At the defaults, three of
-  the ten knobs are inactive.
+- **CENTS is inactive until DETUNE is switched on.** It is the only control on
+  the panel that does nothing where it stands, and the switch above it says so.
 - **There is no output trim yet**, and extreme SHUFFLE and WIDTH together can
   add real level. Watch what leaves it.
 - **On a mono track it is a wire**, by design. There is no image to work on.

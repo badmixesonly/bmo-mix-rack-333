@@ -116,11 +116,14 @@ claim on the colour** — accents are allocated in `products/AGENTS.md` now.
   WIDTH is downstream of generate. Measured: peak side 0.00000.
 - **No output trim, and up to +15.5 dB available.** Every other module has an
   output stage.
-- **RATE and DEPTH are dead at the DIFFUSE 0 % default** — three of ten knobs
-  do nothing on a fresh insert. `PlainKnob::setKnobEnabled` exists and nothing
-  in the suite uses it.
-- **ROTATE +30° moves the image left**, the opposite of a pan knob. The manual
-  specifies the law but not the sign, so this is a free choice, one line.
+- ~~RATE and DEPTH are dead at the DIFFUSE 0 % default~~ **Settled 2026-09-09:
+  neither was audible enough to earn its space, so both lost their controls and
+  are fixed at their defaults.** The parameters stay in `params.h` — IDs are
+  permanent and append-only, and a session that automated them must still load.
+  A stronger answer than `setKnobEnabled` dimming, which is still unused.
+- ~~ROTATE +30° moves the image left~~ **Settled 2026-09-09: the sign is
+  negated in `setParams`, so + moves the image right like a pan knob.**
+  Confirmed backwards by ear on a stereo source before the change.
 - **A goniometer is the meter this panel wants** and is deliberately absent —
   `ui::ModuleContext` carries five `std::function<float()>` and no path for L/R
   sample *pairs*. A **correlation meter** fits the existing contract exactly

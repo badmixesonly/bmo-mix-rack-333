@@ -5,8 +5,17 @@
 namespace bmo::dim
 {
 
-/** DETUNE over CENTS and DIFFUSE, then RATE and DEPTH, then WIDTH on its own,
-    then SHUFFLE with its FREQ, and ROTATE and ASYM at the foot.
+/** DETUNE over CENTS and DIFFUSE, then WIDTH on its own, then SHUFFLE with its
+    FREQ, and ROTATE and ASYM at the foot.
+
+    **RATE and DEPTH have no controls.** They are the diffuse stage's LFO, and
+    the listening pass on 2026-09-09 found neither audible enough to earn the
+    space -- so they are fixed at their defaults, 0.40 Hz and 50 %. The
+    parameters stay in `params.h`: the IDs are permanent and append-only, and a
+    host session that automated them must still load. This is the stronger
+    answer to the "three dead knobs on a fresh insert" problem than dimming
+    them would have been, since with DIFFUSE at its 0 % default these two did
+    nothing until it was raised.
 
     Built on BMO Opto's panel rather than on BMO EQ's: blocks placed from the
     top on one derived gap, no input or output section reserved, and no section
@@ -61,7 +70,7 @@ public:
     void resized() override;
 
 private:
-    ui::PlainKnob width, shuffle, shuffleFreq, cents, diffuse, rate, depth,
+    ui::PlainKnob width, shuffle, shuffleFreq, cents, diffuse,
                   rotation, asymmetry;
 
     ui::SwitchButton detuneOn;

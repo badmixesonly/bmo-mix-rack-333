@@ -292,7 +292,13 @@ public:
         shuffleSm.setTarget (p.shuffleAmount);
         diffuseSm.setTarget (p.diffusePercent * 0.01f);
         depthSm  .setTarget (p.depthPercent * 0.01f);
-        rotSm    .setTarget (p.rotationDegrees * kPi / 180.0f);
+        // Negated so the knob reads like a pan control: + moves the image
+        // right, - moves it left. The S1 manual fixes the rotation law but
+        // says nothing about which way the knob turns, so the sign is a free
+        // choice -- and the unnegated form put +30 degrees to the LEFT, which
+        // is backwards from every pan knob a user has ever touched. Confirmed
+        // by ear on a stereo source, 2026-09-09.
+        rotSm    .setTarget (-p.rotationDegrees * kPi / 180.0f);
         asymSm   .setTarget (asymCoeff (p.asymmetryPercent));
 
         // The two voices are opposed, so the pair sums back toward the centre
@@ -310,7 +316,7 @@ public:
             shuffleSm.snap (p.shuffleAmount);
             diffuseSm.snap (p.diffusePercent * 0.01f);
             depthSm.snap (p.depthPercent * 0.01f);
-            rotSm.snap (p.rotationDegrees * kPi / 180.0f);
+            rotSm.snap (-p.rotationDegrees * kPi / 180.0f);   // sign: see setParams
             asymSm.snap (asymCoeff (p.asymmetryPercent));
             primed = true;
         }

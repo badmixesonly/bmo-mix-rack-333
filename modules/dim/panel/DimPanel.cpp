@@ -44,10 +44,6 @@ DimPanel::DimPanel (ui::ModuleContext ctx)
                    ui::Knob::Style::character, 0.62f, context.def.accent),
       diffuse     (context.params.param (Index::diffuse),     "DIFFUSE",
                    ui::Knob::Style::character, 0.62f, context.def.accent),
-      rate        (context.params.param (Index::rate),        "RATE",
-                   ui::Knob::Style::character, 0.62f, context.def.accent),
-      depth       (context.params.param (Index::depth),       "DEPTH",
-                   ui::Knob::Style::character, 0.62f, context.def.accent),
       rotation    (context.params.param (Index::rotation),    "ROTATE",
                    ui::Knob::Style::character, 0.62f, context.def.accent),
       asymmetry   (context.params.param (Index::asymmetry),   "ASYM",
@@ -59,12 +55,12 @@ DimPanel::DimPanel (ui::ModuleContext ctx)
 {
     width.setKnobSide (kBigKnobSide);
 
-    for (auto* k : { &shuffle, &shuffleFreq, &cents, &diffuse, &rate, &depth,
+    for (auto* k : { &shuffle, &shuffleFreq, &cents, &diffuse,
                      &rotation, &asymmetry })
         k->setKnobSide (kPairKnobSide);
 
     for (auto* c : std::initializer_list<juce::Component*> {
-             &detuneOn, &cents, &diffuse, &rate, &depth, &width,
+             &detuneOn, &cents, &diffuse, &width,
              &shuffle, &shuffleFreq, &rotation, &asymmetry })
         addAndMakeVisible (c);
 }
@@ -94,9 +90,12 @@ void DimPanel::resized()
 
     // Opto's rhythm: every block placed from the top on one derived gap, with a
     // margin above the first and below the last, so the spacing stays even if a
-    // block's height changes later. Six blocks, seven divisions.
-    const auto content = kSwitchHeight + kPairKnobHeight * 4 + kBigKnobHeight;
-    const auto gap     = juce::jmax (kSwitchGap, (area.getHeight() - content) / 7);
+    // block's height changes later. Five blocks now, six divisions -- the
+    // diffuse row went when RATE and DEPTH lost their controls, and the gap is
+    // derived rather than fixed precisely so that removal re-spaces the panel
+    // instead of leaving a hole.
+    const auto content = kSwitchHeight + kPairKnobHeight * 3 + kBigKnobHeight;
+    const auto gap     = juce::jmax (kSwitchGap, (area.getHeight() - content) / 6);
 
     area.removeFromTop (gap);
 
@@ -110,9 +109,9 @@ void DimPanel::resized()
     pair (area.removeFromTop (kPairKnobHeight), cents, diffuse);
     area.removeFromTop (gap);
 
-    // -- Diffuse ---------------------------------------------------------
-    pair (area.removeFromTop (kPairKnobHeight), rate, depth);
-    area.removeFromTop (gap);
+    // The diffuse stage has no row: RATE and DEPTH are fixed at their defaults
+    // and carry no controls. See DimPanel.h. DIFFUSE itself stays, paired with
+    // CENTS above -- it is the stage's depth control and it is audible.
 
     // -- Image -----------------------------------------------------------
     width.setBounds (area.removeFromTop (kBigKnobHeight));
