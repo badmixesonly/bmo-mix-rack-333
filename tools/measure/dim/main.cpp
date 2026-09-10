@@ -103,7 +103,9 @@ struct Wav
     bool ok = false;
 };
 
-/** 16/24/32-int and 32-float, which is everything Live bounces. */
+/** 16/24/32-int and 32-float, plain or WAVE_FORMAT_EXTENSIBLE, which is
+    everything Live bounces. Any other format is refused rather than guessed
+    at: a wrong decode prints plausible numbers, not an error. */
 Wav readWav (const std::string& path)
 {
     Wav w;
@@ -144,6 +146,13 @@ Wav readWav (const std::string& path)
             std::memcpy (&sr, &b[body + 4], 4);
             std::memcpy (&bits, &b[body + 14], 2);
             w.channels = ch; w.sampleRate = (int) sr; w.bits = bits;
+
+            // WAVE_FORMAT_EXTENSIBLE carries the real format in the first two
+            // bytes of its SubFormat GUID, 24 bytes into the chunk. Writers
+            // use it above 16-bit, and reading only the outer tag decoded a
+            // 32-bit float file as integers -- plausible nonsense, no error.
+            if (formatTag == 0xFFFE && size >= 26 && body + 26 <= b.size())
+                std::memcpy (&formatTag, &b[body + 24], 2);
         }
         else if (std::strcmp (id, "data") == 0)
         {
@@ -157,8 +166,19 @@ Wav readWav (const std::string& path)
     if (dataOffset == 0 || w.channels < 1) return w;
     if (dataOffset + dataLength > b.size()) dataLength = b.size() - dataOffset;
 
+    if (formatTag != 1 && formatTag != 3)
+    {
+        std::printf ("unsupported WAV format 0x%04x (PCM or IEEE float only): %s\n",
+                     (unsigned) formatTag, path.c_str());
+        return w;
+    }
+
     const int bytes = w.bits / 8;
-    if (bytes < 2 || bytes > 4) { std::printf ("unsupported bit depth %d\n", w.bits); return w; }
+    if (bytes < 2 || bytes > 4 || (formatTag == 3 && w.bits != 32))
+    {
+        std::printf ("unsupported bit depth %d%s\n", w.bits, formatTag == 3 ? " float" : "");
+        return w;
+    }
 
     const size_t frames = dataLength / (size_t) (bytes * w.channels);
     w.L.resize (frames); w.R.resize (frames);
