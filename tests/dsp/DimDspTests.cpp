@@ -378,6 +378,87 @@ int main()
         check (peak < 1.0e-6f, "re-engaging detune over silence stays silent");
     }
 
+    //== Switching the detune stage is not a click =============================
+    // The test above switches over silence, so it cannot see a step: there is
+    // nothing to step from. This one switches over a sustained tone at the
+    // worst moment -- the peak of the beat between the two voices, where their
+    // difference, which on a mono source is the whole side signal, is largest.
+    // Ungated, the stage dropped out in one sample and took all of it with it.
+    //
+    // The bound is relative. A 220 Hz tone moves every sample anyway, so the
+    // question is whether the switch moves the side signal more than the tone
+    // already does, not whether it moves at all.
+    {
+        const float on[Index::count]  { 100.0f, 1.0f, 700.0f, 10.0f, 1.0f,
+                                        0.0f, 0.4f, 50.0f, 0.0f, 0.0f };
+        const float off[Index::count] { 100.0f, 1.0f, 700.0f, 10.0f, 0.0f,
+                                        0.0f, 0.4f, 50.0f, 0.0f, 0.0f };
+
+        constexpr int total = 48000, settle = 4800, tail = 9600;
+
+        std::vector<float> dry ((size_t) total);
+        for (int i = 0; i < total; ++i)
+            dry[(size_t) i] = 0.5f * std::sin (2.0f * 3.14159265f * 220.0f * (float) i / 48000.0f);
+
+        // A mono tone with detune on, switched off at `at` and -- if
+        // `backOnAfter` is positive -- on again that many samples later.
+        // Returns the side signal, which is all the detune stage produces.
+        const auto render = [&] (int at, int backOnAfter)
+        {
+            DimDsp dsp;
+            dsp.setParams (on, Index::count);
+            dsp.prepare (48000.0, 512, 2);
+
+            std::vector<float> l (dry), r (dry);
+
+            const auto block = [&] (int from, int to, const float* v)
+            {
+                dsp.setParams (v, Index::count);
+                float* ch[2] { l.data() + from, r.data() + from };
+                dsp.process (ch, 2, to - from);
+            };
+
+            const auto backOn = backOnAfter > 0 ? std::min (at + backOnAfter, total) : total;
+
+            block (0, at, on);
+            block (at, backOn, off);
+            block (backOn, total, on);
+
+            std::vector<float> side ((size_t) total);
+            for (size_t i = 0; i < side.size(); ++i)
+                side[i] = 0.5f * (l[i] - r[i]);
+            return side;
+        };
+
+        const auto worstStepFrom = [] (const std::vector<float>& s, int from)
+        {
+            float worst = 0.0f;
+            for (size_t i = (size_t) from; i < s.size(); ++i)
+                worst = std::max (worst, std::abs (s[i] - s[i - 1]));
+            return worst;
+        };
+
+        // Never switched: where the beat peaks, and how far the side signal
+        // moves in one sample on its own.
+        const auto steady = render (total, 0);
+        int peakAt = settle;
+
+        for (int i = settle; i < total - tail; ++i)
+            if (std::abs (steady[(size_t) i]) > std::abs (steady[(size_t) peakAt]))
+                peakAt = i;
+
+        const auto steadyStep = worstStepFrom (steady, settle);
+
+        check (worstStepFrom (render (peakAt, 0), peakAt) < 1.5f * steadyStep,
+               "switching detune off mid-beat is not a click");
+
+        // Back on before the fade-out has finished: the voices are still
+        // running on live audio, so clearing them here would be the step the
+        // fade exists to remove.
+        check (worstStepFrom (render (peakAt, 240), peakAt) < 1.5f * steadyStep,
+               "switching detune back on mid-fade is not a click");
+    }
+
     //== Width =================================================================
     {
         Settings s; s.width = 0.0f;

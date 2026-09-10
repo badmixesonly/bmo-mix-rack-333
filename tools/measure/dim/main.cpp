@@ -36,6 +36,8 @@
       - correlation across WIDTH and CENTS, level-gated
       - the side-envelope depth table on tones, against the published figures
       - DETUNE re-engaged over silence, which used to burst 0.90 out of nothing
+      - DETUNE switched out mid-beat over a tone, which used to step 0.49 in
+        one sample -- 32x the tone's own largest move, and never heard
       - headroom: SHUFFLE 3.0 x WIDTH 200 % on anti-phase 80 Hz
       - WIDTH 0 gating everything upstream of it
 
@@ -521,6 +523,72 @@ int modePass (const std::string& path)
                      peakOf (z1), peakOf (z2),
                      (peakOf (z1) < 1e-6 && peakOf (z2) < 1e-6) ? "silent, buffers cleared"
                                                                 : "BURST");
+    }
+
+    std::printf ("== 3  DETUNE switched off mid-beat, over a sustained tone ==\n");
+    {
+        // The check above is over silence, where a step has nothing to step
+        // from. This switches the stage out where the two voices' difference
+        // -- the whole side signal on a mono source -- is at its largest, and
+        // compares the biggest one-sample move against the biggest the tone
+        // makes by itself. A 220 Hz tone moves every sample, so "moves at all"
+        // is the wrong question; "moves more than the tone does" is the click.
+        const size_t n = (size_t) sr, settle = (size_t) (sr / 10), tail = (size_t) (sr / 5);
+        Buf tone (n);
+        for (size_t i = 0; i < n; ++i)
+            tone[i] = 0.5f * (float) std::sin (2.0 * kPi * 220.0 * i / sr);
+
+        DspCore::Params on = init;
+        on.detuneOn = true;
+        DspCore::Params off = on;
+        off.detuneOn = false;
+
+        auto sideOf = [&] (size_t switchAt)
+        {
+            DspCore d;
+            d.prepare ((double) sr, 0, 0);
+            Buf l = tone, r = tone;
+            for (size_t i = 0; i < n; i += 512)
+            {
+                const size_t m = std::min ((size_t) 512, n - i);
+                if (i < switchAt && switchAt < i + m)
+                {
+                    // Split the block so the switch lands on the peak itself.
+                    const size_t a = switchAt - i;
+                    float* c1[2] = { l.data() + i, r.data() + i };
+                    d.setParams (on); d.process (c1, 2, (int) a);
+                    float* c2[2] = { l.data() + switchAt, r.data() + switchAt };
+                    d.setParams (off); d.process (c2, 2, (int) (m - a));
+                    continue;
+                }
+                d.setParams (i < switchAt ? on : off);
+                float* c[2] = { l.data() + i, r.data() + i };
+                d.process (c, 2, (int) m);
+            }
+            Buf s (n);
+            for (size_t i = 0; i < n; ++i) s[i] = 0.5f * (l[i] - r[i]);
+            return s;
+        };
+
+        auto worstStep = [] (const Buf& s, size_t from)
+        {
+            double w = 0;
+            for (size_t i = std::max<size_t> (from, 1); i < s.size(); ++i)
+                w = std::max (w, (double) std::fabs (s[i] - s[i - 1]));
+            return w;
+        };
+
+        const Buf steady = sideOf (n);
+        size_t peakAt = settle;
+        for (size_t i = settle; i + tail < n; ++i)
+            if (std::fabs (steady[i]) > std::fabs (steady[peakAt])) peakAt = i;
+
+        const double calm = worstStep (steady, settle);
+        const double step = worstStep (sideOf (peakAt), peakAt);
+        std::printf ("   side %.4f at the switch; largest step %.5f against %.5f steady"
+                     " (%.2fx)  -> %s\n\n",
+                     std::fabs (steady[peakAt]), step, calm, step / calm,
+                     step < 1.5 * calm ? "no click, the stage fades" : "CLICK");
     }
 
     std::printf ("== 4  headroom, SHUFFLE 3.0 x WIDTH 200%% on anti-phase 80 Hz ==\n");

@@ -11,7 +11,7 @@ no GUI, no JUCE — the same shape as `measure_eq`, `measure_sat` and
 | mode | what it does |
 |---|---|
 | `source` | mid/side content of a WAV — **run this before testing with a file** |
-| `pass` | the meter pass offline: nulls, correlation, the throb table, the re-engage burst, headroom, WIDTH gating |
+| `pass` | the meter pass offline: nulls, correlation, the throb table, the re-engage burst, the switch-off step, headroom, WIDTH gating |
 | `corr` | correlation of a DAW bounce, level-gated |
 | `comb` | per-frame band deviation between two renders — finds a *moving* comb |
 
@@ -46,6 +46,13 @@ stand-in when a DAW pass is not available.
 It is **not** a stand-in for the ear. That same 16.1 % sits in the meter pass's
 "do not want to see" column, and the module was cleared by ear anyway. The
 metric described the signal correctly and mispredicted what it would cost.
+
+The ear can miss things in the other direction too. The DETUNE switch-off
+check was added after review, not after a listen: gated, the stage dropped
+out in one sample, a **0.49 step on a 0.5 tone, 32× the tone's own largest
+move**, and nobody heard it on the pass. It fades now, and this line reads
+`0.88x -> no click`. A number above 1.5× is a click whether or not anyone has
+heard it.
 
 ### `corr` — gate on level, or the number lies
 

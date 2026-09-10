@@ -260,6 +260,9 @@ public:
         rotSm.prepare (sampleRate, 8.0);
         asymSm.prepare (sampleRate, 8.0);
 
+        // The DETUNE switch fades on the same 8 ms. See setParams.
+        detuneSm.prepare (sampleRate, 8.0);
+
         reset();
     }
 
@@ -275,18 +278,30 @@ public:
 
     void setParams (const Params& p)
     {
+        // The DETUNE switch is a fade, not a gate. Gated, switching the stage
+        // out dropped the voices' difference in one sample -- and on a mono
+        // source that difference is the whole side signal. Measured at the
+        // peak of the beat: a 0.49 step on a 0.5 tone, 32x the largest move
+        // the tone makes by itself. Nobody heard it on the listening pass;
+        // it is a click by any measure, so it fades.
+        //
         // The voice buffers hold up to 30 ms of whatever last went through
-        // them, and nothing clears them between switch-offs. Re-engaging over
-        // a quiet passage replayed that: measured at 0.90 peak out of a buffer
-        // filled a second earlier. Cleared on the way in, which is ~3k float
-        // writes on a control change and never in the steady state.
-        if (p.detuneOn && ! params.detuneOn)
+        // them, and they stop running once the fade-out reaches zero.
+        // Re-engaging over a quiet passage replayed that: measured at 0.90
+        // peak out of a buffer filled a second earlier. So they are cleared
+        // on the way in -- but only if the fade-out had finished. A re-engage
+        // that catches the tail of one finds the voices still running on live
+        // audio, and clearing them then would be the step the fade removes.
+        // ~3k float writes on a control change, never in the steady state.
+        if (p.detuneOn && ! params.detuneOn && detuneSm.value() == 0.0f)
         {
             up.reset();
             down.reset();
         }
 
         params = p;
+
+        detuneSm.setTarget (p.detuneOn ? 1.0f : 0.0f);
 
         widthSm  .setTarget (p.widthPercent * 0.01f);
         shuffleSm.setTarget (p.shuffleAmount);
@@ -318,6 +333,7 @@ public:
             depthSm.snap (p.depthPercent * 0.01f);
             rotSm.snap (-p.rotationDegrees * kPi / 180.0f);   // sign: see setParams
             asymSm.snap (asymCoeff (p.asymmetryPercent));
+            detuneSm.snap (p.detuneOn ? 1.0f : 0.0f);
             primed = true;
         }
     }
@@ -349,12 +365,16 @@ public:
             // -- Generate ----------------------------------------------------
             // Detune reads the mid, because on a mono source that is the only
             // thing there. The two shifted voices differenced give side content
-            // that did not exist a sample ago.
-            if (params.detuneOn)
+            // that did not exist a sample ago. Faded in and out rather than
+            // gated -- see setParams. At either end the smoother snaps to
+            // exactly 0 or 1, so a settled stage is bit-identical to a gate.
+            const auto detuneGain = detuneSm.tick();
+
+            if (detuneGain > 0.0f)
             {
                 const auto a = up.process (mid);
                 const auto b = down.process (mid);
-                side += 0.5f * (a - b);
+                side += detuneGain * 0.5f * (a - b);
             }
 
             // -- Diffuse -----------------------------------------------------
@@ -482,7 +502,7 @@ private:
     AllPassChain chain;
     Shuffler     shuffler;
 
-    Smoother widthSm, shuffleSm, diffuseSm, depthSm, rotSm, asymSm;
+    Smoother widthSm, shuffleSm, diffuseSm, depthSm, rotSm, asymSm, detuneSm;
 
     float lfoPhase = 0.0f, lfoInc = 0.0f;
     bool  primed = false;

@@ -36,9 +36,9 @@ whatever the side chain does. It is a good guard against someone later wiring
 into the mid path, which is what it is for. It is **not** evidence the DSP
 sounds good, and it should not be quoted as though it were.
 
-## Three things a green suite did not catch
+## Four things a green suite did not catch
 
-All three were live in the first commit with 12/12 passing. Each has an
+All four were live in the first commit with 12/12 passing. Each has an
 assertion now; the point of listing them is that the *class* of fault survived
 a full suite.
 
@@ -47,6 +47,12 @@ a full suite.
 | detune buffers never cleared | 30 ms of stale audio burst out on re-engage — 0.8985 peak over silence | no test touched a switch transition |
 | mono instance combed itself | generate manufactured side content and summed it back into the one channel: +1.17 dB, 0.671 sample error | no test used a mono layout |
 | asymmetry moved the centre | a dead-centre 0.5/0.5 source came out 0.75/0.25 | every mono-sum test fed a source that *already had* side content |
+| DETUNE switched off in one sample | the voices' difference, which is the whole side signal on a mono source, dropped out at once: a 0.49 step on a 0.5 tone, 32× the tone's own largest move | the switch test ran over silence, where a step has nothing to step from — and the listening pass did not hear it |
+
+The DETUNE switch is a fade now, on the same 8 ms as every other control. The
+voice buffers are cleared on re-engage **only if the fade-out had finished**:
+catch the tail of one and the voices are still running on live audio, so
+clearing them there would put the step back. `dim_dsp` asserts both halves.
 
 The mono guard is the early return at the top of `DspCore::process`. **A stereo
 imager on a mono bus has to be left as a wire** — `isBusesLayoutSupported`
