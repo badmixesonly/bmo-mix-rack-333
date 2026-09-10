@@ -377,7 +377,34 @@ It also answers §4's open "worth dimming inactive knobs?" more decisively than
 dimming would — with DIFFUSE at its 0 % default these two were two of the three
 dead knobs on a fresh insert.
 
-## 8. Untouched, and still needs ears
+## 8. Deferred to after merge, on the record
+
+**§5 Presets — all thirteen, never auditioned on any build.** Frosty's call
+2026-09-09: correctable after merge, provided it is written down. This is that.
+
+The risk being accepted: preset levels in this suite have drifted before, *all
+thirteen at once* on the Saturator. The specific unrun checks are whether any
+preset jumps in level against Init at the same settings, and whether True Peak
+goes over on any of them. Dimension has no output trim and +15.5 dB is
+reachable, so nothing downstream catches an over.
+
+Also deferred, and lower stakes:
+
+- **§3 host mechanics** — loading as a **BMO Mix Rack slot module** (only
+  tested as a track insert), DETUNE toggled repeatedly over a quiet passage,
+  WIDTH automated across its range. The DSP equivalents all pass offline.
+- **§4 panel questions**, which are now stale: they described a nine-knob
+  layout and it is seven knobs and a switch since RATE and DEPTH went. Re-ask
+  them against the current render.
+- **§6 light mode** gut-check. Measured at 1.73:1 and unchanged from 0.2.3.
+- **§04 b5** has a measurement but no ear verdict: bass with DETUNE on read
+  0.0 % anti-phase, so the 40.7 dB depth seen on a 110 Hz *tone* does not
+  carry to real bass. Whether it is musically usable down there is unrecorded.
+- **The output stage.** No trim, +15.5 dB reachable, every other module has
+  one. A design question, not a defect, and it interacts with the preset check
+  above.
+
+## 9. Untouched, and still needs ears
 
 Everything the checklist calls "what only ears can answer":
 
