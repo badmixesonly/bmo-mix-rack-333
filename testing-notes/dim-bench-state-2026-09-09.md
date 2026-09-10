@@ -379,11 +379,14 @@ dead knobs on a fresh insert.
 
 ## 8. Deferred to after merge, on the record
 
-**§5 Presets — all thirteen, never auditioned on any build.** Frosty's call
+**§5 Presets — all seven, never auditioned on any build.** Frosty's call
 2026-09-09: correctable after merge, provided it is written down. This is that.
 
 The risk being accepted: preset levels in this suite have drifted before, *all
-thirteen at once* on the Saturator. The specific unrun checks are whether any
+thirteen at once* across BMO Opto (three) and the Saturator (all ten) —
+see `testing-notes/opto-0.2.1-handoff.md` §4. (This section first said all
+thirteen for Dimension too, and on the Saturator alone; Dimension ships seven,
+and the thirteen spanned two modules. Corrected in review.) The specific unrun checks are whether any
 preset jumps in level against Init at the same settings, and whether True Peak
 goes over on any of them. Dimension has no output trim and +15.5 dB is
 reachable, so nothing downstream catches an over.

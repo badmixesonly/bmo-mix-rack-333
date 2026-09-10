@@ -171,7 +171,7 @@ wired conventionally like Chorus-Ensemble.
 - Correlation **pinned at +1** with DETUNE on: the stage is doing nothing. Check
   WIDTH is not parked at 0, which silently disables everything above it.
 - True Peak overs that appear only on a preset — a preset level problem, and all
-  thirteen drifted once before.
+  thirteen across BMO Opto and the Saturator drifted at once before.
 - A centre vocal that **moves** under ASYM — the one thing Gerzon's control is
   defined as not doing, and the exact fault this pass rebuilt it to fix.
 - A verdict recorded with **no settings attached**. It cannot be acted on later.

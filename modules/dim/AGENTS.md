@@ -111,16 +111,17 @@ claim on the colour** — accents are allocated in `products/AGENTS.md` now.
 
 ## Open, and deliberately so
 
-- **The thirteen factory presets have never been auditioned.** Not one, on any
+- **The seven factory presets have never been auditioned.** Not one, on any
   build. The listening pass on 2026-09-09 covered §1–§4 and §02–§06 of the
   meter pass and stopped short of §5. **Deferred knowingly, on Frosty's call:
   presets can be corrected after merge.** What is being accepted is a real
   risk, so it is worth stating exactly: preset levels in this suite have
-  drifted before — *all thirteen at once*, on the Saturator — and the check
+  drifted before — *thirteen at once*, BMO Opto's three and all ten of the
+  Saturator's (`testing-notes/opto-0.2.1-handoff.md` §4) — and the check
   that was skipped is whether any preset jumps in level against Init at the
   same settings, or puts True Peak over the ceiling. Dimension has **no output
   trim** and up to +15.5 dB is reachable, so nothing downstream catches it.
-  **Audition all thirteen before this is called finished**, and treat a level
+  **Audition all seven before this is called finished**, and treat a level
   jump as a preset bug rather than a voicing choice.
 
 - **The width throb.** Two opposed voices whose *difference* feeds S, so they
