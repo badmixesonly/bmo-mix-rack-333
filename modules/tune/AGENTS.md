@@ -54,6 +54,7 @@ named; undoing one should fail that test.
 | §5.4: oversample 2x, or lowpass at fs/(2 rho) | full-band kernel until an alias could reach 20 kHz, then 0.90/rho | A read at rho folds f to fs - rho f: inaudible below +267 c at 48 kHz. Above it, -68 dB of alias, -0.29 dB at 18 kHz. `SincBank`, `InterpolatorTests` |
 | §3.1: the patent's window = lag | kept, plus a whole-cycle mean test | At short lags the window sees a crest fragment of a slow wave; a 1230 Hz lobe beat 110 Hz every half cycle. A real period of a highpassed signal averages to zero. `Detector::spansWholeCycles`, `DetectorTests` |
 | §3.4: voicing on clarity + gate + zcr | plus a stability gate | False onset candidates move between hops (1143, 1655, 1043 Hz on consecutive hops of a 147 Hz sine); real ones hold still. `DetectorTests` |
+| §3.5 guards 1-3: shorter periods only (sub-multiples, peak fraction, continuity) | plus guard 4: 2 or 3 x the period, if it is much less aperiodic over one long window | Real vocals the corpus lacked. Failure (2026-09-11): a D4 with its fundamental under its second harmonic read at D5 on 8.5 % of voiced frames, a twelfth up on 2 %, the estimate swinging a semitone each evaluation, 427 note flips; Frosty heard "pops and clicks", "hunting". Now 0.5 % and 0.4 %, flips that change the note name 407 -> 130. Aperiodicity as a ratio (0.25; 0.9 when the multiple is the period just held and the period is clearly aperiodic), on the anti-alias lowpass so sub-sample rounding cannot pick the lag, over two long periods, decided every 2 ms. Costs +0.05 points of CPU median. `Detector::preferWholeCycle`, `VoiceTests`, `DetectorTests` |
 | §3.5 guard 5: median-of-3 on the note decision | a jump > 3/4 semitone waits for the next estimate to agree | A note median paired a held note with a pitch that had already moved: every leap was briefly corrected by its own interval, and a one-frame octave error drove +1200 cents. `CorrectionLaw::confirmPitch`, `CorrectionTests` |
 | §4.2: Retune a 0-100 knob, exponential to 0-400 ms | `retune_ms`, 146 steps in ms: 0.0-5.0 by 0.1, then 6-100 by 1; tau in ms | Frosty, 2026-09-11: "display ms", those increments. The unitless knob got a shoot-out mislabelled -- its 10 was 1.2 ms. A new id, the old one retired (a saved 36 meant 10 ms). tau matched to Antares' and Waves' 10 and 20 ms landed with them on real vocals. `SchemaTests`, `CorrectionTests` |
 | §4.3a: `((u-u0)/(u1-u0))^2`, "C1 at both ends" | real smoothstep, `3t^2 - 2t^3` | The square has slope 2/(u1-u0) at u1; the applied correction kinks there. `CorrectionTests` |
@@ -72,7 +73,7 @@ named; undoing one should fail that test.
 | Time to lock (sawtooth onset) | 2.2 - 2.6 periods | -- |
 | Live floor | 19 samples, 0.40 ms, every pitch | <= 1.5 ms CLASSIC >= 200 Hz |
 | THD+N, CLASSIC, +/-40 c on a sine | -76 dB | < -60 dB |
-| CPU, one core, 48 kHz / 128 | 0.9 % median, 1.2 % p99 (re-run 2026-09-11, CLASSIC only) | < 1.5 % |
+| CPU, one core, 48 kHz / 128 | 0.9 % median, 1.2 % p99 (re-run 2026-09-11, CLASSIC only); +0.05 points with guard 4, same day, side by side | < 1.5 % |
 | Reported latency, every range | 0 samples; rest delay 0.40 ms in every cell (re-run 2026-09-11) | Live: 0 |
 | True latency, reference stimulus (2026-09-11) | 3.82 ms worst (in tune 0.66-1.01, correcting 2.94-3.82); Antares 6.49, Waves 10.62 | <= Waves (the latency rule) |
 | Correction lag at 0 ms, vibrato flattened (2026-09-11) | 6.22 ms mean, 3.98 (A3) to 8.95 (A2): about one cycle; Antares -0.24 mean, 1.66 worst | as Antares (open) |
@@ -96,19 +97,31 @@ table records both; the spec's 1.5 ms is met by the floor, not by the mean.
   latency cost), or delay the audio so the estimate is on time -- which the
   latency rule now allows up to Waves' 10.62 ms, and BMO has 6.8 ms of that
   to spend. Frosty hears the result before it is called fixed.
-- **The hiccups heard in 0.1** (Frosty, Ableton, 2026-09-11: "it works ...
-  it's got some hiccups"). Still not described. The shoot-out found nothing
-  BMO-specific -- no dropouts, no level dips, fewer high-frequency transients
-  than Waves on both songs -- so they are probably the lag above, or
-  something the shoot-out's material did not trigger. Each should become a
-  corpus item and a failing test before it is fixed.
+- **The hiccups heard in 0.1** (Frosty's blind test, 2026-09-11: BMO last in
+  four of six groups -- "pops and clicks", "hunting for pitch", "skipping /
+  dropouts in the pitch hold", "weak at the end of each phrase"). The worst
+  was the detector reading a weak-fundamental voice an octave or a twelfth
+  up (guard 4 above fixes most of it; Frosty has not yet heard the fix).
+  Still open, measured on Failure with the fix: 59 note-name flips that
+  are detector jumps (0.4 % twelfths, 0.5 % octaves up, mostly on scoops),
+  71 between neighbouring scale notes (the vibrato-0 item below), 1.6 %
+  of frames an octave DOWN (creaky phrase ends: harmless to the correction,
+  which keeps the note name, but a guard-4 side effect to watch), and 13
+  mid-phrase voicing dropouts under 80 ms. Guard 4 also costs the corpus's
+  instant octave and fifth steps 2-3 frames at the step (their gross error
+  0.38 -> 0.57 % and 0.59 -> 0.78 %; one frame on voice_female_jitter2):
+  its long window still holds the old note for ~9 ms after an instant step,
+  which no voice makes. Frosty's call whether that stands.
 - **Vibrato 0 % warbles on a boundary.** The note decision follows the raw
   pitch at vibrato 0, so a vibrato straddling a note boundary flips between
   the two notes -- the classic hard-tune sound, kept on purpose because hard
   tuning is this plugin's point. The spec's formula would decide on the slow
   pitch instead and never flip, at the cost of semitone steps landing ~37 ms
   late. Both behaviours are asserted in `CorrectionTests`; which one is the
-  default is a listening decision.
+  default is a listening decision. Frosty's blind test is evidence on it:
+  "hunting", "wobbles", "doesn't settle on notes" -- and on Failure, after
+  guard 4, 71 of 130 remaining note-name flips are between neighbouring
+  scale notes, the singer sitting near a boundary.
 - **Refinement lumpiness at 192 kHz.** One full-rate refinement lands in one
   host block; at 192 kHz / 32 that is up to ~30 % of the block at p99. Spread
   the refinement across its hop to fix. Not an xrun risk at 48 kHz.

@@ -59,6 +59,7 @@ void Detector::prepare (double rate, const Settings& s)
     const auto capMaxFull = (int) std::ceil (rate / kCapacityMinHz) + decimation + 2;
     fullRing.assign ((size_t) nextPowerOfTwo (2 * capMaxFull + 4 * decimation + 16), 0.0f);
     fullMask = (int) fullRing.size() - 1;
+    lowRing.assign (fullRing.size(), 0.0f);
     cumSum.assign (fullRing.size(), 0.0);
     cumSq.assign (fullRing.size(), 0.0);
 
@@ -103,6 +104,9 @@ void Detector::setSettings (const Settings& s) noexcept
     current = {};
     heldPeriod = candidatePeriod = 0.0;
     voicedRun = unvoicedRun = 0;
+    guardFactor = 1;
+    guardLag = 0;
+    guardPeriod = 0.0;
 }
 
 void Detector::reset()
@@ -111,6 +115,7 @@ void Detector::reset()
     antiAlias.reset();
     kernel.reset();
     std::fill (fullRing.begin(), fullRing.end(), 0.0f);
+    std::fill (lowRing.begin(), lowRing.end(), 0.0f);
     std::fill (cumSum.begin(), cumSum.end(), 0.0);
     std::fill (cumSq.begin(), cumSq.end(), 0.0);
     runningSum = runningSq = 0.0;
@@ -127,6 +132,10 @@ void Detector::reset()
     lastOnsetAt = -1'000'000;
     voicedRun = unvoicedRun = 0;
     heldPeriod = 0.0;
+    guardFactor = 1;
+    guardLag = 0;
+    guardPeriod = 0.0;
+    guardDueAt = 0;
     current = {};
     evaluated = false;
 }
@@ -169,6 +178,7 @@ void Detector::push (float input) noexcept
     energyState = zcrCoeff * energyState + (1.0 - zcrCoeff) * y * y;
 
     const auto filtered = antiAlias.process (y);
+    lowRing[(size_t) ((fullWrite - 1) & fullMask)] = (float) filtered;
 
     if (++decimationPhase >= decimation)
     {
@@ -202,7 +212,9 @@ void Detector::evaluate() noexcept
     const auto found = coarseSearch (coarseLag)
                     && refine (coarseLag * decimation, period, clarity);
 
-    if (! found)
+    if (found)
+        preferWholeCycle (period, clarity);
+    else
         clarity = 0.0;
 
     const auto rms = std::sqrt (std::max (0.0, energyState));
@@ -463,6 +475,21 @@ double Detector::fullNsdf (int lag, int window) const noexcept
     return m > 1.0e-20 ? 2.0 * r / m : 0.0;
 }
 
+double Detector::lowNsdf (int lag, int window) const noexcept
+{
+    double r = 0.0, m = 0.0;
+
+    for (int j = 0; j < window; ++j)
+    {
+        const double a = lowAt (j);
+        const double b = lowAt (j + lag);
+        r += a * b;
+        m += a * a + b * b;
+    }
+
+    return m > 1.0e-20 ? 2.0 * r / m : 0.0;
+}
+
 bool Detector::refine (double centre, double& period, double& clarity) noexcept
 {
     // The coarse lag is good to half a coarse sample, which is half the
@@ -519,6 +546,174 @@ bool Detector::refine (double centre, double& period, double& clarity) noexcept
     period = bestLag + offset;
     clarity = std::clamp (bestValue - 0.25 * (left - right) * offset, 0.0, 1.0);
     return period > 1.0;
+}
+
+double Detector::lowPeak (double centre, int reach, int window, int& atLag) const noexcept
+{
+    const auto c = (int) std::lround (centre);
+    const auto lo = std::max (minFullLag + 1, c - reach), hi = std::min (maxFullLag - 1, c + reach);
+    atLag = std::clamp (c, lo, hi);
+    double best = -2.0;
+
+    // Coarse to fine, as refine() does: every other lag first (below 3 kHz
+    // the peak spans several samples, so a stride of 2 cannot step over it),
+    // then the neighbours of the best.
+    for (int L = lo; L <= hi; L += 2)
+    {
+        const auto v = lowNsdf (L, window);
+        if (v > best)
+        {
+            best = v;
+            atLag = L;
+        }
+    }
+
+    const auto centreLag = atLag;
+    for (const auto L : { centreLag - 1, centreLag + 1 })
+    {
+        if (L < lo || L > hi)
+            continue;
+        const auto v = lowNsdf (L, window);
+        if (v > best)
+        {
+            best = v;
+            atLag = L;
+        }
+    }
+
+    const auto l = lowNsdf (atLag - 1, window), r = lowNsdf (atLag + 1, window);
+    const auto offset = parabolicOffset (l, best, r);
+    return best - 0.25 * (l - r) * offset;
+}
+
+bool Detector::multipleOf (double base, int& factor, int& lag) const noexcept
+{
+    for (int k = 2; k <= 3; ++k)
+    {
+        const auto longer = base * k;
+        if (longer > maxFullLag - 2)
+            return false;
+
+        // Two of the longer periods: four cycles when the period is right,
+        // enough for jitter to average out, where one was a coin toss (the
+        // first version doubled a rough voice, 0.5 % jitter, on 8 of 768
+        // evaluations).
+        const auto window = std::min ((int) std::lround (2.0 * longer), fullMask - (int) std::lround (longer) - 4);
+
+        // Searched, not assumed: a period read an octave up is itself off
+        // (82.2 samples for a true 80 on the 300 Hz test voice), so its
+        // double can miss the real period by several samples. The reach is
+        // refine()'s own, scaled by k at the multiple.
+        //
+        // The period's own reading comes first, because it is cheap and it
+        // usually ends the question: a clean period is under the floor, and
+        // the multiple is then never searched for. That is what keeps the
+        // guard inside the CPU budget -- searching every time took the
+        // bench from 0.9 % to 1.5 % median at 48 kHz / 128.
+        int hereLag = 0, longerLag = 0;
+        const auto dHere = 1.0 - lowPeak (base, 2, window, hereLag);
+        if (dHere <= settings.multipleFloor)
+            return false;
+
+        const auto dLonger = 1.0 - lowPeak (longer, k * decimation + 1, window, longerLag);
+
+        // While the pitch moves, a longer lag loses correlation to the
+        // movement itself, so on a slide the true period cannot beat its own
+        // harmonic by 4x (Failure at 4.75 s: a scoop from 197 to 184 Hz read
+        // at its third harmonic, on and off, for 20 ms). When the multiple is
+        // the period the detector was just holding, being the more periodic
+        // of the two is enough -- but only when the shorter lag is clearly
+        // not a period (heldMultipleFloor). Right after a real leap up an
+        // octave, the old period is exactly twice the new one and the new
+        // note repeats near-perfectly; without that floor the corpus's
+        // octave and fifth transitions picked up octave errors at the leap.
+        const auto held = current.voiced && heldPeriod > 0.0
+                       && std::abs (std::log2 ((double) longerLag / heldPeriod)) < 60.0 / 1200.0
+                       && dHere > settings.heldMultipleFloor;
+        const auto ratio = held ? settings.heldMultipleRatio : settings.multipleRatio;
+
+        if (dHere > settings.multipleFloor && dLonger < ratio * dHere)
+        {
+            factor = k;
+            lag = longerLag;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void Detector::preferWholeCycle (double& period, double& clarity) noexcept
+{
+    // Guard 4, multiples: every guard above looks for a SHORTER period than
+    // the one found, and the scan stops at the first lobe that clears 0.95.
+    // So on a voice whose fundamental sits well under its second harmonic, a
+    // half period -- read over a window only that long -- clears the bar,
+    // and nothing ever asks whether twice it is the real period. Measured on
+    // the 2026-09-11 shoot-out's Failure take: a D4 read at D5 on 8.5 % of
+    // voiced frames and a twelfth up on 2 %, the estimate swinging by a
+    // semitone either way every evaluation, because a half-period window
+    // sees a different half of each real cycle each time. The engine splices
+    // by the period it is given, so a harmonic's period is also a splice cut
+    // at a fraction of the real cycle. VoiceTests rebuilds it.
+    //
+    // The test: over one window long enough for the longer period, is the
+    // signal much less aperiodic (1 - NSDF) at k x the period than at the
+    // period? A real period is no better at 2T than at T -- worse, as the
+    // voice drifts and jitters over the longer lag -- so it is never doubled.
+    // A half period of a real cycle is worse, because the odd harmonics turn
+    // over at T/2. Read as a ratio, not a difference: on a near-pure second
+    // harmonic the NSDF gap is tiny (0.009 on a 350 Hz voice with its
+    // fundamental 26 dB down) while the aperiodicity is twenty times larger
+    // at T/2 than at T -- the measure guard 1 uses the other way. The floor
+    // keeps two near-perfect tones from being compared at rounding level.
+    //
+    // Both lags are read the same way -- the best integer lag near each, then
+    // the parabola's peak -- on the anti-alias lowpass's output, not the full
+    // band. At the full band a period that falls between samples is misread
+    // by a different amount at each lag: an 880 Hz sawtooth is 54.5 samples,
+    // half a sample off, while twice it is 109.09 and almost exact, so the
+    // doubled lag won on rounding (the first version read 440 Hz, and doubled
+    // 3 % of ordinary voices). Below 3 kHz the NSDF peak is broad enough for
+    // the parabola to read true, and the odd harmonics are all still there.
+    //
+    // The decision is taken at most every 2 ms, and whenever the period has
+    // moved, and held in between: it costs a few long correlations, and one
+    // re-taken every quarter period would flip on a single unlucky hop.
+    const auto moved = guardPeriod <= 0.0 || std::abs (std::log2 (period / guardPeriod)) > 30.0 / 1200.0;
+
+    if (moved || samplesSeen >= guardDueAt)
+    {
+        guardFactor = 1;
+        guardLag = 0;
+        guardPeriod = period;
+        guardDueAt = samplesSeen + (std::int64_t) (0.002 * sampleRate);
+
+        // Up to two steps, so a lock two octaves up (a fourth harmonic)
+        // comes all the way down: each step takes 2 or 3 x what the last
+        // one found.
+        auto base = period;
+        for (int step = 0; step < 2; ++step)
+        {
+            int k = 1, lag = 0;
+            if (! multipleOf (base, k, lag))
+                break;
+
+            guardFactor *= k;
+            guardLag = lag;
+            base = (double) lag;
+        }
+    }
+
+    if (guardFactor > 1 && guardLag > 0)
+    {
+        double refined = 0.0, refinedClarity = 0.0;
+        if (refine ((double) guardLag * period / guardPeriod, refined, refinedClarity))
+        {
+            period = refined;
+            clarity = refinedClarity;
+        }
+    }
 }
 
 } // namespace bmo::tune

@@ -13,6 +13,7 @@ bmo_tune_test(correction   CorrectionTests.cpp)
 bmo_tune_test(core         CoreTests.cpp)
 bmo_tune_test(schema       SchemaTests.cpp)
 bmo_tune_test(hardtune     HardTuneTests.cpp)
+bmo_tune_test(voice        VoiceTests.cpp)
 
 # The hard-tune target: BMO as close as Antares on a moving voice. It fails
 # today -- that is the point of it (the house rule: fix nothing a test does not

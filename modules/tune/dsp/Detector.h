@@ -67,6 +67,10 @@ public:
         double subMultipleRatio = 1.15;///< prefer tau/k if its difference is within this factor
         double continuityWeight = 0.10;///< penalty per octave of distance from the held period
         double onsetGraceMs     = 30.0;///< continuity is off this long after an onset
+        double multipleRatio    = 0.25;///< take 2 or 3 x the period if its aperiodicity is under this x the period's
+        double multipleFloor    = 0.006;///< ...and the period's own aperiodicity is at least this (not noise)
+        double heldMultipleRatio = 0.9;///< the ratio when the multiple is the period just held
+        double heldMultipleFloor = 0.02;///< ...if the period's own aperiodicity is at least this
     };
 
     /** The widest range any Settings may ask for; prepare() allocates for it. */
@@ -109,11 +113,16 @@ private:
     void evaluate() noexcept;
     bool coarseSearch (double& coarseLag) noexcept;
     bool refine (double coarseLagFull, double& period, double& clarity) noexcept;
+    void preferWholeCycle (double& period, double& clarity) noexcept;
+    bool multipleOf (double base, int& factor, int& lag) const noexcept;
+    double lowPeak (double centre, int reach, int window, int& atLag) const noexcept;
     double fullNsdf (int lag, int window) const noexcept;
+    double lowNsdf (int lag, int window) const noexcept;
     bool spansWholeCycles (int lag) const noexcept;
     void updateVoicing (bool frameVoiced, bool frameUnvoiced) noexcept;
 
     float fullAt (int d) const noexcept { return fullRing[(size_t) ((fullWrite - 1 - d) & fullMask)]; }
+    float lowAt (int d) const noexcept  { return lowRing[(size_t) ((fullWrite - 1 - d) & fullMask)]; }
     static constexpr int kRebaseInterval = 1 << 20;
     double cumSumAt (int d) const noexcept { return cumSum[(size_t) ((fullWrite - 1 - d) & fullMask)]; }
     double cumSqAt (int d) const noexcept  { return cumSq [(size_t) ((fullWrite - 1 - d) & fullMask)]; }
@@ -130,6 +139,7 @@ private:
     int decimationPhase = 0;
 
     std::vector<float> fullRing;   // highpassed, full rate
+    std::vector<float> lowRing;    // the same through the anti-alias lowpass, full rate: guard 4 reads it
     std::vector<double> cumSum, cumSq;   // running sums of it, for window means in O(1)
     double runningSum = 0.0, runningSq = 0.0;
     int rebaseCountdown = 0;
@@ -150,6 +160,13 @@ private:
     int voicedRun = 0, unvoicedRun = 0;
 
     double heldPeriod = 0.0;
+
+    // Guard 4's standing decision: the period is guardFactor x what the
+    // search finds, decided for guardPeriod, due again at guardDueAt.
+    int guardFactor = 1, guardLag = 0;   // guardLag: where the multiple was found, for guardPeriod
+    double guardPeriod = 0.0;
+    std::int64_t guardDueAt = 0;
+
     PitchEstimate current;
     bool evaluated = false;
 };

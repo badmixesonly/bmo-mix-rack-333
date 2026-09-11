@@ -224,6 +224,13 @@ struct VoiceSettings
     double jitter = 0.0;         ///< fractional f0 deviation per period, e.g. 0.005
     double shimmer = 0.0;        ///< fractional amplitude deviation per period
     double breath = 0.0;         ///< noise level relative to the voiced source
+    /** The fundamental's level against the source's usual 1/k^2, in dB. A
+        real voice can carry a fundamental well under its second harmonic --
+        the Failure take of the 2026-09-11 shoot-out does, on a D4 /a/ whose
+        first formant sits on the octave -- and a detector that has only met
+        strong fundamentals locks an octave up on it. -20 puts it 8 dB under
+        the second harmonic at the source, before the formants. */
+    double fundamentalDb = 0.0;
     double gain = 0.4;
     std::uint64_t seed = 1234;
 };
@@ -279,7 +286,8 @@ inline std::vector<float> resonate (const std::vector<float>& x, double fs, doub
 
 inline Rendered voice (const Contour& hz, double fs, const VoiceSettings& s = {})
 {
-    auto src = harmonic (hz, fs, [] (int k) { return 1.0 / ((double) k * k); }, 1.0);
+    const auto h1 = std::pow (10.0, s.fundamentalDb / 20.0);
+    auto src = harmonic (hz, fs, [h1] (int k) { return (k == 1 ? h1 : 1.0) / ((double) k * k); }, 1.0);
 
     Random rng (s.seed ^ 0xABCDEFull);
 
