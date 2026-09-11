@@ -27,3 +27,7 @@ snapshots/
 .idea/
 *.swp
 *.log
+
+# Frosty's field recordings for review: vocals that may not be ours to
+# publish, and the fork is public. See HANDOFF.md.
+field-audio/

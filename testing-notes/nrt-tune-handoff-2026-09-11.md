@@ -21,8 +21,14 @@ git -C bmo-tune-rt log archive/hybrid-studio -1     # the tip: this note, and ev
 git -C bmo-tune-rt checkout archive/hybrid-studio   # to build it: scripts/build.sh --plugin
 ```
 
-The repository is local-only (no remote) as of this writing, so the branch
-lives wherever `bmo-tune-rt` does -- AURORA, `C:\Users\thesp\OneDrive\Documents\REPO\bmo-tune-rt`.
+It is also on Frosty's fork, pushed 2026-09-11 from AURORA:
+`badmixesonly/bmo-mix-rack-333`, branch `bmo-tune-rt-archive-hybrid-studio`
+(and Tune RT itself on `bmo-tune-rt`). Those branches' history is unrelated
+to the rack's -- never merge them into the fork's `main`.
+
+```
+git clone -b bmo-tune-rt-archive-hybrid-studio https://github.com/badmixesonly/bmo-mix-rack-333.git tune-archive
+```
 
 | What | Files on the branch |
 |---|---|
