@@ -82,8 +82,10 @@ table records both; the spec's 1.5 ms is met by the floor, not by the mean.
 
 ## Open, and not for one session to settle
 
-- **Formant Correct: keep or cut** (Frosty's call, asked 2026-09-10). In
-  HYBRID, on keeps the singer's formants, off lets them follow the
+- **Formant: keep or cut** -- kept until it can be heard in Ableton (Frosty,
+  2026-09-10). A Keep/Follow choice since the schema froze; cutting it now
+  means hiding it, since its id stays in the schema for good. In
+  HYBRID, Keep keeps the singer's formants, Follow lets them follow the
   correction as CLASSIC's do. Cutting it changes nothing else; the only
   combinations lost are HYBRID with formants following the pitch *and* Glide,
   or *and* Formant Shift, since CLASSIC has neither. Its code is one line in

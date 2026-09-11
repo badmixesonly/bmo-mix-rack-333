@@ -16,14 +16,14 @@ TuneParams TuneParams::fromValues (const float* v, int count) noexcept
     const auto on = [v] (int i) { return v[i] >= 0.5f; };
 
     p.retune = v[Index::retune];
-    p.key = choice (Index::key, 12);
+    p.key = pitchClassOfKey (choice (Index::key, kNumKeySpellings));
     p.scale = (ScaleType) choice (Index::scale, (int) ScaleType::count);
     p.engine = (Engine) choice (Index::engine, 2);
     p.range = (Range) choice (Index::range, 5);
     p.vibratoPercent = v[Index::vibrato];
     p.flexPercent = v[Index::flex];
     p.glideMs = v[Index::glide];
-    p.formant = on (Index::formant);
+    p.formant = (FormantMode) choice (Index::formant, 2) == FormantMode::keep;
     p.formantShiftCents = v[Index::formantShift];
     p.latency = (LatencyMode) choice (Index::latency, 2);
     p.refA = v[Index::refA];

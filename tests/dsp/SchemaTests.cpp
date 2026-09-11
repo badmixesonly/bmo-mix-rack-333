@@ -2,11 +2,11 @@
     The parameter schema, written out in full (BMO Mix Rack's
     tests/plugin/*Tests.cpp are the model).
 
-    Nothing here is frozen until 0.1 ships -- but from then on a saved
-    session references every id, its position, its range and its default,
-    and this table is where a change has to be argued for. It is written now
-    so that the day it freezes is a one-line decision rather than a
-    reconstruction.
+    FROZEN from the first plugin build, 2026-09-10 (Frosty): that build goes
+    into Ableton, and a saved session references every id, its position, its
+    kind, range, step and default, and every choice's name and order. This
+    table is where a change has to be argued for; a new parameter goes on the
+    end of specs() and of this table.
 
     Also checked: that the ModuleDsp adapter maps every value the way the
     spec list says, and that the schema fits a rack slot's 32 parameters
@@ -25,27 +25,40 @@ using namespace bmo::tune::test;
 
 namespace
 {
-    struct Row { const char* id; bmo::ParamKind kind; float min, max, def; };
+    struct Row { const char* id; bmo::ParamKind kind; float min, max, def, step; };
 
     const Row kGolden[] = {
-        { "retune",        bmo::ParamKind::Float,  0.0f,   100.0f, 0.0f },
-        { "key",           bmo::ParamKind::Choice, 0.0f,   11.0f,  0.0f },
-        { "scale",         bmo::ParamKind::Choice, 0.0f,   2.0f,   0.0f },
-        { "engine",        bmo::ParamKind::Choice, 0.0f,   1.0f,   0.0f },
-        { "range",         bmo::ParamKind::Choice, 0.0f,   4.0f,   0.0f },
-        { "vibrato",       bmo::ParamKind::Float,  0.0f,   150.0f, 0.0f },
-        { "flex",          bmo::ParamKind::Float,  0.0f,   100.0f, 0.0f },
-        { "glide",         bmo::ParamKind::Float,  0.0f,   200.0f, 0.0f },
-        { "formant",       bmo::ParamKind::Bool,   0.0f,   1.0f,   1.0f },
-        { "formant_shift", bmo::ParamKind::Float, -600.0f, 600.0f, 0.0f },
-        { "latency",       bmo::ParamKind::Choice, 0.0f,   1.0f,   0.0f },
-        { "ref_a",         bmo::ParamKind::Float,  380.0f, 480.0f, 440.0f },
-        { "note_c",  bmo::ParamKind::Bool, 0, 1, 1 }, { "note_cs", bmo::ParamKind::Bool, 0, 1, 1 },
-        { "note_d",  bmo::ParamKind::Bool, 0, 1, 1 }, { "note_ds", bmo::ParamKind::Bool, 0, 1, 1 },
-        { "note_e",  bmo::ParamKind::Bool, 0, 1, 1 }, { "note_f",  bmo::ParamKind::Bool, 0, 1, 1 },
-        { "note_fs", bmo::ParamKind::Bool, 0, 1, 1 }, { "note_g",  bmo::ParamKind::Bool, 0, 1, 1 },
-        { "note_gs", bmo::ParamKind::Bool, 0, 1, 1 }, { "note_a",  bmo::ParamKind::Bool, 0, 1, 1 },
-        { "note_as", bmo::ParamKind::Bool, 0, 1, 1 }, { "note_b",  bmo::ParamKind::Bool, 0, 1, 1 },
+        { "retune",        bmo::ParamKind::Float,  0.0f,   100.0f, 0.0f,   0.1f },
+        { "key",           bmo::ParamKind::Choice, 0.0f,   16.0f,  0.0f,   1.0f },
+        { "scale",         bmo::ParamKind::Choice, 0.0f,   2.0f,   0.0f,   1.0f },
+        { "engine",        bmo::ParamKind::Choice, 0.0f,   1.0f,   0.0f,   1.0f },
+        { "range",         bmo::ParamKind::Choice, 0.0f,   4.0f,   0.0f,   1.0f },
+        { "vibrato",       bmo::ParamKind::Float,  0.0f,   150.0f, 0.0f,   1.0f },
+        { "flex",          bmo::ParamKind::Float,  0.0f,   100.0f, 0.0f,   1.0f },
+        { "glide",         bmo::ParamKind::Float,  0.0f,   200.0f, 0.0f,   1.0f },
+        { "formant",       bmo::ParamKind::Choice, 0.0f,   1.0f,   0.0f,   1.0f },
+        { "formant_shift", bmo::ParamKind::Float, -600.0f, 600.0f, 0.0f,   1.0f },
+        { "latency",       bmo::ParamKind::Choice, 0.0f,   1.0f,   0.0f,   1.0f },
+        { "ref_a",         bmo::ParamKind::Float,  380.0f, 480.0f, 440.0f, 0.1f },
+        { "note_c",  bmo::ParamKind::Bool, 0, 1, 1, 1 }, { "note_cs", bmo::ParamKind::Bool, 0, 1, 1, 1 },
+        { "note_d",  bmo::ParamKind::Bool, 0, 1, 1, 1 }, { "note_ds", bmo::ParamKind::Bool, 0, 1, 1, 1 },
+        { "note_e",  bmo::ParamKind::Bool, 0, 1, 1, 1 }, { "note_f",  bmo::ParamKind::Bool, 0, 1, 1, 1 },
+        { "note_fs", bmo::ParamKind::Bool, 0, 1, 1, 1 }, { "note_g",  bmo::ParamKind::Bool, 0, 1, 1, 1 },
+        { "note_gs", bmo::ParamKind::Bool, 0, 1, 1, 1 }, { "note_a",  bmo::ParamKind::Bool, 0, 1, 1, 1 },
+        { "note_as", bmo::ParamKind::Bool, 0, 1, 1, 1 }, { "note_b",  bmo::ParamKind::Bool, 0, 1, 1, 1 },
+    };
+
+    /** Every choice parameter's names, in order. Renaming or reordering one
+        re-points every saved session that chose it. */
+    struct Choices { const char* id; std::vector<std::string> names; };
+
+    const Choices kGoldenChoices[] = {
+        { "key",     { "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B" } },
+        { "scale",   { "Chromatic", "Major", "Minor" } },
+        { "engine",  { "Classic", "Hybrid" } },
+        { "range",   { "Auto", "Soprano", "Alto/Tenor", "Bass", "Instrument" } },
+        { "formant", { "Keep", "Follow" } },
+        { "latency", { "Live", "Studio" } },
     };
 }
 
@@ -67,6 +80,40 @@ int main()
         check (p.kind == g.kind, "kind of " + where);
         check (p.min == g.min && p.max == g.max, "range of " + where);
         check (p.def == g.def, "default of " + where);
+        check (p.step == g.step, "step of " + where);
+    }
+
+    int choiceParams = 0;
+    for (const auto& p : s)
+        choiceParams += p.kind == bmo::ParamKind::Choice ? 1 : 0;
+    check (choiceParams == (int) (sizeof (kGoldenChoices) / sizeof (kGoldenChoices[0])),
+           "every choice parameter has its names in the golden list");
+
+    for (const auto& c : kGoldenChoices)
+    {
+        const auto i = bmo::indexOfParam (s, c.id);
+        check (i >= 0, std::string ("choice ") + c.id + " exists");
+        if (i < 0)
+            continue;
+
+        std::vector<std::string> names;
+        for (const auto* n : s[(size_t) i].choices)
+            names.push_back (n);
+        check (names == c.names, std::string ("the names and order of ") + c.id + "'s choices");
+    }
+
+    // A Key spelling names its pitch class: the letter's, moved by its
+    // accidental. Worked out from the names, so a mistyped table in params.h
+    // cannot agree with itself.
+    for (int k = 0; k < kNumKeySpellings; ++k)
+    {
+        static constexpr int letter[7] = { 9, 11, 0, 2, 4, 5, 7 };   // A B C D E F G
+        const std::string n = kKeySpellings[k];
+        auto pc = letter[n[0] - 'A'];
+        if (n.size() > 1)
+            pc += n[1] == '#' ? 1 : -1;
+        pc = (pc + 12) % 12;
+        check (pitchClassOfKey (k) == pc, "Key " + n + " is pitch class " + std::to_string (pc));
     }
 
     // Defaults are the hard-tune, Live, chromatic, CLASSIC instance.
@@ -77,6 +124,15 @@ int main()
     check (d.retune == 0.0 && d.engine == Engine::classic && d.latency == LatencyMode::live
            && d.scale == ScaleType::chromatic && d.allowed == kAllNotes && d.refA == 440.0,
            "the defaults are a hard-tune, Live, chromatic CLASSIC instance");
+    check (d.key == 0 && d.formant, "in C, with HYBRID's formants kept");
+
+    {
+        auto bFlat = v;
+        bFlat[(size_t) Index::key] = 15.0f;       // Bb
+        bFlat[(size_t) Index::formant] = 1.0f;    // Follow
+        const auto b = TuneParams::fromValues (bFlat.data(), (int) bFlat.size());
+        check (b.key == 10 && ! b.formant, "Key Bb reaches the core as pitch class 10, Formant Follow as not kept");
+    }
 
     // The adapter: values in, through ModuleDsp, sound out.
     {

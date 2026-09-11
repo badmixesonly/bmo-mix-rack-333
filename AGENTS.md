@@ -41,10 +41,13 @@ measurement or listening result happened.
 
 ## What must not change (from 0.1 on)
 
-Nothing is frozen yet. From the first saved session, the same list as the
-rack's: parameter ids, their order in `specs()`, ranges, steps, defaults.
-`tests/dsp/SchemaTests.cpp` writes the table out in full; a change is argued
-for there, and a new parameter goes at the **end** of `specs()`.
+**Frozen from the first plugin build (Frosty, 2026-09-10)** -- the same list
+as the rack's: parameter ids, their order in `specs()`, kinds, ranges, steps,
+defaults, and every choice's names and order. `tests/dsp/SchemaTests.cpp`
+writes the table out in full; a change is argued for there, and a new
+parameter goes at the **end** of `specs()`. Plugin code `Btun`, bundle id
+`com.lt3audio.bmotunert` and manufacturer `LT3a` are equally permanent: they
+are what a host finds the plugin by.
 
 ## Identity and colour
 
@@ -60,7 +63,7 @@ switch-colour table, and both appearances checked every time.
 | Selectors | lit in the accent (Scale, Range, Latency, Formant, the mode banner) |
 | Keyboard | lime, the accent, for now. Complements of lime (violet `#8f7cf8`, periwinkle `#6f8ef5`, orchid `#b56cf0`) were tried and rejected: good on the dark plate, not on the light one (Frosty, 2026-09-10) |
 | Lower section | a clock around a centred Retune: Vibrato and Flex at 10 and 2 o'clock; on HYBRID, Glide and Shift at 8 and 4, Formant Keep/Follow under Retune between them. Hidden controls leave their places empty (panel studies, round 7) |
-| Plugin code, bundle id, preset extension | not yet allocated; `com.lt3audio.bmotunert` is the obvious bundle id |
+| Plugin code, bundle id, preset extension | `Btun`, `com.lt3audio.bmotunert`, `.bmotune` (Frosty, 2026-09-10). Not yet in the rack's `products/AGENTS.md` allocation table -- that is Kevin's repository, so it goes in with his say |
 
 ## Before you say it is done
 

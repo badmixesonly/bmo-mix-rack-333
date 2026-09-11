@@ -1,14 +1,17 @@
 #pragma once
 
 #include "core/state/ParamSpec.h"
+#include <iterator>
 
 namespace bmo::tune
 {
 
 //==============================================================================
-// Parameter IDs. Permanent and append-only once a session has been saved --
-// see BMO Mix Rack's modules/eq/params.h for why, and its root AGENTS.md for
-// what "permanent" covers. Until 0.1 ships nothing here is frozen.
+// Parameter IDs. FROZEN from the first plugin build (Frosty, 2026-09-10):
+// permanent and append-only, because the build goes into Ableton and a saved
+// session references every id, its position, range, step and default. See
+// BMO Mix Rack's modules/eq/params.h for why, and its root AGENTS.md for what
+// "permanent" covers. tests/dsp/SchemaTests.cpp holds the table.
 //==============================================================================
 
 inline constexpr auto kModuleId   = "tune";
@@ -26,9 +29,9 @@ inline constexpr auto kVibrato = "vibrato";
 inline constexpr auto kFlex    = "flex";
 inline constexpr auto kGlide   = "glide";
 
-// HYBRID's formants: kept where the singer put them (on), or left to follow
-// the correction (off), and shifted independently. Kept pending Frosty's call
-// on 2026-09-10 -- see modules/tune/AGENTS.md, "Open".
+// HYBRID's formants: kept where the singer put them (Keep), or left to follow
+// the correction (Follow), and shifted independently. Kept until it can be
+// heard in Ableton (Frosty, 2026-09-10) -- see modules/tune/AGENTS.md, "Open".
 inline constexpr auto kFormant      = "formant";
 inline constexpr auto kFormantShift = "formant_shift";
 
@@ -71,6 +74,28 @@ inline bool isHybridOnly (int index) noexcept
 {
     return index == Index::glide || index == Index::formant || index == Index::formantShift;
 }
+
+/** The Key parameter's choices: every spelling a key signature uses, so the
+    host's automation lane shows the key the way it was picked -- B♭, not A#.
+    E#, B#, Cb and Fb are left out: no one picks those as a key.
+
+    ASCII for the host, which may not have the glyphs; the panel draws ♯ and ♭.
+    Frosty's call, 2026-09-10, over twelve pitch classes plus a spelling flag. */
+inline constexpr int kNumKeySpellings = 17;
+
+inline constexpr const char* kKeySpellings[kNumKeySpellings] = {
+    "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B" };
+
+/** The pitch class (0 = C) a Key choice names. */
+inline int pitchClassOfKey (int spelling) noexcept
+{
+    static constexpr int pc[kNumKeySpellings] = { 0, 1, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11 };
+    return pc[spelling < 0 ? 0 : (spelling >= kNumKeySpellings ? kNumKeySpellings - 1 : spelling)];
+}
+
+/** The Formant parameter's choices. Keep is index 0 and the default. */
+enum class FormantMode { keep, follow };
+
 enum class Range  { autoRange, soprano, altoTenor, bass, instrument };
 enum class LatencyMode { live, studio };
 
@@ -113,8 +138,7 @@ inline const ParamSpecs& specs()
             // linear for the rack's ParamSpec/JUCE agreement.
             S::floatParam (kRetune, "Retune Speed", 0.0f, 100.0f, 0.1f, 0.0f),
 
-            S::choiceParam (kKey, "Key", { "C", "C#", "D", "D#", "E", "F",
-                                           "F#", "G", "G#", "A", "A#", "B" }, 0),
+            S::choiceParam (kKey, "Key", { std::begin (kKeySpellings), std::end (kKeySpellings) }, 0),
 
             // Chromatic by default: a fresh instance corrects to the nearest
             // semitone without knowing the song, which is the safe wrong answer.
@@ -137,7 +161,9 @@ inline const ParamSpecs& specs()
             // GLIDE: HYBRID only; CLASSIC never glides (spec §4.5).
             S::floatParam (kGlide, "Glide", 0.0f, 200.0f, 1.0f, 0.0f),
 
-            S::boolParam (kFormant, "Formant Correct", true),
+            // A choice rather than a switch, so the host shows the panel's
+            // words: Keep (the default) or Follow.
+            S::choiceParam (kFormant, "Formant", { "Keep", "Follow" }, 0),
             S::floatParam (kFormantShift, "Formant Shift", -600.0f, 600.0f, 1.0f, 0.0f),
 
             // Live is the default: Frosty's call on spec Part IV question 4,
