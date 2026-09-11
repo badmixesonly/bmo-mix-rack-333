@@ -9,23 +9,67 @@ is the review of it, with the measurements behind every disagreement.
 
 ## Status
 
-**DSP only.** No `params.h`, no panel, no product, not in the rack registry.
-`bmo_add_module(deq ...)` builds the JUCE-free library, `deq_dsp_tests` holds it
-to the spec, `measure_deq` prints the numbers. Nothing a host can load exists
-yet, and nothing in the shared rack/product files has been touched — so this
-cannot conflict with another module's branch.
+**A product.** `BmoDeq` builds as VST3/Standalone (AU on macOS), and the rack
+hosts it. Not yet heard in a DAW: `testing-notes/deq-testing-checklist.md` is
+that pass, and `testing-notes/deq-topology-listening.md` the serial-vs-parallel
+one before it. Every decision so far is in `spec/decisions.md`; in short:
 
-**Decided 2026-09-10** (`spec/decisions.md`):
+- **Identity** (PR #8 on `main`): `deq`, `Bpar`, `com.lt3audio.bmodeq`,
+  `.bmodeq`, teal `#5ecfc0`.
+- **159 parameters**, 12 bands x 13 controls plus output, DEQ and AUTO
+  (appended at 158). The rack's 32 lanes go to output, bands 1-6 by frequency
+  / gain / Q / threshold / range, and DEQ; the rest are off the grid
+  (`SlotOverflow`). `params.h` has the map, `DeqTests` the frozen table,
+  `RackTests` the lanes.
+- **Two widths** -- 320 compact (mockup C), 600 full (mockup A). A rack opens
+  it compact, standalone full; the switch is on the host's bar. The machinery
+  is in core (`ModuleDef::expandedWidth`; `core/AGENTS.md` has the rules) and
+  only DEQ uses it.
+- **Knobs show values**, **AUTO** is BMO EQ's static compensation
+  (`dsp/AutoGain.h`), and **a shelf's Q stops at 2** (`kShelfMaxQ`).
+- **Serial**, pending the listening test.
 
-- **Identity: BMO DEQ** ("DEQ" for short). It takes over the slot reserved
-  for BMO Parametric (the teal). The rename lands on `main` first, in a
-  separate change; this module follows what that change allocates. `deq` stays
-  a working id until then.
-- **No parameter limit.** `main` exempts BMO DEQ from the 32-per-slot rule.
-  How the exemption works (rack mapping, host parameter list) is `main`'s to
-  define; `params.h` waits for it.
-- **Serial topology**, pending the listening test in
-  `testing-notes/deq-topology-listening.md`.
+## The panel
+
+One component, two layouts, chosen by nothing but the width it is handed
+(`DeqPanel::isShowingExpanded`). **The layouts are the mockups Frosty chose,
+A (600) and C (320)** -- `spec/panel-mockups.html`, the "BMO DEQ Panel
+Options" page as published -- and `DeqPanel.cpp` lays each row at the
+mockup's own y, written beside it. Where it departs from them,
+`spec/decisions.md` says why.
+Do not "tidy" a row away from the mockup without asking: the first build did,
+one reasonable step at a time, and Frosty sent it back.
+
+The curve (`ResponseView`) draws the bands' own matched-Z designs multiplied
+together -- the serial topology for a centred source -- so it cannot drift
+from the audio; drag a node for frequency and gain, wheel for Q, double-click
+to switch on the next free band. Selecting a band (tab or node) rebinds the
+controls under the curve; which band is selected is panel state, reached by
+`snapshot ... ui.band=N`.
+
+Things a build got wrong that a green suite would not have shown, and what now
+holds them:
+
+| fault | caught by |
+|---|---|
+| THRESH, ATTACK, RELEASE overflowed their cells by 6-17 px | `ui_layout_tests` captions; the cells are now as wide as the words |
+| the shape switches clipped to "BEL", "LO CU" | a **render**, not a test -- the switch-label check only looked at SwitchButtons. It now measures every toggle, and was mutation-checked. (Shape is now the stepped dial.) |
+| a continuous log frequency round-tripped a 32-bit normalised value with 3e-4 Hz error | the golden schema's default check; frequency now steps 0.1 Hz |
+| values overflowed 72 px compact cells ("+24.0 dB" is 76 px in the caption face, which runs ~30 % wider than the mockups' stand-in) | `captionOverflow`, which measures values too; compact shows mockup C's short form |
+| the frequency axis cut "100" to "10" | a **render**; the label boxes are 48 px |
+| a 50 px knob at face scale 0.62 ran its dotted track off its own edge | a **render**; `size()` in `DeqPanel.cpp` scales the cap to the side |
+| band 12's node was cut by the well's edge | a **render**; the curve overhangs its well by `ResponseView::kOverhang` |
+
+`checkDeqPanel` in `ui_layout_tests` holds Frosty's three calls: every band
+knob shows its value, SHAPE is the dial and fits, AUTO is on the output row.
+
+Render both widths before calling a panel change done:
+
+    snapshot deq out.png ui.band=6                 # full, as standalone opens
+    snapshot deq out.png view=compact ui.band=6    # compact, as a rack shows it
+
+(A render viewed twice at the same path can come back cached from the image
+viewer. Render to a new name when checking a change.)
 
 ## The invariant: zero latency, structurally
 
@@ -111,14 +155,14 @@ A redesign costs 135 ns (bell) to 300 ns (shelf) with the engine's prebuilt
 
 ## Open
 
-**Waiting on `main`:**
+**Frosty's, not yet asked or not yet decided:**
 
-1. **The rename** that turns BMO Parametric into BMO DEQ: plugin code, bundle
-   id, preset extension, module id and the accent row all come from that
-   change. Do not allocate any of them here.
-2. **The parameter-limit exemption.** `SlotParameter` is a fixed 8 × 32 grid,
-   and `RackTests` pins it. Whatever `main` does to exempt DEQ decides how
-   `params.h` is shaped.
+- **Presets.** Only Init ships, confirmed for now. Preset character is his
+  call, and it should come after the listening test: a preset tuned on one
+  topology would need re-tuning by ear on the other.
+- **AUTO by ear.** Static, like BMO EQ's. Whether a dynamic EQ's users expect
+  it to follow the dynamics too is a listening question; the argument against
+  (it would undo a de-esser) is in `dsp/AutoGain.h`.
 
 **Serial, and the listening test.** Chosen from `spec/topology-options.md`,
 where it is the only option whose response is its band curves added in dB,
@@ -135,13 +179,11 @@ small.
 
 **Engineering, not blocked:**
 
-- **Resonant shelves** (Q > 2) are up to 6 dB out near Nyquist. Q > 2 on a
-  shelf may simply not be offered.
+- **Resonant shelves** (Q > 2) are up to 6 dB out near Nyquist, so they are
+  not offered: a shelf runs at `kShelfMaxQ` (2) at most. Raising the cap means
+  fixing the design first.
 - **External sidechain** is not possible through `ModuleDsp::process`, which
   takes the audio channels only. Needs a core interface change.
-- **Linear ranges only** (`ParamSpec`, and `RackTests` pins it): a continuous
-  20 Hz–20 kHz frequency knob needs a log mapping, which means a normalised or
-  octave-valued parameter, or a core change to both range implementations.
 - **Parameters arrive once per block** (`ModuleDsp::setParams`). The spec's
   "sample-accurate automation within a block" (T8) is not available; changes
   glide from the block boundary.

@@ -1,10 +1,14 @@
 // Renders a product's editor to a PNG without a display, so a layout change
 // can be reviewed in a pull request rather than described in one.
 //
-//   snapshot <eq|sat|util|opto|dim|rack> out.png [width height] [param=value ...]
+//   snapshot <eq|sat|util|opto|dim|deq|rack> out.png [width height] [param=value ...]
 //
 // For the rack, "chain=util,eq,sat,opto" sets the modules and "N.id=value"
 // sets a parameter of the module in slot N (1-based), e.g. 2.mid_gain=4.
+//
+// "view=compact|expanded" picks the width of a module that has two (BMO
+// DEQ), standalone; "N.view=..." does the same for rack slot N. Standalone
+// opens expanded and a rack compact, so these render the other one.
 //
 // "appearance=dark|light" renders the other palette. Set for this process
 // only: it neither writes nor reads the machine-wide preference, so it cannot
@@ -14,6 +18,7 @@
 // Opto takes "ui.meter=IN|GR|OUT", which is the only way to render its VU in
 // anything but OUT. Offered to every panel; refused by all of them is fatal.
 
+#include "products/deq/Product.h"
 #include "products/dim/Product.h"
 #include "products/eq/Product.h"
 #include "products/opto/Product.h"
@@ -40,6 +45,7 @@ namespace
         if (product == "util") return createUtil();
         if (product == "opto") return createOpto();
         if (product == "dim")  return createDim();
+        if (product == "deq")  return createDeq();
         if (product == "rack") return createRack();
         return nullptr;
     }
@@ -92,12 +98,22 @@ namespace
             if (dot < 0)
                 return false;
 
-            auto* engine = rack->getEngineAt (id.substring (0, dot).getIntValue() - 1);
+            const auto slot = id.substring (0, dot).getIntValue() - 1;
+            auto* engine = rack->getEngineAt (slot);
 
             if (engine == nullptr)
                 return false;
 
             const auto param = id.substring (dot + 1);
+
+            if (param == "view")
+            {
+                if (! rack->getModuleAt (slot)->isExpandable() || (text != "compact" && text != "expanded"))
+                    return false;
+
+                rack->setSlotExpanded (slot, text == "expanded");
+                return true;
+            }
 
             const auto i = engine->params().indexOf (param.toRawUTF8());
 
@@ -118,6 +134,15 @@ namespace
 
         if (auto* single = dynamic_cast<bmo::SingleModuleProcessor*> (&processor))
         {
+            if (id == "view")
+            {
+                if (! single->getModule().isExpandable() || (text != "compact" && text != "expanded"))
+                    return false;
+
+                single->setExpanded (text == "expanded");
+                return true;
+            }
+
             const auto i = single->getEngine().params().indexOf (id.toRawUTF8());
 
             if (i < 0)
@@ -179,7 +204,7 @@ int main (int argc, char** argv)
 
     if (argc < 3)
     {
-        std::cerr << "usage: snapshot <eq|sat|util|opto|dim|rack> out.png [width height] [param=value ...]\n";
+        std::cerr << "usage: snapshot <eq|sat|util|opto|dim|deq|rack> out.png [width height] [param=value ...]\n";
         return 2;
     }
 

@@ -1,4 +1,5 @@
 #include "Registry.h"
+#include "modules/deq/Module.h"
 #include "modules/dim/Module.h"
 #include "modules/eq/Module.h"
 #include "modules/opto/Module.h"
@@ -16,6 +17,7 @@ const std::vector<const ModuleDef*>& registry()
         &sat::module(),
         &opto::module(),
         &dim::module(),
+        &deq::module(),
     };
 
     return defs;

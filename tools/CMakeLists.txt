@@ -18,5 +18,5 @@ if(NOT BMO_DSP_ONLY)
     bmo_add_tool(snapshot
         ${CMAKE_CURRENT_SOURCE_DIR}/snapshot/main.cpp
         ${BMO_ROOT}/products/rack/Registry.cpp)
-    target_link_libraries(snapshot PRIVATE bmo_eq bmo_sat bmo_util bmo_opto bmo_dim)
+    target_link_libraries(snapshot PRIVATE bmo_eq bmo_sat bmo_util bmo_opto bmo_dim bmo_deq)
 endif()

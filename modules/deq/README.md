@@ -4,11 +4,11 @@ A parametric EQ whose bands can move their own gain with the signal — a
 dynamic EQ — at **zero samples of latency**, with the filter accuracy near
 Nyquist that other plugins buy with oversampling (and pay for in latency).
 
-**Status: DSP only.** There is nothing to load in a DAW yet. The filter core,
-the dynamics and the M/S handling are written and tested, with bands in series.
-The controls and the panel wait for the rename to BMO DEQ, and its
-parameter-limit exemption, to land on `main`. Serial vs parallel can already be
-compared by ear: see `testing-notes/deq-topology-listening.md`.
+**Status: built, not yet heard in a DAW.** Twelve bands, each with its own
+dynamics and mid/side placement, in a panel with two widths: compact (320) in a
+rack, full (600) standalone, switched from the bar above the panel. The DAW
+pass is `testing-notes/deq-testing-checklist.md`; serial vs parallel can be
+compared by ear first with `testing-notes/deq-topology-listening.md`.
 
 ## What is here
 

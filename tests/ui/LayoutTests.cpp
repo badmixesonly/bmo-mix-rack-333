@@ -16,6 +16,8 @@
 // at design size regardless of what the editor is later scaled to, so
 // constructing the editor is enough to ask where everything landed.
 
+#include "products/deq/Product.h"
+#include "modules/deq/panel/Widgets.h"
 #include "products/dim/Product.h"
 #include "products/eq/Product.h"
 #include "products/opto/Product.h"
@@ -334,6 +336,52 @@ void checkCaptionsFit (bmo::ui::ModulePanel& panel, const juce::String& who)
                who + " caption '" + knob->getName() + "' overflows its box by "
                    + juce::String (overflow, 1) + " px");
     }
+
+    // A stepped dial's legend too. BMO EQ's are frequencies ("1k6"); BMO DEQ's
+    // shape dial is the first to carry words (setLegend), and words are what
+    // outgrow a 38 px box.
+    std::function<void (juce::Component&)> walk = [&] (juce::Component& c)
+    {
+        for (auto* child : c.getChildren())
+        {
+            if (auto* band = dynamic_cast<bmo::ui::ConcentricBand*> (child))
+                check (band->legendOverflow() <= 0.0f,
+                       who + " a legend on '" + c.getName() + "' overflows its box by "
+                           + juce::String (band->legendOverflow(), 1) + " px");
+
+            walk (*child);
+        }
+    };
+    walk (panel);
+}
+
+/** BMO DEQ's own: the band's knobs print their values, the shape is the
+    stepped dial with its name fitting under it, and AUTO shares the output
+    row with DEQ. Frosty's three calls on the first build (2026-09-11), so a
+    later layout pass cannot quietly undo one. */
+void checkDeqPanel (bmo::ui::ModulePanel& panel, const juce::String& who)
+{
+    std::vector<bmo::ui::PlainKnob*> knobs;
+    collectKnobs (panel, knobs);
+
+    auto band = 0;
+    for (auto* knob : knobs)
+        if (knob->getName() != "OUTPUT")
+        {
+            ++band;
+            check (knob->isShowingValue(), who + " knob '" + knob->getName() + "' shows no value");
+        }
+
+    checkEquals (band, 8, who + " band knobs (FREQ GAIN Q THRESH RANGE RATIO ATTACK RELEASE)");
+
+    auto* shape = dynamic_cast<bmo::deq::ShapeDial*> (findNamed (panel, "SHAPE"));
+    check (shape != nullptr, who + " has no SHAPE dial");
+
+    if (shape != nullptr)
+        check (shape->captionOverflow() <= 0.0f,
+               who + " SHAPE or its legend overflows by " + juce::String (shape->captionOverflow(), 1) + " px");
+
+    checkOutputSwitch (panel, "AUTO", who);
 }
 
 /** Every switch label fits its switch.
@@ -355,6 +403,32 @@ void checkSwitchLabelsFit (bmo::ui::ModulePanel& panel, const juce::String& who)
                who + " switch '" + sw->getName() + "' label overflows its box by "
                    + juce::String (overflow, 1) + " px");
     }
+
+    // And every toggle that is *not* inside a SwitchButton: BMO DEQ's rows of
+    // switches for a choice (STEREO / MID / SIDE, the five shapes) are plain
+    // ToggleButtons drawn by the same look and feel. They clipped to "BEL" and
+    // "LO CU" on DEQ's first render while this check still only looked for
+    // SwitchButtons -- the same blind spot MAKEUP fell through, one class over.
+    std::function<void (juce::Component&)> walk = [&] (juce::Component& c)
+    {
+        for (auto* child : c.getChildren())
+        {
+            if (dynamic_cast<bmo::ui::SwitchButton*> (child) != nullptr)
+                continue;
+
+            if (auto* toggle = dynamic_cast<juce::ToggleButton*> (child))
+            {
+                const auto overflow = bmo::ui::BmoLookAndFeel::toggleLabelOverflow (*toggle);
+
+                check (overflow <= 0.0f,
+                       who + " switch '" + toggle->getButtonText() + "' label overflows its box by "
+                           + juce::String (overflow, 1) + " px");
+            }
+
+            walk (*child);
+        }
+    };
+    walk (panel);
 }
 
 //== The meter scales ==========================================================
@@ -588,6 +662,17 @@ int main (int argc, char** argv)
         { "util", +[] () -> std::unique_ptr<juce::AudioProcessor> { return createUtil(); } },
         { "opto", +[] () -> std::unique_ptr<juce::AudioProcessor> { return createOpto(); } },
         { "dim",  +[] () -> std::unique_ptr<juce::AudioProcessor> { return createDim(); } },
+
+        // BMO DEQ twice, once per width: standalone opens it full, and the
+        // compact one is what a rack shows. Both are the same panel laid out
+        // from the width it is given, so both are held to everything above.
+        { "deq",  +[] () -> std::unique_ptr<juce::AudioProcessor> { return createDeq(); } },
+        { "deq compact", +[] () -> std::unique_ptr<juce::AudioProcessor>
+                         {
+                             auto p = createDeq();
+                             p->setExpanded (false);
+                             return std::unique_ptr<juce::AudioProcessor> (p.release());
+                         } },
     };
 
     if (dumping)
@@ -626,6 +711,20 @@ int main (int argc, char** argv)
         checkOutputSwitch (panel, "HI-Q", "eq");
         checkEqBandColumn (panel);
     });
+
+    // BMO DEQ takes the output section at both widths, so its OUTPUT knob and
+    // its DEQ switch sit on the same lines as every other module's in a rack.
+    for (const auto& product : { all[5], all[6] })
+        withPanel (product, [&] (bmo::ui::ModulePanel& panel)
+        {
+            checkOutputRule    (panel, product.who);
+            checkOutputSection (panel, product.who);
+            checkOutputSwitch  (panel, "DEQ", product.who);
+            checkDeqPanel      (panel, product.who);
+        });
+
+    withPanel (all[5], [] (bmo::ui::ModulePanel& panel) { checkEquals (panel.getWidth(), 600, "deq opens full standalone"); });
+    withPanel (all[6], [] (bmo::ui::ModulePanel& panel) { checkEquals (panel.getWidth(), 320, "deq compact width"); });
 
     // BMO Util reserves the output section and adopts neither half of it. This
     // is the case that proves a reservation is worth anything.
@@ -675,6 +774,42 @@ int main (int argc, char** argv)
             rack->editorBeingDeleted (editor.get());
             editor.reset();
         }
+    }
+
+    // BMO DEQ in a rack: compact, where a rack opens it, and on the rack-wide
+    // output row like everything beside it. Its own block rather than a fifth
+    // module in the one above, whose four-panel expectations are written out.
+    {
+        auto rack = createRack();
+        rack->prepareToPlay (48000.0, 512);
+        rack->clearChain();
+        rack->addModule (*rack->findModule ("util"));
+        rack->addModule (*rack->findModule ("deq"));
+
+        std::unique_ptr<juce::AudioProcessorEditor> editor (rack->createEditorAndMakeActive());
+        std::vector<bmo::ui::ModulePanel*> panels;
+        collectPanels (*editor, panels);
+
+        check (panels.size() == 2, "a util-and-deq rack has two panels");
+
+        for (auto* panel : panels)
+        {
+            checkWithinPanel     (*panel, "rack deq slot");
+            checkNoOverlap       (*panel, "rack deq slot");
+            checkCaptionsFit     (*panel, "rack deq slot");
+            checkSwitchLabelsFit (*panel, "rack deq slot");
+        }
+
+        if (panels.size() == 2)
+        {
+            auto* deq = panels[0]->getX() > panels[1]->getX() ? panels[0] : panels[1];
+            checkEquals (deq->getWidth(), 320, "deq arrives in a rack compact");
+            checkOutputRule (*deq, "rack deq");
+            checkDeqPanel (*deq, "rack deq");
+        }
+
+        rack->editorBeingDeleted (editor.get());
+        editor.reset();
     }
 
     if (failures == 0)

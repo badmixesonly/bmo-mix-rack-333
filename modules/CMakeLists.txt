@@ -59,9 +59,11 @@ bmo_add_module(dim
         ${CMAKE_CURRENT_SOURCE_DIR}/dim/panel/DimPanel.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/dim/Module.cpp)
 
-# BMO DEQ. DSP only for now: no panel, no product, not in the rack, until the
-# rename and its parameter-limit exemption land on main -- see modules/deq/AGENTS.md.
 bmo_add_module(deq
     DSP_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/deq/dsp/Design.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/deq/dsp/DspCore.cpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/deq/dsp/DspCore.cpp
+    UI_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/deq/panel/DeqPanel.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/deq/panel/ResponseView.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/deq/Module.cpp)

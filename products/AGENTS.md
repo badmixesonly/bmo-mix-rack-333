@@ -18,7 +18,7 @@ Permanent. Allocate here before the first build of anything new.
 | BMO Opto | `opto` | `Bopt` | `com.lt3audio.bmoopto` | `.bmoopto` |
 | BMO Dimension | `dim` | `Bdim` | `com.lt3audio.bmodimension` | `.bmodim` |
 | BMO Mix Rack | -- | `Brck` | `com.lt3audio.bmomixrack` | `.bmorack` |
-| *BMO DEQ -- held, not built* | `deq` | `Bpar` | `com.lt3audio.bmodeq` | `.bmodeq` |
+| BMO DEQ | `deq` | `Bpar` | `com.lt3audio.bmodeq` | `.bmodeq` |
 
 Manufacturer code `LT3a`, company "LT3 Audio", preset root `LT3 Audio/`.
 BMO EQ keeps FrostyEQ's code and bundle id on purpose: that is what makes
@@ -49,13 +49,18 @@ Frosty named it BMO DEQ and gave it everything that reservation held: the
 plugin code `Bpar` and the teal `#5ecfc0` carry over unchanged. The bundle id
 and preset extension, which were `com.lt3audio.bmoparametric` and `.bmopar`,
 were re-derived from the new name, and the module id is `deq` rather than
-`par`. None of these had shipped, so changing them cost nothing. The row is
-permanent from the product's first build, and until then it is held and
-nothing else may use it.
+`par`. None of these had shipped, so changing them cost nothing. The row has
+been permanent since the product's first build, on `add-bmo-deq`.
 
-BMO DEQ may have more than 32 parameters. A rack slot still has 32 host
-lanes; the module's first 32 parameters take them and the rest are kept in
-the slot's state, off the host grid -- see `modules/AGENTS.md`, step 2.
+BMO DEQ has 158 parameters. A rack slot still has 32 host lanes; the
+module's first 32 parameters take them and the rest are kept in the slot's
+state, off the host grid -- see `modules/AGENTS.md`, step 2. Which 32 is
+Frosty's allocation, recorded in `modules/deq/params.h`.
+
+It is also the one module with **two widths**: 320 compact and 600 full. A
+rack opens it compact and standalone opens it full; the switch between them
+is on the host's bar, not on the panel (`ModuleDef::expandedWidth`,
+`ui::ExpandButton`). See `modules/deq/AGENTS.md`.
 
 Reserved for later products (not built, do not reuse): `Bfet` FET comp,
 `Bdyn` dynamics, `Bdes` de-esser, `Bovr` overdrive,
@@ -157,7 +162,7 @@ there are distinguishable ones.
 | BMO Opto | none -- `tokens().neutral` `#ababab` | -- | -- | -- |
 | BMO Dimension | `#d4a4ff` | 271.6° | 6.80 | 1.73 |
 | *(not an accent)* utility azure `#4fb8e8` | | 198.8° | 6.02 | -- |
-| **held** -- BMO DEQ | `#5ecfc0` teal | 172.0° | **7.19** | 1.64 |
+| BMO DEQ | `#5ecfc0` teal | 172.0° | **7.19** | 1.64 |
 
 BMO Opto has no accent and is not holding one: its panel went greyscale in
 0.2.2 so that the only colour on it could mean "engaged". Its red `#e0685a`
