@@ -39,7 +39,7 @@ and what it measured.
   `formant_shift` and `latency` were in 0.1's saved sessions; a new parameter
   under one of those ids would be fed a value meant for something else.
   `kRetiredIds` in `params.h`, checked by `SchemaTests`.
-- **Tests measure with `tools/common/Analysis.h`, never with the plugin's own
+- **Tests measure with `tools/tune/common/Analysis.h`, never with the plugin's own
   detector.** Measuring the output with the code that decided the correction
   agrees with itself whatever it did.
 

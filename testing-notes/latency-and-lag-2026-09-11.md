@@ -17,7 +17,7 @@ build/tools/Release/bmo-tune-ref score waves.wav
 build/tools/Release/bmo-tune-ref bmo
 ```
 
-- **The stimulus** (`tools/common/Stimulus.h`): 19.5 s of a synthetic low male
+- **The stimulus** (`tools/tune/common/Stimulus.h`): 19.5 s of a synthetic low male
   voice -- in-tune held notes on A2, D3, E3 and A3; the same four notes with
   a 5.5-6.5 Hz vibrato of 40-45 cents to be flattened; and A3 and D3 held 30
   and 35 cents off, marked with sharp level dips. 0.4 s of silence between.
@@ -73,7 +73,7 @@ What it says:
 
 ## What BMO is held to
 
-`tools/common/References.h` records both tuners' figures with their settings.
+`tools/tune/common/References.h` records both tuners' figures with their settings.
 `tests/dsp/HardTuneTests.cpp`:
 
 - every run: true latency <= Waves' (the latency rule); correction lag and

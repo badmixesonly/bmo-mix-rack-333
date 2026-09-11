@@ -142,7 +142,7 @@ The detector (`Detector`, `DifferenceKernel`), the correction law minus its
 real-time guards, the scale and key handling (17 spellings), `ClassicEngine`,
 the sinc bank, and the whole offline harness: `bmo-tune-gen` (72-item
 synthetic corpus with ground truth), `bmo-tune-score`, the offline ruler in
-`tools/common/Analysis.h`, `bmo-tune-bench`, `bmo-tune-snapshot` and
+`tools/tune/common/Analysis.h`, `bmo-tune-bench`, `bmo-tune-snapshot` and
 `bmo-tune-hostcheck`. The measurement discipline too: tests measure with the
 independent ruler, never with the plugin's own detector.
 
