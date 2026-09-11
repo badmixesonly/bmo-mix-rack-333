@@ -15,7 +15,7 @@ rounds), `testing-notes/latency-and-lag-2026-09-11.md` (what was measured).
 
 | | |
 |---|---|
-| Code | this repository. Fork `badmixesonly/bmo-mix-rack-333`, branch **`bmo-tune-rt`**, pushed to `f9e479b`. Local `main` is **ahead**: `f2b0f8a` (steadier note, guard 4's later checks) and the commit that adds this file and `bmo-tune-field`. **Not pushed: Frosty's say first.** Never push to Kevin's repository. |
+| Code | this repository. Fork `badmixesonly/bmo-mix-rack-333`, branch **`bmo-tune-rt`**, pushed through `f2b0f8a` (steadier note, guard 4's later checks), the commit that adds this file and `bmo-tune-field`, and the one that corrects this row. They were pushed on 2026-09-11, before round three was heard, so the fork and AURORA could be synced. The suites passed on AURORA first. Never push to Kevin's repository. |
 | Field audio | gitignored, on AURORA only: `field-audio/shootout-2026-09-11/` -- the drys and Antares/Waves exports (`failure/`, `fuji/`, the redo folders), and BMO renders by generation: `bmo-renders/` (0.1's detector), `bmo-renders-guard4/` (`989a5ef`), `bmo-renders-hold/` (`f2b0f8a`). The blind manifests are beside them. |
 | Blind sets | `field-audio/blind-2026-09-11/` round one (answered), `-guard4/` round two (answered), **`-round3/` not yet heard.** |
 | Reference stimulus | `field-audio/reference/stimulus-48k.wav` (regenerate with `bmo-tune-ref stimulus`). Frosty's Ableton bounces of it: `C:\Users\thesp\OneDrive\Desktop\BMO TUNE refs\`. |
@@ -123,8 +123,8 @@ across unvoiced gaps and read a few higher than `bmo-tune-field`.)
    lines of its `ANSWERS.md` -- write them in, then open `KEY.txt`, then
    record the result in `testing-notes/shootout-2026-09-11.md`, as rounds
    one and two are. The checklist has the same three groups.
-2. **Frosty's calls** (on the checklist): push `f2b0f8a` and this commit;
-   accept the two corpus residuals or keep working.
+2. **Frosty's call** (on the checklist): accept the two corpus residuals
+   or keep working. (The push is done.)
 3. **The pops still heard** -- the 66 jump flips on Failure, mostly on
    scoops: a harmonic read during a slide, each a splice by a wrong period.
    `bmo-tune-field --csv` gives BMO's estimate per evaluation; the ruler
