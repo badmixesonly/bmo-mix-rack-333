@@ -174,13 +174,15 @@ there are distinguishable ones.
 
 **The lime was picked outside this table**, while Tune was still its own
 repository, and its two figures are computed by the WCAG formula on AURORA
-rather than by any tool in this tree. Two things to weigh now that it is here.
-Its separation is the best that was left: 48.4° from the Saturator and 48.8°
-from BMO Util, in what was the widest remaining gap. But **1.29 on the pale
-plate is the lowest figure in the table**, where the shipped accents run 1.64
-to 2.00, so on `#efefef` it is a fainter mark than any of them. That is
-Frosty's to accept or re-pick, and it costs nothing today: no rack panel is
-near it, and a later module cannot take the lime while Tune holds it.
+rather than by any tool in this tree. Its separation is the best that was
+left: 48.4° from the Saturator and 48.8° from BMO Util, in what was the widest
+remaining gap. Against that, **1.29 on the pale plate is the lowest figure in
+the table**, where the shipped accents run 1.64 to 2.00, so on `#efefef` it is
+a fainter mark than any of them.
+
+**Frosty kept it, 2026-09-11**, told that. So the lime is spent, and a later
+module cannot have it. Re-opening it needs a reason that is new -- a panel
+that reads badly in the pale appearance, say -- not this arithmetic again.
 
 BMO Opto has no accent and is not holding one: its panel went greyscale in
 0.2.2 so that the only colour on it could mean "engaged". Its red `#e0685a`
