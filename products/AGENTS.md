@@ -61,11 +61,12 @@ Reserved for later products (not built, do not reuse): `Bfet` FET comp,
 `Bdyn` dynamics, `Bdes` de-esser, `Bovr` overdrive,
 `Bcmp` compressor, `Bdly` delay, `Brvb` reverb.
 
-## BMO EQ and BMO DEQ — rename BMO EQ before BMO DEQ ships
+## BMO EQ and BMO DEQ — settle BMO EQ's name
 
-**Status (2026-09-10):** Frosty has picked the new name: BMO EQ becomes
-**BMO CEQ**, for console EQ. The rename has not been done. BMO DEQ's
-identity is settled (above) and the core lets it go past 32 parameters.
+**Status (2026-09-10): not decided.** **BMO CEQ**, for console EQ, is the
+leading proposal for BMO EQ's new name. Frosty has not chosen it or any
+other name, and nothing has been renamed. BMO DEQ's identity is settled
+(above) and the core lets it go past 32 parameters.
 
 This section was written while BMO DEQ was still "BMO Parametric", and the
 argument below is that one's. The new names make the fix clearer, not
@@ -86,18 +87,19 @@ scanning a device list will reach for BMO EQ expecting a full EQ, find
 stepped frequencies and no Q, and conclude the suite is missing something
 it is not.
 
-**The fix is to rename BMO EQ so its name says what it is.** Frosty's pick
-is **BMO CEQ**. It pairs with BMO DEQ as two equals, where "BMO EQ" and
-"BMO DEQ" read as a product and its variant. The earlier proposal was "BMO
-Console EQ", over "BMO Vintage EQ", because "vintage" describes marketing
-rather than behaviour. Do not rename BMO DEQ to solve this.
+**The proposed fix is to rename BMO EQ so its name says what it is.** The
+proposal is **BMO CEQ**. It would pair with BMO DEQ as two equals, where "BMO
+EQ" and "BMO DEQ" read as a product and its variant. The earlier proposal
+was "BMO Console EQ", over "BMO Vintage EQ", because "vintage" describes
+marketing rather than behaviour. Whatever the name, do not rename BMO DEQ to
+solve this.
 
-**Rename it before BMO DEQ ships.** This used to say "after the Ableton
-pass": BMO EQ was in the build under test, and a rename mid-cycle would
-muddy a test about Dimension. The other half still holds. The cost of the
-rename grows with every tester on the old name, and it is the *second*
-rename in this product's life after FrostyEQ. That argues for doing it once
-more and never again, not for flinching.
+**Proposed timing: before BMO DEQ ships. Not decided either.** This used to
+say "after the Ableton pass": BMO EQ was in the build under test, and a
+rename mid-cycle would muddy a test about Dimension. The other half still
+holds. The cost of the rename grows with every tester on the old name, and
+it is the *second* rename in this product's life after FrostyEQ. That argues
+for doing it once more and never again, not for flinching.
 
 ### What the rename touches
 
