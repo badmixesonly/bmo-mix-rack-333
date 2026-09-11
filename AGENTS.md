@@ -68,11 +68,14 @@ switch-colour table, and both appearances checked every time.
 ## Before you say it is done
 
 ```
-scripts/build.sh              # Release build, all nine test suites
+scripts/build.sh              # Release build, all nine DSP suites
+scripts/build.sh --plugin     # the plugin too: eleven suites, and snapshots/
 scripts/build.sh --corpus     # then generate, render and score the corpus
 ```
 
-Both must pass. If the DSP changed, also run
+All three must pass. If the panel changed, look at `snapshots/` in both
+modes and both appearances -- the panel test checks the hide rule, fit and
+overlap, but not whether it looks right. If the DSP changed, also run
 `build/tools/Release/bmo-tune-latency --range all` (it fails if Studio's
 measured delay ever leaves its reported PDC) and `bmo-tune-bench --quick`.
 

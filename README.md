@@ -24,20 +24,27 @@ code departs from it, `AGENTS.md` says where and why.
 ## Building
 
 ```
-git submodule update --init libs/bmo-mix-rack     # Kevin's main; not --recursive
-cmake -S . -B build
-cmake --build build --config Release
-ctest --test-dir build -C Release --output-on-failure
+git submodule update --init libs/bmo-mix-rack     # Kevin's main
+scripts/build.sh                                  # DSP, tests, tools: no JUCE
+scripts/build.sh --plugin                         # + VST3, Standalone, panel snapshots
 ```
 
 Requirements: CMake 3.22+, a C++20 compiler (MSVC 2022 / Xcode 15 / GCC 12),
 and the pinned BMO Mix Rack submodule. The DSP, its tests and every tool
 build with no framework at all.
 
+The plugin also needs JUCE -- the rack's own submodule at
+`libs/bmo-mix-rack/libs/JUCE`, cloned from a local rack working copy or from
+GitHub (CMake prints both commands) -- and the licensed fonts, whose folder
+goes in a gitignored `.bmo-fontdir`. The VST3 lands in
+`build-plugin/products/tune/BmoTuneRT_artefacts/Release/VST3/` and is never
+copied into the system plugin folder by the build.
+
 ## Status
 
-The DSP is complete and measured; there is no plugin wrapper yet and nothing
-has been heard in a DAW. Every figure the spec gates on that can be measured
+The DSP is complete and measured, and the plugin builds: VST3 and Standalone
+on the suite's own `SingleModuleProcessor`, with the round-7 panel. Nothing
+has been heard in a DAW yet. Every figure the spec gates on that can be measured
 offline meets its gate -- `modules/tune/AGENTS.md` has the table, and
 `testing-notes/` the state of play.
 
@@ -51,7 +58,11 @@ tools/          the offline harness, one executable each:
                   bmo-tune-score    GPE / FPE / RPA / RCA / VDE / time to lock
                   bmo-tune-latency  the manual's latency table, measured
                   bmo-tune-bench    CPU per block: median, p99, max
-tests/          nine DSP suites, run by CTest
+                  bmo-tune-snapshot the panel to a PNG, no display needed
+                  bmo-tune-hostcheck loads the built VST3 as a host would
+tests/          nine DSP suites, the panel test and the host check, by CTest
+products/tune/  the plugin target: Btun, com.lt3audio.bmotunert
+design/         the panel studies the panel was built from
 scripts/        build.sh, score-corpus.sh
 testing-notes/  handoffs
 ```
