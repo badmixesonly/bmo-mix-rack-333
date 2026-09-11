@@ -58,7 +58,8 @@ switch-colour table, and both appearances checked every time.
 |---|---|
 | Accent | lime `#b6e35d`, derived by the suite's rules on both plates |
 | Selectors | lit in the accent (Scale, Range, Latency, Formant, the mode banner) |
-| Keyboard | its own colour, a complement of lime -- violet `#8f7cf8`, or the split-complements periwinkle `#6f8ef5` / orchid `#b56cf0`; being chosen in the panel studies |
+| Keyboard | lime, the accent, for now. Complements of lime (violet `#8f7cf8`, periwinkle `#6f8ef5`, orchid `#b56cf0`) were tried and rejected: good on the dark plate, not on the light one (Frosty, 2026-09-10) |
+| Lower section | a clock around a centred Retune: Vibrato and Flex at 10 and 2 o'clock; on HYBRID, Glide and Shift at 8 and 4, Formant Keep/Follow under Retune between them. Hidden controls leave their places empty (panel studies, round 7) |
 | Plugin code, bundle id, preset extension | not yet allocated; `com.lt3audio.bmotunert` is the obvious bundle id |
 
 ## Before you say it is done
