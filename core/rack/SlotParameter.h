@@ -16,6 +16,10 @@ namespace bmo
     come from whatever ParamSpec is assigned. Unassigned, it is a plain 0..1
     called "Slot N P MM" that does nothing.
 
+    The same class holds a module's parameters past the 32nd, in a
+    SlotOverflow that is never shown to the host. Those have an id like
+    slot1_p33, which is unique but belongs to no lane.
+
     The value stored is normalised, as the host sees it. The mapping between
     that and a real unit is the spec's own arithmetic (ParamSpec::toNormalised
     and back), which the rack tests pin to what juce::NormalisableRange gives

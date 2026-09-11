@@ -37,8 +37,24 @@ them was written by someone who had just been in the code.
    >= 160). Allocate the product's plugin code and bundle id in
    `products/AGENTS.md` at the same time.
 2. Write `params.h`. Order is permanent from the first release; put the
-   controls a user reaches for first at the top. Keep it under 32
-   parameters or it will not fit a rack slot.
+   controls a user reaches for first at the top.
+
+   **Past 32 parameters is allowed, but only the first 32 get rack host
+   lanes.** A rack slot has 32 host lanes (`slotN_p01`..`p32`), and that
+   count is permanent because sessions reference the lanes. Spec index
+   `i < 32` takes lane `p(i+1)` as always. Anything from index 32 on is held
+   in the slot's `SlotOverflow` (`core/rack/SlotOverflow.h`). It works like
+   every other parameter: the panel, the DSP, presets, saved state and chain
+   edits all reach it through the same `ParamSet`. The one difference is
+   that a host cannot automate it *in the rack*. Standalone, every parameter
+   is a host parameter whatever the count.
+
+   So spec order decides what can be automated in a rack, and spec order is
+   permanent. Put the controls someone would want to automate in the first
+   32. A multi-band module whose bands will not all fit should spend those
+   lanes on the first few bands and the controls that span every band, not
+   on band 1's detector settings. `RackTests` checks a synthetic 40-parameter
+   module end to end, so none of this is untested.
 3. Write the DSP against `core/dsp/ModuleDsp.h`. It reads `v[Index::x]`
    in `setParams`, which is called before `prepare` and before every
    `process`. Report latency from `latencyForParams`.
@@ -187,7 +203,9 @@ them was written by someone who had just been in the code.
    one), register the module in `products/rack/Registry.cpp`, and link the
    new `bmo_<id>` into the rack, the snapshot tool and `rack_tests`.
 9. Write `tests/plugin/<Id>Tests.cpp` with the golden schema table, and add
-   the module's bank to `kBanks` in `RackTests.cpp`.
+   the module's bank to `kBanks` in `RackTests.cpp`. The bank is the host
+   lanes, so it lists the first 32 ids at most. Past that, the golden
+   schema table pins the order.
 10. `scripts/build.sh --snapshots` and look at the panel, standalone and in
     the rack.
 

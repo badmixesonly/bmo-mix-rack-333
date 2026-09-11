@@ -108,6 +108,7 @@ void RackProcessor::rebuild (std::vector<std::pair<const ModuleDef*, std::unique
         {
             auto& slot = slots[(size_t) s];
             slot.engine.reset();
+            slot.overflow.reset();
             slot.def = s < (int) chain.size() ? chain[(size_t) s].first : nullptr;
 
             // Not a ternary with a temporary on one side: the specs have to
@@ -115,7 +116,6 @@ void RackProcessor::rebuild (std::vector<std::pair<const ModuleDef*, std::unique
             // pointers into it.
             static const ParamSpecs none;
             const auto& specs = slot.def != nullptr ? slot.def->specs : none;
-            jassert ((int) specs.size() <= kParamsPerSlot);
 
             std::vector<juce::RangedAudioParameter*> assigned;
 
@@ -125,6 +125,19 @@ void RackProcessor::rebuild (std::vector<std::pair<const ModuleDef*, std::unique
                 param->assign (p < (int) specs.size() ? &specs[(size_t) p] : nullptr);
 
                 if (p < (int) specs.size())
+                    assigned.push_back (param);
+            }
+
+            // Past the slot's lanes, the module's parameters go off the grid
+            // rather than into the next slot's. Spec order continues, so the
+            // ParamSet cannot tell the two apart.
+            if ((int) specs.size() > kParamsPerSlot)
+            {
+                juce::AudioProcessorParameter::Listener& listener = *this;
+                slot.overflow = std::make_unique<SlotOverflow> (s, specs, kParamsPerSlot,
+                                                                info.versionHint, listener);
+
+                for (auto* param : slot.overflow->parameters())
                     assigned.push_back (param);
             }
 

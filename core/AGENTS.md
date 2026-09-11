@@ -14,7 +14,8 @@ ui/       Tokens (colours; theme JSON hot-reload), Fonts, LookAndFeel,
 product/  ModuleDef (what a module exposes), ModuleEngine (spec values ->
           DSP), SingleModuleProcessor + ProductEditor (a module as a plugin).
 rack/     SlotParameter (one generic host parameter, remapped live),
-          RackProcessor (8 engines in series), RackEditor.
+          SlotOverflow (a module's parameters past the 32nd, off the host
+          grid), RackProcessor (8 engines in series), RackEditor.
 ```
 
 ## Rules
@@ -27,6 +28,11 @@ rack/     SlotParameter (one generic host parameter, remapped live),
   skew or non-linear ranges to one without the other.
 - `SlotParameter::assign` keeps a pointer into the module's static
   `specs()` vector. Never hand it a temporary.
+- A slot's `SlotOverflow` is an `AudioProcessor` only so that its
+  parameters have an index; JUCE asserts on a gesture without one. Never add
+  it to a host, a graph or an editor. It is created and destroyed in
+  `rebuild`, after the slot's engine has gone, and a slot's `overflow` member
+  is declared before `engine` for the same reason.
 - Anything that changes a `ModuleEngine` in the rack goes through
   `RackProcessor::rebuild`, which calls `rackChainWillChange` before and
   `rackChainChanged` after, synchronously, so the editor drops its panels
