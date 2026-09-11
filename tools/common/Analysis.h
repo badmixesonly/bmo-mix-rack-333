@@ -88,19 +88,28 @@ inline double measureHz (const std::vector<float>& x, size_t start, size_t lengt
         const auto whole = (int) std::floor (p);
         const auto frac = p - whole;
         double err = 0.0;
-        const int half = 16;
+        constexpr int half = 16;
+
+        // The kernel depends on the fraction only, so it is worked out once
+        // per trial period rather than once per sample: the same result to
+        // rounding (x (sinc w) rather than (x sinc) w; ~1e-10 of a cent),
+        // several times sooner -- the hard-tune suite went from 50 s to 8.
+        double kernel[2 * half];
+        double wsum = 0.0;
+        for (int k = -half + 1; k <= half; ++k)
+        {
+            const auto t = frac - k;
+            const auto sinc = std::abs (t) < 1.0e-12 ? 1.0 : std::sin (kPi * t) / (kPi * t);
+            const auto w = 0.5 + 0.5 * std::cos (kPi * t / half);
+            kernel[k + half - 1] = sinc * w;
+            wsum += sinc * w;
+        }
 
         for (int j = half; j + whole + half < (int) length && j < window; ++j)
         {
-            double v = 0.0, wsum = 0.0;
+            double v = 0.0;
             for (int k = -half + 1; k <= half; ++k)
-            {
-                const auto t = frac - k;
-                const auto sinc = std::abs (t) < 1.0e-12 ? 1.0 : std::sin (kPi * t) / (kPi * t);
-                const auto w = 0.5 + 0.5 * std::cos (kPi * t / half);
-                v += x[start + (size_t) (j + whole + k)] * sinc * w;
-                wsum += sinc * w;
-            }
+                v += x[start + (size_t) (j + whole + k)] * kernel[k + half - 1];
             const auto e = x[start + (size_t) j] - v / wsum;
             err += e * e;
         }

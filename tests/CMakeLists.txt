@@ -12,6 +12,16 @@ bmo_tune_test(interpolator InterpolatorTests.cpp)
 bmo_tune_test(correction   CorrectionTests.cpp)
 bmo_tune_test(core         CoreTests.cpp)
 bmo_tune_test(schema       SchemaTests.cpp)
+bmo_tune_test(hardtune     HardTuneTests.cpp)
+
+# The hard-tune target: BMO as close as Antares on a moving voice. It fails
+# today -- that is the point of it (the house rule: fix nothing a test does not
+# first fail on) -- so it is registered but DISABLED, which ctest lists as
+# "Not Run (Disabled)" at the end of every run rather than hiding it. Enable
+# it in the change that makes it pass. Run it by hand:
+#   build/tests/Release/hardtune_tests --target
+add_test(NAME hardtune_target COMMAND hardtune_tests --target)
+set_tests_properties(hardtune_target PROPERTIES DISABLED TRUE LABELS open)
 
 # The real panel, laid out with no display: needs JUCE and the product.
 if(NOT BMO_DSP_ONLY)

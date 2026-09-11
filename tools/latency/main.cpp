@@ -18,14 +18,22 @@
       reported   what the host is told.
 
     Live is the only contract since 2026-09-11 (Studio is on branch
-    archive/hybrid-studio). The check at the end holds every cell's measured
-    rest delay to the Live rest, ClassicEngine::kLiveRest, within one sample:
-    the floor the manual quotes is the floor the plugin has.
+    archive/hybrid-studio).
+
+    The check at the end is the latency rule (Frosty, 2026-09-11; AGENTS.md):
+    no cell's rest delay may exceed Waves Tune Real-Time's measured true
+    latency (tools/common/References.h). Until then the rule was that the rest
+    delay must equal ClassicEngine::kLiveRest; a change that moves the floor
+    -- a lookahead, say -- is now allowed as long as it stays under the
+    ceiling, and this still reports whether the floor is the documented one,
+    so the manual's number is never quietly wrong. The whole-plugin form of
+    the rule, on the reference stimulus, is tests/dsp/HardTuneTests.cpp.
 */
 
 #include "modules/tune/dsp/TuneCore.h"
 #include "tools/common/Analysis.h"
 #include "tools/common/Params.h"
+#include "tools/common/References.h"
 #include "tools/common/Signals.h"
 
 #include <algorithm>
@@ -123,7 +131,7 @@ int main (int argc, char** argv)
     }
 
     std::string md, csv = "range,note,hz,rest_ms,lock_ms,correcting_mean_ms,correcting_worst_ms,correcting_least_ms,reported_ms\n";
-    int failures = 0;
+    int failures = 0, offFloor = 0;
     char line[512];
 
     const auto reported = TuneCore::kReportedLatency;
@@ -207,17 +215,25 @@ int main (int argc, char** argv)
                            hz, row.restMs, row.lockMs, row.meanMs, row.worstMs, row.leastMs, row.reportedMs);
             csv += line;
 
-            if (std::abs (row.restMs - expectedRestMs) > 1000.0 / fs + 1e-9)
+            if (row.restMs > references::kWaves.trueLatencyMs)
             {
-                std::fprintf (stderr, "FAIL: %s at %.1f Hz: rest delay %.3f ms, Live rest is %.3f ms\n",
-                              rangeSpec.choices[(size_t) r], hz, row.restMs, expectedRestMs);
+                std::fprintf (stderr, "FAIL: %s at %.1f Hz: rest delay %.3f ms is over the ceiling, "
+                              "Waves Tune Real-Time's %.2f ms\n",
+                              rangeSpec.choices[(size_t) r], hz, row.restMs, references::kWaves.trueLatencyMs);
                 ++failures;
             }
+
+            if (std::abs (row.restMs - expectedRestMs) > 1000.0 / fs + 1e-9)
+                ++offFloor;
         }
 
         std::fprintf (stderr, "%s: rest delay %.3f ms worst, Live rest %.3f ms, reported %d samples\n",
                       rangeSpec.choices[(size_t) r], worstRest, expectedRestMs, reported);
     }
+
+    if (offFloor > 0)
+        std::fprintf (stderr, "note: %d cell(s) off the documented Live rest (%.3f ms) -- allowed under the ceiling, "
+                              "but update the manual's figure and modules/tune/AGENTS.md\n", offFloor, expectedRestMs);
 
     std::printf ("%s", md.c_str());
 
@@ -226,7 +242,8 @@ int main (int argc, char** argv)
     if (! csvPath.empty())
         if (auto* f = std::fopen (csvPath.c_str(), "w")) { std::fputs (csv.c_str(), f); std::fclose (f); }
 
-    std::fprintf (stderr, failures ? "bmo-tune-latency: %d cell(s) off the Live rest delay\n"
-                                   : "bmo-tune-latency: the rest delay is the Live rest in every cell\n", failures);
+    std::fprintf (stderr, failures ? "bmo-tune-latency: %d cell(s) over Waves Tune Real-Time's true latency\n"
+                                   : "bmo-tune-latency: every cell's rest delay is under the ceiling (the latency rule)\n",
+                  failures);
     return failures ? 1 : 0;
 }
