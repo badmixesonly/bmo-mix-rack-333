@@ -1,0 +1,4 @@
+[submodule "libs/bmo-mix-rack"]
+	path = libs/bmo-mix-rack
+	url = https://github.com/kevkloud/bmo-mix-rack.git
+	branch = main

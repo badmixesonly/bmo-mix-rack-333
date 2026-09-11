@@ -4,22 +4,23 @@ project(BMOTuneRT VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# BMO Tune RT is an LT3 Audio product but not a rack module: it is monophonic,
-# takes MIDI, and has a latency contract the rack's slot model cannot carry.
-# It still reuses the suite's shared code rather than forking it, so the
-# JUCE-free headers it needs (core/dsp/ModuleDsp.h, core/state/ParamSpec.h)
-# come straight out of a BMO Mix Rack checkout. Once this repository has a
-# remote, that checkout becomes a submodule under libs/; until then it is the
-# sibling folder.
-set(BMO_RACK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../bmo-mix-rack-333"
-    CACHE PATH "A BMO Mix Rack checkout, for the shared core/ headers")
+# BMO Tune RT is an LT3 Audio product with a repository of its own, not a
+# rack module. It reuses the suite's shared code rather than forking it, and
+# that code comes from Kevin's main, pinned as a submodule at libs/bmo-mix-rack
+# -- the same way the rack pins JUCE. Reading it from a sibling working copy
+# instead would build against whatever branch that copy had checked out,
+# which on 2026-09-10 was three different branches in one afternoon.
+set(BMO_RACK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/bmo-mix-rack"
+    CACHE PATH "BMO Mix Rack (Kevin's main), for the shared core/ code")
 get_filename_component(BMO_RACK_DIR "${BMO_RACK_DIR}" ABSOLUTE)
 
 if(NOT EXISTS "${BMO_RACK_DIR}/core/state/ParamSpec.h")
     message(FATAL_ERROR
         "BMO Mix Rack not found at ${BMO_RACK_DIR}\n"
-        "BMO Tune RT reuses the suite's shared JUCE-free headers. Point the "
-        "build at a checkout with -DBMO_RACK_DIR=<path>.")
+        "BMO Tune RT reuses the suite's shared code from Kevin's main, pinned "
+        "as a submodule. Fetch it with:\n"
+        "    git submodule update --init libs/bmo-mix-rack\n"
+        "(not --recursive: JUCE is only needed by the plugin wrapper).")
 endif()
 
 message(STATUS "BMO Mix Rack shared code: ${BMO_RACK_DIR}")
