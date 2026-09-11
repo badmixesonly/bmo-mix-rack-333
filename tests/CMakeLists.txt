@@ -20,6 +20,10 @@ bmo_add_dsp_tool(dim_dsp_tests dsp/DimDspTests.cpp)
 target_link_libraries(dim_dsp_tests PRIVATE bmo_dim_dsp)
 add_test(NAME dim_dsp COMMAND dim_dsp_tests)
 
+bmo_add_dsp_tool(deq_dsp_tests dsp/DeqDspTests.cpp)
+target_link_libraries(deq_dsp_tests PRIVATE bmo_deq_dsp)
+add_test(NAME deq_dsp COMMAND deq_dsp_tests)
+
 if(BMO_DSP_ONLY)
     return()
 endif()

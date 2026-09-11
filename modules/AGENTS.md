@@ -25,6 +25,9 @@ own tests could not see. What belongs *here* is anything every module shares.
 - [`dim/AGENTS.md`](dim/AGENTS.md) -- BMO Dimension. Side-only topology,
   Gerzon's asymmetry shear and its named fallback, and the width throb that
   is still open.
+- [`deq/AGENTS.md`](deq/AGENTS.md) -- BMO DEQ, the zero-latency dynamic EQ.
+  DSP only so far. Why latency is zero by construction, why the high shelf is
+  built from the low shelf, why bands are in series, and what waits on `main`.
 
 The four older modules predate the rule and have none. That is a gap rather
 than a decision, and worth closing per module when one is next opened up
