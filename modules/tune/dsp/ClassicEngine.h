@@ -21,16 +21,11 @@ namespace bmo::tune
     pitch-synchronous and so correlated, and an equal-power fade on
     correlated material bumps the level mid-fade).
 
-    The window is the latency contract:
-
-      Live    [floor, rest + T]. At rest the engine sits two samples above the
-              floor -- the interpolator's lookahead plus one, 19 samples, 0.4 ms
-              at 48 kHz -- and is reported to the host as 0; while correcting
-              it wanders up to a period later.
-              This is the Waves contract (spec §2, §0.1).
-      Studio  [P - T/2, P + T/2] around a fixed P that is reported as PDC: the
-              worst case for the pitch range, so the host aligns the track
-              and the engine's own wander is +/- half a period around true.
+    The window is the latency contract, Live (LatencyContract.h): [floor,
+    rest + T]. At rest the engine sits two samples above the floor -- the
+    interpolator's lookahead plus one, 19 samples, 0.4 ms at 48 kHz -- and is
+    reported to the host as 0; while correcting it wanders up to a period
+    later. This is the Waves contract (spec §2, §0.1).
 
     Whenever the input is unvoiced and correction has faded out, the engine
     homes back to its rest position with an equal-power crossfade (the two
@@ -57,46 +52,15 @@ public:
         is what the splice is there for. */
     static constexpr int kLiveRest = contract::kLiveRest;
 
-    /** The correction the Studio window is sized for; past it, the old
-        read of a splice's crossfade can reach the floor and is clamped
-        there (audible only as a slightly shorter fade). Spec §6.1 documents
-        the engines as accurate to +/-400 cents. */
-    static constexpr double kDesignCents = contract::kDesignCents;
-
     /** Allocates. `longestPeriod` is the largest period any pitch range can
         report, in samples. */
     void prepare (double sampleRate, double longestPeriod);
     void reset();
 
-    /** Real-time safe. `rangePeriod` is the longest period of the range in
-        force, which is what Studio's fixed delay is sized from. */
-    void setLatencyMode (bool studio, double rangePeriod) noexcept;
-
-    /** The latency to report to the host: 0 in Live, the fixed delay in
-        Studio. Whole samples, by construction. */
-    int reportedLatency() const noexcept { return studio ? restLag : 0; }
-
-    /** The same figure for any mode and range, without touching state --
-        what a plugin tells the host before the audio thread has moved. */
-    static int latencyFor (bool studio, double rangePeriod) noexcept;
-
     /** One sample. `period` is the detector's held period (0 if it has
         never had one); `settled` says correction has fully faded and the
         input is unvoiced, which is when homing is allowed. */
     float process (float input, double correctionCents, double period, bool settled) noexcept;
-
-    /** While the other engine is the one playing: keep the history current
-        and sit at rest, so a switch to this engine starts from real audio
-        at its rest delay rather than from silence. */
-    void feed (float input) noexcept
-    {
-        ring[(size_t) write] = std::isfinite (input) ? input : 0.0f;
-        write = (write + 1) & mask;
-        lag = restLag;
-        ratio = 1.0;
-        fading = false;
-        spliced = false;
-    }
 
     //== For the analysis dump and the tests ===================================
     double currentLag() const noexcept { return lag; }
@@ -113,9 +77,6 @@ private:
     int mask = 0, write = 0;
 
     SincBank kernels;   // full band while aliases stay above 20 kHz; see SincBank
-
-    bool studio = false;
-    int restLag = kLiveRest;
 
     double lag = kLiveRest, ratio = 1.0, lastPeriod = 0.0;
 

@@ -22,44 +22,37 @@ namespace
     /** A field's label sits this far above its control: 9.5 pt and 4.5 of air. */
     constexpr int kLabelRow = 14;
 
-    // The mode banner. Wider than the suite's 70 x 26 on purpose: it is the
-    // one control that reshapes the panel, so it runs the width of it.
-    const juce::Rectangle<int> kClassic { 12, 10, 166, 30 };
-    const juce::Rectangle<int> kHybrid  { 182, 10, 166, 30 };
+    // Round 7 had a mode banner across the top and Latency under Key. Both
+    // went with HYBRID and Studio (2026-09-11), so the target section moves
+    // up by the banner's 32 px and Key centres on the column beside it.
+    const juce::Rectangle<int> kKeyboard { 20, 20, 320, 70 };
 
-    const juce::Rectangle<int> kKeyboard { 20, 52, 320, 70 };
-
-    // Key, with its accidentals stacked beside it.
-    const juce::Rectangle<int> kKeyBox { 20, 159, 92, 60 };
-    const juce::Rectangle<int> kSharp  { 120, 159, kSwitchW, kSwitchH };
-    const juce::Rectangle<int> kFlat   { 120, 159 + kSwitchH + kGap, kSwitchW, kSwitchH };
-
-    // Scale, Pitch Range and Ref A down the right; Latency level with Ref A.
+    // Scale, Pitch Range and Ref A down the right, a field every 48 px.
     constexpr int kBoxW = 134;
-    const juce::Rectangle<int> kScaleBox { 206, 150, kBoxW, kSwitchH };
-    const juce::Rectangle<int> kRangeBox { 206, 198, kBoxW, kSwitchH };
-    const juce::Rectangle<int> kRefBox   { 206, 246, kBoxW, kSwitchH };
-    const juce::Rectangle<int> kLive     { 20, 246, kSwitchW, kSwitchH };
-    const juce::Rectangle<int> kStudio   { 20 + kSwitchW + kGap, 246, kSwitchW, kSwitchH };
+    const juce::Rectangle<int> kScaleBox { 206, 122, kBoxW, kSwitchH };
+    const juce::Rectangle<int> kRangeBox { 206, 170, kBoxW, kSwitchH };
+    const juce::Rectangle<int> kRefBox   { 206, 218, kBoxW, kSwitchH };
 
-    /** The rule under the target section: drawn at y 288. */
-    const juce::Rectangle<int> kRule { 0, 280, TunePanel::kDesignWidth, ui::ModulePanel::kRuleRow };
+    // Key, with its accidentals stacked beside it, centred on that column.
+    const juce::Rectangle<int> kKeyBox { 20, 153, 92, 60 };
+    const juce::Rectangle<int> kSharp  { 120, 153, kSwitchW, kSwitchH };
+    const juce::Rectangle<int> kFlat   { 120, 153 + kSwitchH + kGap, kSwitchW, kSwitchH };
 
-    // The clock. Retune at the centre of the section under the rule; the
-    // others at 10, 2, 8 and 4 o'clock, 118 across and 72 up or down -- 118
-    // rather than the studies' 126, which put VIBRATO's caption 4 px off the
-    // panel's edge in the real caption face.
-    const juce::Point<int> kClock { 180, 488 };
-    constexpr int kClockX = 118, kClockY = 72;
+    /** The rule under the target section: drawn at y 272. */
+    const juce::Rectangle<int> kRule { 0, 264, TunePanel::kDesignWidth, ui::ModulePanel::kRuleRow };
 
-    // Formant under Retune, between Glide and Shift.
-    constexpr int kFormantTop = 556;
-    const juce::Rectangle<int> kKeep   { 180 - kSwitchW - kGap / 2, kFormantTop + kLabelRow, kSwitchW, kSwitchH };
-    const juce::Rectangle<int> kFollow { 180 + kGap / 2, kFormantTop + kLabelRow, kSwitchW, kSwitchH };
+    // How it corrects. Retune is what this plugin is for (Frosty: "centered
+    // around hard tuning or retune speed"), so it is the big knob, at the
+    // centre of the section under the rule; Vibrato and Flex at 10 and 2
+    // o'clock, as round 7 placed them. The group -- the small knobs' tracks
+    // to Retune's caption -- is centred in the section.
+    const juce::Point<int> kClock { 180, 500 };
+    constexpr int kClockX = 118, kClockY = 84;
+    constexpr int kRetuneFace = 96, kSmallFace = 44;
 
     /** The knob's square: room for the face, its dotted track 10 px out, and
         the plus and minus on the track. */
-    int knobSide (int face) { return face >= 72 ? 112 : 72; }
+    int knobSide (int face) { return face >= kRetuneFace ? 136 : 80; }
 
     const juce::String kSharpGlyph (juce::CharPointer_UTF8 ("\xe2\x99\xaf"));
     const juce::String kFlatGlyph  (juce::CharPointer_UTF8 ("\xe2\x99\xad"));
@@ -301,11 +294,12 @@ private:
 //==============================================================================
 TunePanel::TunePanel (ui::ModuleContext ctx)
     : ModulePanel (std::move (ctx)),
-      retune  (context.params.param (Index::retune),       {}, ui::Knob::Style::character, 72.0f / 112.0f, kAccent),
-      vibrato (context.params.param (Index::vibrato),      {}, ui::Knob::Style::character, 0.5f, kAccent),
-      flex    (context.params.param (Index::flex),         {}, ui::Knob::Style::character, 0.5f, kAccent),
-      glide   (context.params.param (Index::glide),        {}, ui::Knob::Style::character, 0.5f, kAccent),
-      shift   (context.params.param (Index::formantShift), {}, ui::Knob::Style::character, 0.5f, kAccent)
+      retune  (context.params.param (Index::retune),  {}, ui::Knob::Style::character,
+               (float) kRetuneFace / (float) knobSide (kRetuneFace), kAccent),
+      vibrato (context.params.param (Index::vibrato), {}, ui::Knob::Style::character,
+               (float) kSmallFace / (float) knobSide (kSmallFace), kAccent),
+      flex    (context.params.param (Index::flex),    {}, ui::Knob::Style::character,
+               (float) kSmallFace / (float) knobSide (kSmallFace), kAccent)
 {
     menuLook = std::make_unique<MenuLook>();
 
@@ -317,11 +311,10 @@ TunePanel::TunePanel (ui::ModuleContext ctx)
         addAndMakeVisible (k.knob);
     }
 
-    // Every switch lights in the product's colour: they are all selectors.
+    // The accidentals light in the product's colour, like every selector.
     // Clicking sets a value rather than toggling, so a click and host
     // automation land in the same place; sync() reads the states back.
-    for (auto* b : { &classicButton, &hybridButton, &sharpButton, &flatButton,
-                     &liveButton, &studioButton, &keepButton, &followButton })
+    for (auto* b : { &sharpButton, &flatButton })
     {
         b->setClickingTogglesState (false);
         b->setColour (juce::ToggleButton::tickColourId, kAccent);
@@ -337,13 +330,6 @@ TunePanel::TunePanel (ui::ModuleContext ctx)
     flatGlyph  = std::make_unique<AccidentalGlyph> (flatButton, kFlatGlyph);
     sharpButton.addAndMakeVisible (*sharpGlyph);
     flatButton.addAndMakeVisible (*flatGlyph);
-
-    classicButton.onClick = [this] { setChoice (Index::engine, (int) Engine::classic); };
-    hybridButton .onClick = [this] { setChoice (Index::engine, (int) Engine::hybrid); };
-    liveButton   .onClick = [this] { setChoice (Index::latency, (int) LatencyMode::live); };
-    studioButton .onClick = [this] { setChoice (Index::latency, (int) LatencyMode::studio); };
-    keepButton   .onClick = [this] { setChoice (Index::formant, (int) FormantMode::keep); };
-    followButton .onClick = [this] { setChoice (Index::formant, (int) FormantMode::follow); };
 
     // Clicking the lit accidental returns to the natural.
     auto accidental = [this] (int direction)
@@ -399,11 +385,9 @@ TunePanel::~TunePanel()
 std::vector<TunePanel::KnobPlace> TunePanel::knobPlaces()
 {
     return {
-        { &retune,  "RETUNE",  kClock,                                             72, 18.0f },
-        { &vibrato, "VIBRATO", kClock + juce::Point<int> (-kClockX, -kClockY), 36, 15.0f },
-        { &flex,    "FLEX",    kClock + juce::Point<int> ( kClockX, -kClockY), 36, 15.0f },
-        { &glide,   "GLIDE",   kClock + juce::Point<int> (-kClockX,  kClockY), 36, 15.0f },
-        { &shift,   "SHIFT",   kClock + juce::Point<int> ( kClockX,  kClockY), 36, 15.0f },
+        { &retune,  "RETUNE",  kClock,                                         kRetuneFace, 18.0f },
+        { &vibrato, "VIBRATO", kClock + juce::Point<int> (-kClockX, -kClockY), kSmallFace,  15.0f },
+        { &flex,    "FLEX",    kClock + juce::Point<int> ( kClockX, -kClockY), kSmallFace,  15.0f },
     };
 }
 
@@ -411,9 +395,6 @@ void TunePanel::resized()
 {
     clearRules();
     addRule (kRule);
-
-    classicButton.setBounds (kClassic);
-    hybridButton.setBounds (kHybrid);
 
     keyboard->setBounds (kKeyboard);
 
@@ -428,9 +409,6 @@ void TunePanel::resized()
     refBox->setBounds (kRefBox);
     refEditor.setBounds (kRefBox);
 
-    liveButton.setBounds (kLive);
-    studioButton.setBounds (kStudio);
-
     // A knob's square is centred on its place in the clock; the caption row
     // PlainKnob keeps under it stays empty, since the panel draws captions.
     for (auto& k : knobPlaces())
@@ -438,9 +416,6 @@ void TunePanel::resized()
         const auto side = knobSide (k.face);
         k.knob->setBounds (k.centre.x - side / 2, k.centre.y - side / 2, side, side + 22);
     }
-
-    keepButton.setBounds (kKeep);
-    followButton.setBounds (kFollow);
 }
 
 void TunePanel::paintPanel (juce::Graphics& g)
@@ -459,20 +434,13 @@ void TunePanel::paintPanel (juce::Graphics& g)
     label ("SCALE",       kScaleBox.getX(), kScaleBox.getY() - kLabelRow);
     label ("PITCH RANGE", kRangeBox.getX(), kRangeBox.getY() - kLabelRow);
     label ("REF A",       kRefBox.getX(),   kRefBox.getY()   - kLabelRow);
-    label ("LATENCY",     kLive.getX(),     kLive.getY()     - kLabelRow);
-
-    if (keepButton.isVisible())
-        label ("FORMANT", 180, kFormantTop, juce::Justification::centred);
 
     // Knob captions, under each face in the product's ink -- accentInk, so
-    // they read on both plates. Only for the knobs this mode shows.
+    // they read on both plates.
     const auto ink = ui::accentInk (kAccent);
 
     for (auto& k : knobPlaces())
     {
-        if (! k.knob->isVisible())
-            continue;
-
         const auto track = (float) k.face * 0.5f + ui::Tokens::trackGap;
         const auto top = (float) k.centre.y + track * 0.74f + 8.0f;
         ui::drawLabel (g, k.caption, { (float) k.centre.x - 70.0f, top, 140.0f, k.captionSize * 1.2f },
@@ -497,18 +465,6 @@ void TunePanel::sync (bool force)
 
     shown = now;
 
-    const auto hybrid = choiceOf (Index::engine) == (int) Engine::hybrid;
-    classicButton.setToggleState (! hybrid, juce::dontSendNotification);
-    hybridButton .setToggleState (  hybrid, juce::dontSendNotification);
-
-    const auto studio = choiceOf (Index::latency) == (int) LatencyMode::studio;
-    liveButton  .setToggleState (! studio, juce::dontSendNotification);
-    studioButton.setToggleState (  studio, juce::dontSendNotification);
-
-    const auto keep = choiceOf (Index::formant) == (int) FormantMode::keep;
-    keepButton  .setToggleState (  keep, juce::dontSendNotification);
-    followButton.setToggleState (! keep, juce::dontSendNotification);
-
     // The accidentals: lit for the one the key has, and disabled where the
     // letter has no such key -- E♯, B♯, C♭ and F♭ are not in the list.
     const auto s = spellingOf (choiceOf (Index::key));
@@ -516,20 +472,6 @@ void TunePanel::sync (bool force)
     flatButton .setToggleState (s.accidental < 0, juce::dontSendNotification);
     sharpButton.setEnabled (hasSpelling ({ s.natural, +1 }));
     flatButton .setEnabled (hasSpelling ({ s.natural, -1 }));
-
-    if (force || hybrid != hybridShown)
-        applyMode (hybrid);
-
-    hybridShown = hybrid;
-    repaint();
-}
-
-void TunePanel::applyMode (bool hybrid)
-{
-    for (int i = 0; i < Index::count; ++i)
-        if (isHybridOnly (i))
-            for (auto* c : controlsFor (i))
-                c->setVisible (hybrid);
 
     repaint();
 }
@@ -541,14 +483,9 @@ std::vector<juce::Component*> TunePanel::controlsFor (int index)
         case Index::retune:       return { &retune };
         case Index::key:          return { keyBox.get(), &sharpButton, &flatButton };
         case Index::scale:        return { scaleBox.get() };
-        case Index::engine:       return { &classicButton, &hybridButton };
         case Index::range:        return { rangeBox.get() };
         case Index::vibrato:      return { &vibrato };
         case Index::flex:         return { &flex };
-        case Index::glide:        return { &glide };
-        case Index::formant:      return { &keepButton, &followButton };
-        case Index::formantShift: return { &shift };
-        case Index::latency:      return { &liveButton, &studioButton };
         case Index::refA:         return { refBox.get() };
         default:                  break;
     }
@@ -561,8 +498,7 @@ std::vector<juce::Component*> TunePanel::controlsFor (int index)
 
 std::vector<juce::ToggleButton*> TunePanel::switches()
 {
-    return { &classicButton, &hybridButton, &sharpButton, &flatButton,
-             &liveButton, &studioButton, &keepButton, &followButton };
+    return { &sharpButton, &flatButton };
 }
 
 std::vector<TunePanel::BoxText> TunePanel::boxTexts()

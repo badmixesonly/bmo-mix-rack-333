@@ -2,7 +2,7 @@
 # The whole synthetic corpus, scored: generate, render, score, one table.
 #
 #   scripts/score-corpus.sh                      defaults: 48 kHz, CLASSIC, Live
-#   scripts/score-corpus.sh --rate 44100 --set engine=Hybrid --set latency=Studio
+#   scripts/score-corpus.sh --rate 44100 --set scale=Minor --set key=A
 #
 # Writes corpus/ (the signals), renders/ (the outputs and analysis dumps) and
 # reports/corpus-<stamp>.csv, one row per item. Nothing here is committed;

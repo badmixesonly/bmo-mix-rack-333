@@ -7,25 +7,17 @@
 namespace bmo::tune
 {
 
-/** BMO Tune RT's panel: round 7 of the panel studies (design/), built from
-    the suite's own controls.
+/** BMO Tune RT's panel, built from the suite's own controls: round 7 of the
+    panel studies (design/), less everything HYBRID and Studio had, which left
+    with them on 2026-09-11.
 
     Top to bottom:
-      - the mode banner, Classic or Hybrid, across the panel: the one choice
-        that decides what the lower section draws;
       - what to tune to: the keyboard (click a note out of the scale), Key
-        with its ♯ and ♭, Scale, Pitch Range and Ref A as value boxes that
-        open menus, and Latency level with Ref A;
-      - a rule, then everything that shapes the correction, as a clock around
-        a centred Retune: Vibrato and Flex at 10 and 2 o'clock in both modes;
-        on Hybrid, Glide and Shift at 8 and 4 and Formant Keep/Follow under
-        Retune, between them.
-
-    **The hide rule.** A control a mode does not use is hidden, not greyed
-    (Frosty, 2026-09-10), and nothing moves into its place. Which controls
-    that is comes from `isHybridOnly()` in params.h and nowhere else --
-    applyMode() walks that list -- and tests/plugin/PanelTests.cpp checks the
-    panel against it, as tests/dsp/ModeTests.cpp checks the DSP.
+        with its ♯ and ♭, and Scale, Pitch Range and Ref A as value boxes that
+        open menus;
+      - a rule, then how it corrects: Retune, large, at the centre of the
+        section, with Vibrato and Flex at 10 and 2 o'clock -- the clock of the
+        studies, with its lower half gone with HYBRID.
 
     Colours are lime by the suite's rules, as the studies settled them: knob
     caps by `faceOf`, captions by `accentInk`, and every selector lit in the
@@ -45,7 +37,7 @@ public:
     void resized() override;
 
     /** Every control on the panel that sets parameter `index` -- for the
-        layout test, which holds the hide rule to isHybridOnly(). */
+        layout test, which checks every parameter has one. */
     std::vector<juce::Component*> controlsFor (int index);
 
     /** Every switch on the panel, for the label-fit test. */
@@ -67,13 +59,9 @@ private:
     void paintPanel (juce::Graphics&) override;
     void timerCallback() override;
 
-    /** Parameters into switch states, visibility and boxes. Cheap when
-        nothing changed; `force` redoes everything. */
+    /** Parameters into switch states and boxes. Cheap when nothing changed;
+        `force` redoes everything. */
     void sync (bool force);
-
-    /** The hide rule: every control of an isHybridOnly() parameter is shown
-        on Hybrid and hidden on Classic. */
-    void applyMode (bool hybrid);
 
     void setChoice (int index, int choice);
     void setReal (int index, float value);
@@ -98,12 +86,9 @@ private:
     struct KnobPlace { ui::PlainKnob* knob; const char* caption; juce::Point<int> centre; int face; float captionSize; };
     std::vector<KnobPlace> knobPlaces();
 
-    ui::PlainKnob retune, vibrato, flex, glide, shift;
+    ui::PlainKnob retune, vibrato, flex;
 
-    juce::ToggleButton classicButton { "Classic" }, hybridButton { "Hybrid" };
     juce::ToggleButton sharpButton, flatButton;
-    juce::ToggleButton liveButton { "Live" }, studioButton { "Studio" };
-    juce::ToggleButton keepButton { "Keep" }, followButton { "Follow" };
 
     std::unique_ptr<juce::Component> sharpGlyph, flatGlyph;
 
@@ -115,7 +100,6 @@ private:
 
     /** The last values sync() pushed into the controls. */
     std::array<float, 32> shown {};
-    bool hybridShown = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TunePanel)
 };

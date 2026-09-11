@@ -24,14 +24,8 @@ class TuneDsp final : public ModuleDsp
 public:
     void prepare (double sampleRate, int maxBlockSize, int) override
     {
-        rate = sampleRate;
         core.prepare (sampleRate, maxBlockSize);
     }
-
-    /** A host can ask for latency before prepare(), from the message thread;
-        latencyForParams() needs the rate to answer, so a wrapper that knows
-        it early can say so. */
-    void setSampleRate (double r) noexcept { rate = r; }
 
     void reset() override { core.reset(); }
 
@@ -54,16 +48,13 @@ public:
             std::copy (channels[0], channels[0] + numSamples, channels[ch]);
     }
 
-    int latencyForParams (const float* v, int count) const override
-    {
-        return count >= Index::count ? TuneCore::latencyFor (TuneParams::fromValues (v, count), rate) : 0;
-    }
+    /** Always 0: Live only. See TuneCore::kReportedLatency. */
+    int latencyForParams (const float*, int) const override { return TuneCore::kReportedLatency; }
 
     TuneCore& getCore() noexcept { return core; }
 
 private:
     TuneCore core;
-    double rate = 48000.0;
 };
 
 inline std::unique_ptr<ModuleDsp> createDsp() { return std::make_unique<TuneDsp>(); }

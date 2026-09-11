@@ -5,20 +5,13 @@
 namespace bmo::tune
 {
 
-int ClassicEngine::latencyFor (bool studioMode, double rangePeriod) noexcept
-{
-    // Shared with HYBRID, so switching engines never moves the PDC the host
-    // was told: see LatencyContract.h.
-    return studioMode ? contract::studio (rangePeriod) : 0;
-}
-
 void ClassicEngine::prepare (double sampleRate, double longestPeriod)
 {
     fs = sampleRate;
 
-    // The deepest read: the Studio rest lag for the longest period, plus a
-    // period of swing, plus a fade's drift, plus the kernel.
-    const auto deepest = latencyFor (true, longestPeriod) + 2.0 * longestPeriod + 2 * Sinc::kTaps + 64;
+    // The deepest read: the rest lag, a period of swing above it and one more
+    // of margin for a splice in flight, plus a fade's drift and the kernel.
+    const auto deepest = kLiveRest + 2.0 * longestPeriod + 2 * Sinc::kTaps + 64;
     int size = 1;
     while (size < (int) deepest)
         size <<= 1;
@@ -35,27 +28,12 @@ void ClassicEngine::reset()
 {
     std::fill (ring.begin(), ring.end(), 0.0f);
     write = 0;
-    lag = restLag;
+    lag = kLiveRest;
     ratio = 1.0;
     lastPeriod = 0.0;
     fading = false;
     spliced = false;
     splices = 0;
-}
-
-void ClassicEngine::setLatencyMode (bool studioMode, double rangePeriod) noexcept
-{
-    const auto rest = studioMode ? latencyFor (true, rangePeriod) : kLiveRest;
-
-    if (studioMode == studio && rest == restLag)
-        return;
-
-    studio = studioMode;
-    restLag = rest;
-
-    // A contract change is a discontinuity by definition; fade to the new
-    // rest position rather than jump.
-    startFade (restLag, std::max (16, (int) (0.005 * fs)), true);
 }
 
 double ClassicEngine::read (const Sinc& t, double lagBehindNewest) const noexcept
@@ -97,20 +75,11 @@ float ClassicEngine::process (float input, double cents, double period, bool set
         const auto T = lastPeriod;
         const auto fade = std::max (16, (int) std::lround (0.5 * T));
 
-        // The window. In Live its floor is raised by however far the
-        // outgoing read will drift during a fade at the ratio in force, so
-        // a splice never asks the kernel for a sample that has not arrived.
-        double lo, hi;
-        if (studio)
-        {
-            lo = restLag - 0.5 * T;
-            hi = restLag + 0.5 * T;
-        }
-        else
-        {
-            lo = kFloor + fade * std::max (0.0, ratio - 1.0);
-            hi = kLiveRest + T;
-        }
+        // The window. Its floor is raised by however far the outgoing read
+        // will drift during a fade at the ratio in force, so a splice never
+        // asks the kernel for a sample that has not arrived.
+        const auto lo = kFloor + fade * std::max (0.0, ratio - 1.0);
+        const auto hi = (double) kLiveRest + T;
 
         if (lag < lo || lag > hi)
         {
@@ -122,15 +91,15 @@ float ClassicEngine::process (float input, double cents, double period, bool set
             spliced = true;
             ++splices;
         }
-        else if (settled && std::abs (lag - restLag) > 0.5)
+        else if (settled && std::abs (lag - kLiveRest) > 0.5)
         {
             // Home, over 5 ms of uncorrelated material.
-            startFade (restLag, std::max (16, (int) (0.005 * fs)), true);
+            startFade (kLiveRest, std::max (16, (int) (0.005 * fs)), true);
         }
     }
-    else if (lastPeriod <= 1.0 && settled && ! fading && std::abs (lag - restLag) > 0.5)
+    else if (lastPeriod <= 1.0 && settled && ! fading && std::abs (lag - kLiveRest) > 0.5)
     {
-        startFade (restLag, std::max (16, (int) (0.005 * fs)), true);
+        startFade (kLiveRest, std::max (16, (int) (0.005 * fs)), true);
     }
 
     lag = std::max ((double) kFloor, lag);

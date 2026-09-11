@@ -63,8 +63,7 @@ void CorrectionLaw::reset()
     clarity = period = 0.0;
     note = -1;
     haveNote = false;
-    target = glideFrom = glideTo = 0.0;
-    glideLength = glidePosition = 0;
+    target = 0.0;
     errorSlow = applied = confidence = gate = 0.0;
     st = {};
 }
@@ -141,21 +140,15 @@ void CorrectionLaw::setNote (int newNote) noexcept
         errorSlow += 100.0 * (newNote - note);
         ++st.noteChanges;
 
-        glideFrom = target;
-        glideTo = newNote;
-        glideLength = s.glideAllowed ? (int) std::lround (s.glideMs * 0.001 * fs) : 0;
-        glidePosition = 0;
-
-        if (glideLength <= 0)
-            target = newNote;
+        // CLASSIC steps straight to the new note: it has no glide (spec
+        // §4.5), and HYBRID, which had, is on branch archive/hybrid-studio.
+        target = newNote;
     }
     else
     {
-        // The first note of a phrase: nothing to glide from, and the split's
-        // slow state starts at this note's own error rather than the last
-        // phrase's.
-        target = glideFrom = glideTo = newNote;
-        glideLength = glidePosition = 0;
+        // The first note of a phrase: the split's slow state starts at this
+        // note's own error rather than the last phrase's.
+        target = newNote;
         errorSlow = 100.0 * (newNote - pitchIn);
     }
 
@@ -213,13 +206,6 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
             else
                 haveNote = false;
         }
-    }
-
-    // Glide the target toward the note, linearly in semitones.
-    if (haveNote && glideLength > 0 && glidePosition < glideLength)
-    {
-        ++glidePosition;
-        target = glideFrom + (glideTo - glideFrom) * (double) glidePosition / (double) glideLength;
     }
 
     const auto active = havePitch && haveNote && voiced;

@@ -60,24 +60,24 @@ switch-colour table, and both appearances checked every time.
 | | |
 |---|---|
 | Accent | lime `#b6e35d`, derived by the suite's rules on both plates |
-| Selectors | lit in the accent (Scale, Range, Latency, Formant, the mode banner) |
+| Selectors | lit in the accent (the ♯ and ♭ switches; the keyboard's allowed notes) |
 | Keyboard | lime, the accent, for now. Complements of lime (violet `#8f7cf8`, periwinkle `#6f8ef5`, orchid `#b56cf0`) were tried and rejected: good on the dark plate, not on the light one (Frosty, 2026-09-10) |
-| Lower section | a clock around a centred Retune: Vibrato and Flex at 10 and 2 o'clock; on HYBRID, Glide and Shift at 8 and 4, Formant Keep/Follow under Retune between them. Hidden controls leave their places empty (panel studies, round 7) |
+| Lower section | Retune, large (96 px face), at the centre of the section; Vibrato and Flex at 10 and 2 o'clock -- round 7's clock with its lower half gone with HYBRID (2026-09-11) |
 | Plugin code, bundle id, preset extension | `Btun`, `com.lt3audio.bmotunert`, `.bmotune` (Frosty, 2026-09-10). Not yet in the rack's `products/AGENTS.md` allocation table -- that is Kevin's repository, so it goes in with his say |
 
 ## Before you say it is done
 
 ```
-scripts/build.sh              # Release build, all nine DSP suites
-scripts/build.sh --plugin     # the plugin too: eleven suites, and snapshots/
+scripts/build.sh              # Release build, all six DSP suites
+scripts/build.sh --plugin     # the plugin too: eight suites, and snapshots/
 scripts/build.sh --corpus     # then generate, render and score the corpus
 ```
 
 All three must pass. If the panel changed, look at `snapshots/` in both
-modes and both appearances -- the panel test checks the hide rule, fit and
+appearances -- the panel test checks every parameter is on it, fit and
 overlap, but not whether it looks right. If the DSP changed, also run
-`build/tools/Release/bmo-tune-latency --range all` (it fails if Studio's
-measured delay ever leaves its reported PDC) and `bmo-tune-bench --quick`.
+`build/tools/Release/bmo-tune-latency --range all` (it fails if the rest
+delay ever leaves the Live rest, 0.40 ms) and `bmo-tune-bench --quick`.
 
 **Measure, never judge a render by eye or ear alone** -- the rack's session
 handoff of 2026-09-09 is the reason, and every fault found in this tree so

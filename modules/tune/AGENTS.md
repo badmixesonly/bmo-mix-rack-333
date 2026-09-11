@@ -5,14 +5,19 @@ signal path, in the order a sample meets it:
 
 ```
 Detector        recursive E/H kernel -> coarse NSDF at ~12 kHz -> full-rate refinement
-CorrectionLaw   jump confirmation -> quantize -> glide -> vibrato split -> flex -> retune -> gates
-ClassicEngine   fractional-rate read, whole-period splices          } one plays, the other is fed;
-HybridEngine    PSOLA, analysis one period per grain, grain-rate formants } a switch crossfades 20 ms
+CorrectionLaw   jump confirmation -> quantize -> vibrato split -> flex -> retune -> gates
+ClassicEngine   fractional-rate read, whole-period splices, Live window
 ```
 
 `TuneCore` joins them; `TuneDsp` is the `ModuleDsp` adapter. Every stage is a
 per-sample state machine, which is what makes the output bit-identical at any
-block size (`tests/dsp/CoreTests.cpp`, `HybridTests.cpp` check it).
+block size (`tests/dsp/CoreTests.cpp` checks it).
+
+One engine and one latency contract since 2026-09-11. HYBRID (PSOLA), the
+Studio contract, Glide and the formant controls were built, measured and set
+aside when CLASSIC sounded better in Ableton; branch `archive/hybrid-studio`
+has the code and `testing-notes/nrt-tune-handoff-2026-09-11.md` what it was
+and what it measured.
 
 ## The invariants
 
@@ -20,15 +25,16 @@ block size (`tests/dsp/CoreTests.cpp`, `HybridTests.cpp` check it).
 - **Nothing allocates after `prepare()`.** A pitch-range change arrives on the
   audio thread, so the detector is prepared for the widest range any setting
   can ask for (40 Hz - 2 kHz) and a range change only moves its active window.
-- **Both engines report the same Studio latency** (`LatencyContract.h`). A
-  host is told the plugin's latency; switching engines must never change it.
+- **Live only: the host is told 0, always** (`LatencyContract.h`,
+  `TuneCore::kReportedLatency`). No parameter may move it -- a PDC change
+  mid-session is a timing jump on the whole track. `bmo-tune-hostcheck`
+  checks it on the built VST3.
 - **The correction and the note always come from the same pitch.** See
   "the octave bug" below; this is the one that produced a +1200-cent glitch.
-- **The panel hides what the chosen engine does not use** -- hidden, not
-  greyed (Frosty, 2026-09-10). `isHybridOnly()` in `params.h` is the one list
-  (Glide, Formant, Formant Shift) and `tests/dsp/ModeTests.cpp` holds it to
-  the DSP both ways: each is bit-exactly inert on CLASSIC and audible on
-  HYBRID. A parameter joins the list only with that test agreeing.
+- **Retired parameter ids stay retired.** `engine`, `glide`, `formant`,
+  `formant_shift` and `latency` were in 0.1's saved sessions; a new parameter
+  under one of those ids would be fed a value meant for something else.
+  `kRetiredIds` in `params.h`, checked by `SchemaTests`.
 - **Tests measure with `tools/common/Analysis.h`, never with the plugin's own
   detector.** Measuring the output with the code that decided the correction
   agrees with itself whatever it did.
@@ -49,18 +55,7 @@ named; undoing one should fail that test.
 | §4.3b: `Q(p_slow) + beta p_vib` | the same split, written on the error | Equivalent with the target held; on the error a note change is a step the slow state can be shifted by. At vibrato 0 the note follows the raw pitch -- see "open" below |
 | §4.6: MIDI target, MIDI as scale, latch, "MIDI required" | none; the key and scale are parameters | Frosty, 2026-09-10: nothing is tracked but the vocal being corrected. It is also what lets the rack's own `SingleModuleProcessor` host this, which does not accept MIDI. MIDI could be appended in a later version without moving a saved session |
 | §4.1: key + scale, ten scales in the first build | Chromatic, Major, Minor | Frosty, 2026-09-10: the three a hard-tune session uses. More are appended to the choice list, never inserted |
-| §6.1: PSOLA costs ~T0 of lookahead; §7 pitch marks | analysis advances one period per grain; no mark detector | Neighbouring grains one cycle apart is all pitch-synchronous needs. HYBRID keeps CLASSIC's latency: 19 samples idle, not ~T0. `HybridTests` |
-| §6.2: LPC inverse / PSOLA / resynthesis | not in the signal path; formants by PSOLA, shift by grain rate | Order 24 at 48 kHz modelled the empty band to Nyquist and no formants; a 16 kHz envelope mapped up through its LSFs was too ill-conditioned (coefficients ~1e5) to survive grain interpolation. PSOLA alone holds formants at 1.000 +/- 0.001 of scale; the spec gate is 2 %. `HybridTests` |
-
-`dsp/Lpc.h` is the §6.2 groundwork and stays, tested (`LpcTests`): Levinson,
-conditioning, LSF by Chebyshev root-finding, interpolation, and a formant warp
-that replaced plain LSF scaling (scaling pinned the top LSFs against pi and the
-synthesis filter's guard kept resetting). To put an LPC stage back, it needs a
-structure that is well-conditioned at the host rate: warped LPC (allpass
-delays, lambda ~0.7 at 48 kHz), or poles mapped from a 16 kHz envelope into a
-cascade of biquads. Either should be measured against PSOLA alone first --
-the case for it is formant *accuracy* on large shifts, which nothing here has
-shown PSOLA to lack at tuner-sized ones.
+| §6, §2: a HYBRID engine and a Studio latency contract | neither, in this product | Both were built and passed every gate they had (formants 1.000 +/- 0.001 of scale; Studio measured = reported in every cell). Frosty heard 0.1 in Ableton on 2026-09-11 and CLASSIC sounded better. Kept for a non-real-time tuner: `testing-notes/nrt-tune-handoff-2026-09-11.md`, branch `archive/hybrid-studio` -- which also has the §6.2 LPC groundwork and why it never entered the signal path |
 
 ## Measured, 2026-09-10, AURORA, 48 kHz unless stated
 
@@ -68,13 +63,12 @@ shown PSOLA to lack at tuner-sized ones.
 |---|---|---|
 | Fine pitch error, steady voice | 0.001 - 0.05 c | < 5 c |
 | Gross pitch error, 59 pitched corpus items | 0.10 % mean, 1.06 % worst (10 dB pink) | < 1 % clean, < 3 % at 20 dB |
-| Output tuning at retune 0 | within 0.04 c, both engines, 110 - 880 Hz | < 3 c |
+| Output tuning at retune 0 | within 0.04 c, 110 - 880 Hz | < 3 c |
 | Time to lock (sawtooth onset) | 2.2 - 2.6 periods | -- |
 | Live floor | 19 samples, 0.40 ms, every pitch | <= 1.5 ms CLASSIC >= 200 Hz |
-| Studio PDC, Auto / Soprano / Alto-Tenor / Bass / Instrument | 9.19 / 4.77 / 7.44 / 13.21 / 13.21 ms, measured = reported in every cell | fixed, = measured |
-| Formants, HYBRID, +/-1 semitone | scale 1.000 / 1.001 | F1 - F3 within 2 % |
 | THD+N, CLASSIC, +/-40 c on a sine | -76 dB | < -60 dB |
-| CPU, one core, 48 kHz / 128 | CLASSIC 0.9 % median 1.2 % p99; HYBRID 1.0 % / 1.4 % | < 1.5 % / < 3 % |
+| CPU, one core, 48 kHz / 128 | 0.9 % median, 1.2 % p99 (re-run 2026-09-11, CLASSIC only) | < 1.5 % |
+| Reported latency, every range | 0 samples; rest delay 0.40 ms in every cell (re-run 2026-09-11) | Live: 0 |
 
 Live's figure is the floor. While it corrects, the read wanders up to a period
 above it (mean ~ floor + T/2): 1.5 ms at A4, 2.5 ms at A3. The latency tool's
@@ -82,16 +76,10 @@ table records both; the spec's 1.5 ms is met by the floor, not by the mean.
 
 ## Open, and not for one session to settle
 
-- **Formant: keep or cut** -- kept until it can be heard in Ableton (Frosty,
-  2026-09-10). A Keep/Follow choice since the schema froze; cutting it now
-  means hiding it, since its id stays in the schema for good. In
-  HYBRID, Keep keeps the singer's formants, Follow lets them follow the
-  correction as CLASSIC's do. Cutting it changes nothing else; the only
-  combinations lost are HYBRID with formants following the pitch *and* Glide,
-  or *and* Formant Shift, since CLASSIC has neither. Its code is one line in
-  `HybridEngine::scheduleGrains`. The audible difference on chromatic
-  corrections (<= 50 cents, formants moved <= 3 %) is small; on a semitone
-  or more it is obvious.
+- **The hiccups heard in 0.1** (Frosty, Ableton, 2026-09-11: "it works ...
+  it's got some hiccups"). Not yet described -- which material, which
+  settings, clicks or dropouts or wrong notes. The first thing to pin down;
+  each should become a corpus item and a failing test before it is fixed.
 - **Vibrato 0 % warbles on a boundary.** The note decision follows the raw
   pitch at vibrato 0, so a vibrato straddling a note boundary flips between
   the two notes -- the classic hard-tune sound, kept on purpose because hard

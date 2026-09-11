@@ -18,8 +18,6 @@ struct CorrectionSettings
     double retuneMs = 0.0;                ///< one-pole time constant; 0 is a true snap
     double vibratoAmount = 0.0;           ///< beta: 0 flattens vibrato, 1 keeps it, >1 exaggerates
     double flex = 0.0;                    ///< 0..1 soft-knee deadzone; 0 is off
-    double glideMs = 0.0;                 ///< target slew on note change
-    bool glideAllowed = false;            ///< CLASSIC never glides (spec §4.5)
     double hysteresisCents = 8.0;         ///< see nearestAllowed()
 
     double clarityLo = 0.60, clarityHi = 0.85;   ///< confidence ramp (spec §4.4)
@@ -30,7 +28,7 @@ struct CorrectionSettings
 struct CorrectionState
 {
     double pitchIn = 0.0;      ///< semitones, as detected
-    double target = 0.0;       ///< semitones, after glide
+    double target = 0.0;       ///< semitones: the quantized note
     int note = -1;             ///< the quantized note, -1 for none
     double errorCents = 0.0;   ///< target - input
     double appliedCents = 0.0; ///< a_final: what the engine is told to do
@@ -45,7 +43,6 @@ struct CorrectionState
                    estimate to agree; see confirmPitch() for why this replaces
                    the spec's median on the note
         quantize   nearest allowed note, with hysteresis toward the held note
-        glide      target slew on a note change -- HYBRID only
         error      e = 100 (target - p_in)
         vibrato    e - beta (e - LP3Hz(e)): correct the slow part of the
                    error, pass beta of the fast part
@@ -104,8 +101,7 @@ private:
     bool haveNote = false;
     double pendingJump = 0.0;
     bool havePendingJump = false;
-    double target = 0.0, glideFrom = 0.0, glideTo = 0.0;
-    int glideLength = 0, glidePosition = 0;
+    double target = 0.0;
 
     // The law's own state.
     double errorSlow = 0.0, applied = 0.0, confidence = 0.0, gate = 0.0;

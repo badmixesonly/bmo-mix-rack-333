@@ -20,29 +20,27 @@ sound this plugin is built for.
 
 - **Vibrato** 0 % flattens the singer's vibrato onto the note; 100 % keeps it
   and only corrects the note it is centred on; 150 % exaggerates it.
-- **Glide** (Hybrid only) slides between notes instead of jumping.
 - **Flex** leaves small deviations alone. Off by default.
 
-## Two engines
+## How it moves the pitch
 
-- **Classic** reads the voice faster or slower, repeating or dropping whole
-  cycles to keep up. Formants move with the pitch, which is the bright,
-  slightly synthetic quality the classic hard-tune sound has.
-- **Hybrid** rebuilds the voice from overlapping single-cycle grains placed at
-  the new pitch. Formants stay where the singer put them, and **Formant
-  Shift** can move them independently.
+It reads the voice faster or slower, repeating or dropping whole cycles to
+keep up. Formants move with the pitch, which is the bright, slightly
+synthetic quality the classic hard-tune sound has.
 
-Both cost the same latency, so switching engines never moves the track.
+There was a second engine, Hybrid, which kept the formants where they were.
+Classic sounded better in Ableton (2026-09-11), so it is the only one; Hybrid
+is kept for a possible non-real-time tuner --
+`testing-notes/nrt-tune-handoff-2026-09-11.md`.
 
 ## Latency
 
-- **Live** (default): reports zero to the host and costs 0.4 ms while it is
-  not correcting. While it corrects, it runs up to one cycle of the note
-  later -- the same contract as Waves Tune Real-Time.
-- **Studio**: reports a fixed delay for the chosen pitch range (9.2 ms for
-  Auto at 48 kHz) so the host lines the track up exactly.
+It reports zero to the host and costs 0.4 ms while it is not correcting.
+While it corrects, it runs up to one cycle of the note later -- the same
+contract as Waves Tune Real-Time. That is the only mode: it is what a
+singer monitoring through the plugin needs.
 
 ## CPU
 
-About 1 % of one core at 48 kHz with 128-sample buffers, either engine, on
-the laptop this was built on.
+About 0.9 % of one core at 48 kHz with 128-sample buffers, on AURORA, the
+laptop this was built on.

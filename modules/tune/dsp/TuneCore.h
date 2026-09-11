@@ -3,7 +3,6 @@
 #include "modules/tune/dsp/ClassicEngine.h"
 #include "modules/tune/dsp/CorrectionLaw.h"
 #include "modules/tune/dsp/Detector.h"
-#include "modules/tune/dsp/HybridEngine.h"
 #include "modules/tune/params.h"
 
 namespace bmo::tune
@@ -16,14 +15,9 @@ struct TuneParams
     double retune = 0.0;                 ///< 0-100 knob
     int key = 0;
     ScaleType scale = ScaleType::chromatic;
-    Engine engine = Engine::classic;
     Range range = Range::autoRange;
     double vibratoPercent = 0.0;
     double flexPercent = 0.0;
-    double glideMs = 0.0;
-    bool formant = true;
-    double formantShiftCents = 0.0;
-    LatencyMode latency = LatencyMode::live;
     double refA = 440.0;
     NoteMask allowed = kAllNotes;
 
@@ -58,9 +52,10 @@ public:
     /** Mono, in place. */
     void process (float* samples, int numSamples) noexcept;
 
-    /** What to report to the host for these parameters at this rate. */
-    static int latencyFor (const TuneParams&, double sampleRate) noexcept;
-    int latencySamples() const noexcept { return latencyFor (params, fs); }
+    /** What to report to the host: always 0. Live only -- the plugin runs
+        0.4 ms behind at rest and up to a period while correcting, and says 0,
+        as Waves does (LatencyContract.h). */
+    static constexpr int kReportedLatency = 0;
 
     /** Offline tools only: called once per sample with that sample's frame.
         A plain function pointer, so installing one cannot allocate. */
@@ -70,12 +65,9 @@ public:
     const Detector& detector() const noexcept { return det; }
     const CorrectionLaw& correction() const noexcept { return law; }
     const ClassicEngine& classic() const noexcept { return engine; }
-    const HybridEngine& hybrid() const noexcept { return hybridEngine; }
-    Engine activeEngine() const noexcept { return active; }
 
 private:
     void applyParams() noexcept;
-    float runEngines (float x, double cents, double period, bool voiced, bool settled) noexcept;
 
     double fs = 48000.0;
     TuneParams params;
@@ -84,14 +76,6 @@ private:
     Detector det;
     CorrectionLaw law;
     ClassicEngine engine;
-    HybridEngine hybridEngine;
-
-    // Engine switching: the idle engine is fed so its history is warm, and a
-    // switch crossfades the two over kSwitchMs rather than cutting.
-    static constexpr double kSwitchMs = 20.0;
-    Engine active = Engine::classic, fadingFrom = Engine::classic;
-    int switchLength = 960, switchPosition = 0;
-    bool switching = false;
 
     long long samplePosition = 0;
     AnalysisTap analysisTap = nullptr;

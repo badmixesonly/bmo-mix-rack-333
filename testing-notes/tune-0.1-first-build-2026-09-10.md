@@ -1,5 +1,11 @@
 # BMO Tune RT 0.1 -- first plugin build, 2026-09-10
 
+> **Superseded 2026-09-11.** Frosty heard this build in Ableton: it works,
+> with some hiccups, and CLASSIC sounded better. HYBRID, Studio, Glide and
+> the formant controls were removed; items 3, 4 and 6 below no longer apply.
+> See `nrt-tune-handoff-2026-09-11.md` for what was set aside and where.
+> This note is kept as the record of what 0.1 was.
+
 Built and checked on **AURORA**, Release, MSVC 2022, JUCE 8.0.15 (the rack's
 pin, 91ad83ae, cloned from the local `bmo-mix-rack-333` copy). Nothing has
 been heard in a DAW yet; this note is what that session is for.

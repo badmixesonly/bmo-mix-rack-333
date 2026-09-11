@@ -8,6 +8,11 @@
     table is where a change has to be argued for; a new parameter goes on the
     end of specs() and of this table.
 
+    2026-09-11: engine, glide, formant, formant_shift and latency removed, with
+    HYBRID and Studio (Frosty). Argued in params.h: a VST3 host knows each
+    parameter by a hash of its id and state is saved by id, so removing moves
+    no other parameter. Their ids are retired, and checked here as such.
+
     Also checked: that the ModuleDsp adapter maps every value the way the
     spec list says, and that the schema fits a rack slot's 32 parameters
     (not a requirement for this product, but a free option on the future).
@@ -31,14 +36,9 @@ namespace
         { "retune",        bmo::ParamKind::Float,  0.0f,   100.0f, 0.0f,   0.1f },
         { "key",           bmo::ParamKind::Choice, 0.0f,   16.0f,  0.0f,   1.0f },
         { "scale",         bmo::ParamKind::Choice, 0.0f,   2.0f,   0.0f,   1.0f },
-        { "engine",        bmo::ParamKind::Choice, 0.0f,   1.0f,   0.0f,   1.0f },
         { "range",         bmo::ParamKind::Choice, 0.0f,   4.0f,   0.0f,   1.0f },
         { "vibrato",       bmo::ParamKind::Float,  0.0f,   150.0f, 0.0f,   1.0f },
         { "flex",          bmo::ParamKind::Float,  0.0f,   100.0f, 0.0f,   1.0f },
-        { "glide",         bmo::ParamKind::Float,  0.0f,   200.0f, 0.0f,   1.0f },
-        { "formant",       bmo::ParamKind::Choice, 0.0f,   1.0f,   0.0f,   1.0f },
-        { "formant_shift", bmo::ParamKind::Float, -600.0f, 600.0f, 0.0f,   1.0f },
-        { "latency",       bmo::ParamKind::Choice, 0.0f,   1.0f,   0.0f,   1.0f },
         { "ref_a",         bmo::ParamKind::Float,  380.0f, 480.0f, 440.0f, 0.1f },
         { "note_c",  bmo::ParamKind::Bool, 0, 1, 1, 1 }, { "note_cs", bmo::ParamKind::Bool, 0, 1, 1, 1 },
         { "note_d",  bmo::ParamKind::Bool, 0, 1, 1, 1 }, { "note_ds", bmo::ParamKind::Bool, 0, 1, 1, 1 },
@@ -55,10 +55,7 @@ namespace
     const Choices kGoldenChoices[] = {
         { "key",     { "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B" } },
         { "scale",   { "Chromatic", "Major", "Minor" } },
-        { "engine",  { "Classic", "Hybrid" } },
         { "range",   { "Auto", "Soprano", "Alto/Tenor", "Bass", "Instrument" } },
-        { "formant", { "Keep", "Follow" } },
-        { "latency", { "Live", "Studio" } },
     };
 }
 
@@ -70,6 +67,9 @@ int main()
     check (s.size() == golden, "the schema has exactly the golden table's parameters");
     check ((int) s.size() == Index::count, "enum Index and specs() agree on the count");
     check (s.size() <= 32, "it fits a BMO Mix Rack slot's 32 parameters");
+
+    for (const auto* retired : kRetiredIds)
+        check (bmo::indexOfParam (s, retired) < 0, std::string ("the retired id ") + retired + " is not reused");
 
     for (size_t i = 0; i < std::min (s.size(), golden); ++i)
     {
@@ -116,28 +116,25 @@ int main()
         check (pitchClassOfKey (k) == pc, "Key " + n + " is pitch class " + std::to_string (pc));
     }
 
-    // Defaults are the hard-tune, Live, chromatic, CLASSIC instance.
+    // Defaults are the hard-tune, chromatic instance.
     std::vector<float> v;
     for (const auto& p : s)
         v.push_back (p.def);
     const auto d = TuneParams::fromValues (v.data(), (int) v.size());
-    check (d.retune == 0.0 && d.engine == Engine::classic && d.latency == LatencyMode::live
-           && d.scale == ScaleType::chromatic && d.allowed == kAllNotes && d.refA == 440.0,
-           "the defaults are a hard-tune, Live, chromatic CLASSIC instance");
-    check (d.key == 0 && d.formant, "in C, with HYBRID's formants kept");
+    check (d.retune == 0.0 && d.scale == ScaleType::chromatic && d.allowed == kAllNotes && d.refA == 440.0,
+           "the defaults are a hard-tune, chromatic instance");
+    check (d.key == 0, "in C");
 
     {
         auto bFlat = v;
         bFlat[(size_t) Index::key] = 15.0f;       // Bb
-        bFlat[(size_t) Index::formant] = 1.0f;    // Follow
         const auto b = TuneParams::fromValues (bFlat.data(), (int) bFlat.size());
-        check (b.key == 10 && ! b.formant, "Key Bb reaches the core as pitch class 10, Formant Follow as not kept");
+        check (b.key == 10, "Key Bb reaches the core as pitch class 10");
     }
 
     // The adapter: values in, through ModuleDsp, sound out.
     {
         TuneDsp dsp;
-        dsp.setSampleRate (48000.0);
         dsp.setParams (v.data(), (int) v.size());
         dsp.prepare (48000.0, 256, 2);
 
@@ -152,11 +149,7 @@ int main()
         }
 
         check (left == right, "the adapter processes mono and copies it to every channel");
-        check (dsp.latencyForParams (v.data(), (int) v.size()) == 0, "and reports Live's 0 by default");
-
-        v[(size_t) Index::latency] = 1.0f;
-        check (dsp.latencyForParams (v.data(), (int) v.size()) == TuneCore::latencyFor (TuneParams::fromValues (v.data(), (int) v.size()), 48000.0),
-               "and Studio's figure when asked, from the values alone");
+        check (dsp.latencyForParams (v.data(), (int) v.size()) == 0, "and reports 0 latency: Live is the only contract");
     }
 
     return finish ("schema");

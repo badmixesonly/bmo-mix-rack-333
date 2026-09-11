@@ -1,11 +1,10 @@
 /*
-    The real panel, laid out at design size with no display: the hide rule,
-    and that everything on it fits.
+    The real panel, laid out at design size with no display: that every
+    parameter is on it, and that everything on it fits.
 
-      - Every parameter has a control on the panel. On Hybrid every control
-        is shown; on Classic, exactly the controls of the isHybridOnly()
-        parameters are hidden. This is the panel half of the rule --
-        tests/dsp/ModeTests.cpp is the DSP half -- so the two cannot drift.
+      - Every parameter has a control on the panel, and it is shown. (The
+        hide rule that Classic and Hybrid needed went with HYBRID on
+        2026-09-11; it is on branch archive/hybrid-studio.)
       - Every switch label fits its switch, measured the way the suite's look
         and feel draws it.
       - Every value a box can show fits the box: all seventeen keys, every
@@ -62,38 +61,19 @@ int main()
            && panel->getHeight() == bmo::ui::ModulePanel::kContentHeight,
            "the panel is laid out at 360 x 688");
 
-    //== The hide rule ==========================================================
-    for (const auto engine : { Engine::classic, Engine::hybrid })
+    //== Every parameter is on the panel =======================================
+    panel->syncNow();
+
+    for (int i = 0; i < Index::count; ++i)
     {
-        params.setReal (Index::engine, (float) engine);
-        panel->syncNow();
-        const auto mode = std::string (engine == Engine::hybrid ? "Hybrid" : "Classic");
+        const auto controls = panel->controlsFor (i);
+        check (! controls.empty(), nameOf (i) + " has a control on the panel");
 
-        int hidden = 0;
-
-        for (int i = 0; i < Index::count; ++i)
-        {
-            const auto controls = panel->controlsFor (i);
-            check (! controls.empty(), nameOf (i) + " has a control on the panel");
-
-            const bool shouldShow = engine == Engine::hybrid || ! isHybridOnly (i);
-
-            for (auto* c : controls)
-            {
-                check (c->isVisible() == shouldShow,
-                       mode + ": " + nameOf (i) + "'s " + c->getName().toStdString()
-                           + (shouldShow ? " is shown" : " is hidden"));
-                hidden += c->isVisible() ? 0 : 1;
-            }
-        }
-
-        report (mode + ": controls hidden", hidden);
+        for (auto* c : controls)
+            check (c->isVisible(), nameOf (i) + "'s " + c->getName().toStdString() + " is shown");
     }
 
     //== Everything fits ========================================================
-    params.setReal (Index::engine, (float) Engine::hybrid);
-    panel->syncNow();
-
     for (auto* s : panel->switches())
     {
         const auto overflow = s->getButtonText().isEmpty() ? 0.0f : bmo::ui::BmoLookAndFeel::toggleLabelOverflow (*s);
@@ -149,6 +129,35 @@ int main()
         for (size_t b = a + 1; b < visible.size(); ++b)
             check (! visible[a]->getBounds().intersects (visible[b]->getBounds()),
                    visible[a]->getName().toStdString() + " and " + visible[b]->getName().toStdString() + " do not overlap");
+
+    //== A 0.1 session still opens ===============================================
+    // Saved state as the first build wrote it, retired parameters and all:
+    // the ones that remain come back, the retired ones are ignored.
+    {
+        juce::XmlElement old ("PARAMS");
+        old.setAttribute ("stateVersion", kStateVersion);
+        const std::pair<const char*, double> saved[] = {
+            { "retune", 22.5 }, { "key", 15.0 }, { "scale", 2.0 }, { "engine", 1.0 }, { "range", 3.0 },
+            { "vibrato", 40.0 }, { "flex", 10.0 }, { "glide", 80.0 }, { "formant", 1.0 },
+            { "formant_shift", -200.0 }, { "latency", 1.0 }, { "ref_a", 442.0 }, { "note_d", 0.0 } };
+
+        for (const auto& [id, value] : saved)
+        {
+            auto* e = old.createNewChildElement ("PARAM");
+            e->setAttribute ("id", id);
+            e->setAttribute ("value", value);
+        }
+
+        juce::MemoryBlock blob;
+        juce::AudioProcessor::copyXmlToBinary (old, blob);
+        processor->setStateInformation (blob.getData(), (int) blob.getSize());
+
+        check (params.getReal (Index::retune) == 22.5f && params.getReal (Index::key) == 15.0f
+               && params.getReal (Index::scale) == 2.0f && params.getReal (Index::range) == 3.0f
+               && params.getReal (Index::vibrato) == 40.0f && params.getReal (Index::flex) == 10.0f
+               && params.getReal (Index::refA) == 442.0f && params.getReal (Index::noteD) == 0.0f,
+               "a 0.1 session's state loads: every remaining value comes back, the retired five are ignored");
+    }
 
     processor->editorBeingDeleted (editor.get());
     editor.reset();

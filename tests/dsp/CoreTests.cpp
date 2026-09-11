@@ -6,7 +6,7 @@
     The claims, each tied to the spec:
       - an in-tune note passes bit-exactly, delayed by the engine's floor
         (T-5: the analysis path live, correction enabled, lag unchanged)
-      - reported latency is 0 in Live and the measured rest delay in Studio
+      - reported latency is 0: Live is the only contract
       - at retune 0 a steady note settles within 3 cents of its target (§9)
       - the output is identical at every block size, and run to run (T-1)
       - a scale is the set of targets, and switching notes off narrows it (§4.1)
@@ -108,43 +108,25 @@ int main()
         for (size_t i = (size_t) d; i < xz.size(); ++i)
             exact = exact && yz[i] == xz[i - (size_t) d];
         check (exact, "with the correction exactly zero the output is the input, delayed, bit for bit");
-        check (TuneCore::latencyFor (p, fs) == 0, "Live reports 0 to the host");
+        check (TuneCore::kReportedLatency == 0, "Live reports 0 to the host");
         report ("Live rest delay", 1000.0 * d / fs, "ms");
-
-        p.latency = LatencyMode::studio;
-        const auto ys = render (x, p, fs);
-        const auto reported = TuneCore::latencyFor (p, fs);
-        const auto measured = an::delayOf (x, ys, 2000);
-        report ("Studio reported latency, Auto range", 1000.0 * reported / fs, "ms");
-        check (std::abs (measured - reported) <= 1, "Studio: measured delay equals reported PDC within 1 sample (T-5)");
-
-        for (auto r : { Range::soprano, Range::altoTenor, Range::bass, Range::instrument })
-        {
-            p.range = r;
-            report (label ("Studio reported latency, range %.0f", (double) r), 1000.0 * TuneCore::latencyFor (p, fs) / fs, "ms");
-        }
     }
 
     //== Tuning accuracy at retune 0 (spec §9: < 3 cents) ======================
     std::printf ("output tuning, retune 0, chromatic\n");
-    for (auto mode : { LatencyMode::live, LatencyMode::studio })
+    for (auto base : { 110.0, 220.0, 440.0, 880.0 })
     {
-        for (auto base : { 110.0, 220.0, 440.0, 880.0 })
+        for (auto offset : { -45.0, -20.0, 10.0, 35.0 })
         {
-            for (auto offset : { -45.0, -20.0, 10.0, 35.0 })
-            {
-                TuneParams p;
-                p.latency = mode;
-                const auto hz = base * std::exp2 (offset / 1200.0);
-                const auto c = sig::steady (hz, 0.8, fs);
-                const auto y = render (sig::voice (c, fs).samples, p, fs);
-                const auto err = measuredCents (y, fs, base, 0.3, 0.4);
+            TuneParams p;
+            const auto hz = base * std::exp2 (offset / 1200.0);
+            const auto c = sig::steady (hz, 0.8, fs);
+            const auto y = render (sig::voice (c, fs).samples, p, fs);
+            const auto err = measuredCents (y, fs, base, 0.3, 0.4);
 
-                const auto name = label (mode == LatencyMode::live ? "Live   %.0f Hz %+.0f c: output error"
-                                                                   : "Studio %.0f Hz %+.0f c: output error", base, offset);
-                report (name, err, "c");
-                check (std::abs (err) < 3.0, name + " under 3 cents");
-            }
+            const auto name = label ("%.0f Hz %+.0f c: output error", base, offset);
+            report (name, err, "c");
+            check (std::abs (err) < 3.0, name + " under 3 cents");
         }
     }
 

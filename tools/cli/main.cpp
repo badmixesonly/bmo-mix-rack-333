@@ -171,6 +171,6 @@ int main (int argc, char** argv)
         return usage (("cannot write " + outPath).c_str());
 
     std::fprintf (stderr, "bmo-tune-cli: %zu samples at %.0f Hz, reported latency %d samples, %lld splices\n",
-                  mono.size(), rate, core.latencySamples(), core.classic().spliceCount());
+                  mono.size(), rate, TuneCore::kReportedLatency, core.classic().spliceCount());
     return 0;
 }

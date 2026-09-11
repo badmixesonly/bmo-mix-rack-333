@@ -9,9 +9,18 @@ namespace bmo::tune
 //==============================================================================
 // Parameter IDs. FROZEN from the first plugin build (Frosty, 2026-09-10):
 // permanent and append-only, because the build goes into Ableton and a saved
-// session references every id, its position, range, step and default. See
-// BMO Mix Rack's modules/eq/params.h for why, and its root AGENTS.md for what
+// session references every id, its range, step and default. See BMO Mix
+// Rack's modules/eq/params.h for why, and its root AGENTS.md for what
 // "permanent" covers. tests/dsp/SchemaTests.cpp holds the table.
+//
+// One argued change since, 2026-09-11: engine, glide, formant, formant_shift
+// and latency were REMOVED when Tune RT went CLASSIC and Live only (Frosty,
+// after hearing 0.1 in Ableton). Removing is safe where reordering would not
+// be: a VST3 host knows each parameter by a hash of its id string, and saved
+// state is by id, so every remaining parameter keeps its identity and a 0.1
+// session reloads everything but the five that are gone. Those ids are
+// retired -- never reuse one for something else. The code that used them is
+// on branch archive/hybrid-studio; testing-notes/nrt-tune-handoff-2026-09-11.md.
 //==============================================================================
 
 inline constexpr auto kModuleId   = "tune";
@@ -21,23 +30,19 @@ inline constexpr auto kModuleName = "BMO Tune RT";
 inline constexpr auto kRetune  = "retune";
 inline constexpr auto kKey     = "key";
 inline constexpr auto kScale   = "scale";
-inline constexpr auto kEngine  = "engine";
 inline constexpr auto kRange   = "range";
 
 // How natural.
 inline constexpr auto kVibrato = "vibrato";
 inline constexpr auto kFlex    = "flex";
-inline constexpr auto kGlide   = "glide";
-
-// HYBRID's formants: kept where the singer put them (Keep), or left to follow
-// the correction (Follow), and shifted independently. Kept until it can be
-// heard in Ableton (Frosty, 2026-09-10) -- see modules/tune/AGENTS.md, "Open".
-inline constexpr auto kFormant      = "formant";
-inline constexpr auto kFormantShift = "formant_shift";
 
 // Set once per session and left.
-inline constexpr auto kLatency = "latency";
 inline constexpr auto kRefA    = "ref_a";
+
+/** Ids that 0.1 had and this version does not. Retired for good: a new
+    parameter must never take one, or a 0.1 session would feed it a value
+    meant for something else. SchemaTests checks none comes back. */
+inline constexpr const char* kRetiredIds[] = { "engine", "glide", "formant", "formant_shift", "latency" };
 
 // The twelve-note allow map: each pitch class may be switched out of the
 // scale. Twelve booleans rather than one packed integer so a host can
@@ -48,32 +53,13 @@ inline constexpr const char* kNoteIds[12] = {
 
 enum Index
 {
-    retune, key, scale, engine, range,
-    vibrato, flex, glide,
-    formant, formantShift,
-    latency, refA,
+    retune, key, scale, range,
+    vibrato, flex,
+    refA,
     noteC, noteCs, noteD, noteDs, noteE, noteF,
     noteFs, noteG, noteGs, noteA, noteAs, noteB,
     count
 };
-
-enum class Engine { classic, hybrid };
-
-/** The parameters that only do anything on the HYBRID engine, in one place.
-
-    The panel hides these while CLASSIC is selected -- hidden, not greyed out,
-    Frosty's rule from the 2026-09-10 panel studies -- and draws them again on
-    HYBRID. Their parameters stay in the host either way, so automation written
-    on HYBRID survives a trip through CLASSIC.
-
-    tests/dsp/ModeTests.cpp holds this list to the DSP in both directions: each
-    one must be exactly inert on CLASSIC (or it is being hidden while it still
-    does something) and audible on HYBRID (or it is on the panel for nothing).
-    Add a parameter here only with the test agreeing. */
-inline bool isHybridOnly (int index) noexcept
-{
-    return index == Index::glide || index == Index::formant || index == Index::formantShift;
-}
 
 /** The Key parameter's choices: every spelling a key signature uses, so the
     host's automation lane shows the key the way it was picked -- B♭, not A#.
@@ -93,16 +79,13 @@ inline int pitchClassOfKey (int spelling) noexcept
     return pc[spelling < 0 ? 0 : (spelling >= kNumKeySpellings ? kNumKeySpellings - 1 : spelling)];
 }
 
-/** The Formant parameter's choices. Keep is index 0 and the default. */
-enum class FormantMode { keep, follow };
-
 enum class Range  { autoRange, soprano, altoTenor, bass, instrument };
-enum class LatencyMode { live, studio };
 
 /** Each range's search limits, in Hz. Auto floors at 80 Hz and only Bass and
     Instrument reach 55, which is Frosty's 2026-09-10 call on spec Part IV
-    question 3: the 25 Hz between them costs ~9 ms of worst-case latency, so
-    only the ranges that need it pay for it. */
+    question 3: the lower the floor, the longer the longest period the
+    detector must see and the further a correcting read can wander behind,
+    so only the ranges that need 55 Hz pay for it. */
 struct RangeLimits { double minHz, maxHz; };
 
 inline RangeLimits limitsOf (Range r) noexcept
@@ -147,7 +130,6 @@ inline const ParamSpecs& specs()
             // without moving any saved session, since new entries go on the end.
             S::choiceParam (kScale, "Scale", { "Chromatic", "Major", "Minor" }, 0),
 
-            S::choiceParam (kEngine, "Engine", { "Classic", "Hybrid" }, 0),
             S::choiceParam (kRange, "Pitch Range", { "Auto", "Soprano", "Alto/Tenor", "Bass", "Instrument" }, 0),
 
             // VIBRATO: 0 flattens it (the effect), 100 keeps the singer's own,
@@ -158,18 +140,8 @@ inline const ParamSpecs& specs()
             // this plugin -- see modules/tune/AGENTS.md for its IP note.
             S::floatParam (kFlex, "Flex", 0.0f, 100.0f, 1.0f, 0.0f, F::Percent),
 
-            // GLIDE: HYBRID only; CLASSIC never glides (spec §4.5).
-            S::floatParam (kGlide, "Glide", 0.0f, 200.0f, 1.0f, 0.0f),
-
-            // A choice rather than a switch, so the host shows the panel's
-            // words: Keep (the default) or Follow.
-            S::choiceParam (kFormant, "Formant", { "Keep", "Follow" }, 0),
-            S::floatParam (kFormantShift, "Formant Shift", -600.0f, 600.0f, 1.0f, 0.0f),
-
-            // Live is the default: Frosty's call on spec Part IV question 4,
-            // 2026-09-10. Live reports 0 to the host and runs dynamically
-            // late, as Waves does; Studio reports the range's worst case.
-            S::choiceParam (kLatency, "Latency", { "Live", "Studio" }, 0),
+            // No latency parameter: Tune RT is Live only, reporting 0 to the
+            // host and running 0.4 ms behind at rest (Frosty, 2026-09-11).
 
             S::floatParam (kRefA, "Ref A", 380.0f, 480.0f, 0.1f, 440.0f),
         };

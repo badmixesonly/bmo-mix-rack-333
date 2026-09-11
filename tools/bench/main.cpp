@@ -2,7 +2,7 @@
     bmo-tune-bench: CPU per block (spec T-11), as the fraction of the block's
     real-time budget one instance uses on one core.
 
-        bmo-tune-bench [--seconds 5] [--engine Classic|Hybrid] [--csv out.csv] [--quick]
+        bmo-tune-bench [--seconds 5] [--csv out.csv] [--quick]
 
     Reported as median, p99 and max per block -- p99 and max are what cause
     xruns; the mean is not reported because it hides exactly them.
@@ -108,37 +108,28 @@ namespace
 int main (int argc, char** argv)
 {
     double seconds = 5.0;
-    std::string engineName = "Classic", csvPath;
+    std::string csvPath;
     bool quick = false;
 
     for (int i = 1; i < argc; ++i)
     {
         const std::string a = argv[i];
         if (a == "--seconds" && i + 1 < argc)     seconds = std::atof (argv[++i]);
-        else if (a == "--engine" && i + 1 < argc) engineName = argv[++i];
         else if (a == "--csv" && i + 1 < argc)    csvPath = argv[++i];
         else if (a == "--quick")                  quick = true;
         else
         {
-            std::fprintf (stderr, "usage: bmo-tune-bench [--seconds s] [--engine Classic|Hybrid] [--csv out.csv] [--quick]\n");
+            std::fprintf (stderr, "usage: bmo-tune-bench [--seconds s] [--csv out.csv] [--quick]\n");
             return 2;
         }
     }
 
-    auto values = tools::defaultValues();
-    std::string error;
-    if (! tools::setFromText (values, "engine", engineName, error))
-    {
-        std::fprintf (stderr, "bmo-tune-bench: %s\n", error.c_str());
-        return 2;
-    }
-
-    const auto params = tools::toParams (values);
+    const auto params = tools::toParams (tools::defaultValues());
     const std::vector<double> rates = quick ? std::vector<double> { 48000.0 } : std::vector<double> { 44100.0, 48000.0, 96000.0, 192000.0 };
     const std::vector<int> blocks = quick ? std::vector<int> { 64, 128 } : std::vector<int> { 32, 64, 128, 256, 512 };
 
-    std::string csv = "engine,rate,block,case,median_pct,p99_pct,max_pct,mean_us_per_block\n";
-    std::printf ("%s engine, one instance, one core, %% of the block's real-time budget\n\n", engineName.c_str());
+    std::string csv = "rate,block,case,median_pct,p99_pct,max_pct,mean_us_per_block\n";
+    std::printf ("One instance, one core, %% of the block's real-time budget\n\n");
     std::printf ("| rate | block | case | median | p99 | max |\n|---:|---:|---|---:|---:|---:|\n");
 
     for (auto fs : rates)
@@ -156,7 +147,7 @@ int main (int argc, char** argv)
                              fs / 1000.0, block, name, 100.0 * r.median, 100.0 * r.p99, 100.0 * r.max);
 
                 char line[256];
-                std::snprintf (line, sizeof line, "%s,%.0f,%d,%s,%.4f,%.4f,%.4f,%.3f\n", engineName.c_str(), fs, block, name,
+                std::snprintf (line, sizeof line, "%.0f,%d,%s,%.4f,%.4f,%.4f,%.3f\n", fs, block, name,
                                100.0 * r.median, 100.0 * r.p99, 100.0 * r.max, r.meanUs);
                 csv += line;
             }

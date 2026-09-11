@@ -10,12 +10,13 @@ mono, and has a latency contract a rack slot is not built around -- but it
 follows every suite convention and reuses the shared code from Kevin's
 main, pinned as a submodule.
 
-Two engines share one detector:
-
-| Engine | Method | Sound | Latency |
-|---|---|---|---|
-| **CLASSIC** | cycle-repeat/delete rate converter | bright, formants move with pitch | 0.4 ms floor |
-| **HYBRID** | pitch-synchronous overlap-add | natural, formants stay put | the same |
+One engine, CLASSIC: a cycle-repeat/delete rate converter, bright, with
+formants that move with the pitch, 0.4 ms behind at rest and reporting 0 to
+the host. A second engine (HYBRID, PSOLA) and a fixed-latency Studio mode
+were built and measured, and set aside on 2026-09-11 when CLASSIC sounded
+better in Ableton -- `testing-notes/nrt-tune-handoff-2026-09-11.md` keeps
+them for a possible non-real-time tuner, and branch `archive/hybrid-studio`
+keeps the code.
 
 No FFT anywhere in the correction path. The design document is
 `bmo-tune-rt-implementation-and-test-spec.md` (v0.1, 2026-09-10); where this
@@ -43,8 +44,9 @@ copied into the system plugin folder by the build.
 ## Status
 
 The DSP is complete and measured, and the plugin builds: VST3 and Standalone
-on the suite's own `SingleModuleProcessor`, with the round-7 panel. Nothing
-has been heard in a DAW yet. Every figure the spec gates on that can be measured
+on the suite's own `SingleModuleProcessor`. 0.1 was heard in Ableton on
+2026-09-11 -- it works, with some hiccups still to be pinned down -- and the
+product went CLASSIC and Live only. Every figure the spec gates on that can be measured
 offline meets its gate -- `modules/tune/AGENTS.md` has the table, and
 `testing-notes/` the state of play.
 
@@ -60,7 +62,7 @@ tools/          the offline harness, one executable each:
                   bmo-tune-bench    CPU per block: median, p99, max
                   bmo-tune-snapshot the panel to a PNG, no display needed
                   bmo-tune-hostcheck loads the built VST3 as a host would
-tests/          nine DSP suites, the panel test and the host check, by CTest
+tests/          six DSP suites, the panel test and the host check, by CTest
 products/tune/  the plugin target: Btun, com.lt3audio.bmotunert
 design/         the panel studies the panel was built from
 scripts/        build.sh, score-corpus.sh

@@ -5,7 +5,7 @@
 // Not pluginval, which is not on this machine and is a download. This covers
 // the part of it that a first build most needs: the binary loads, says who it
 // is, carries the frozen parameter list, corrects pitch through the real
-// wrapper, reports Studio latency, and brings a saved state back. Pitch is
+// wrapper, always reports 0 latency, and brings a saved state back. Pitch is
 // measured with the offline ruler (tools/common/Analysis.h), never with the
 // plugin's own detector.
 
@@ -113,7 +113,7 @@ int main (int argc, char** argv)
         matched += find (*plugin, all[(size_t) i].name) != nullptr ? 1 : 0;
 
     report ("parameters the host sees", (double) plugin->getParameters().size());
-    check (matched == Index::count, "every one of the 24 parameters is there by its name ("
+    check (matched == Index::count, "every one of the " + std::to_string (Index::count) + " parameters is there by its name ("
                                      + std::to_string (matched) + " found)");
 
     auto* key = find (*plugin, "Key");
@@ -152,36 +152,31 @@ int main (int argc, char** argv)
         check (finite, "and every sample out is finite");
     }
 
-    //== Studio latency =========================================================
-    if (auto* latency = find (*plugin, "Latency"))
+    //== Latency stays 0 =========================================================
     {
-        // A VST3 host delivers a parameter change inside the next process
-        // call, so audio has to run before the plugin knows; it then reports
-        // the new latency from the message thread, and a host hears about it
-        // through restartComponent. Both have to happen before it shows.
-        set (*latency, all[(size_t) Index::latency], 1.0f);
-        run (*plugin, std::vector<float> ((size_t) block * 4, 0.0f));
-        juce::MessageManager::getInstance()->runDispatchLoopUntil (300);
-
-        TuneParams studio;
-        studio.latency = LatencyMode::studio;
-        const auto expected = TuneCore::latencyFor (studio, fs);
-
-        report ("Studio latency reported, Auto range", plugin->getLatencySamples(), "samples");
-        check (plugin->getLatencySamples() == expected, "Studio reports the contract's figure: "
-                                                         + std::to_string (expected) + " samples");
-        set (*latency, all[(size_t) Index::latency], 0.0f);
+        // Live is the only contract: no setting may move what the host is
+        // told. Range is the one that used to (through Studio), so move it
+        // and let a change reach the plugin the way a VST3 host delivers one:
+        // inside the next process call, then the message thread.
+        if (auto* range = find (*plugin, "Pitch Range"))
+        {
+            set (*range, all[(size_t) Index::range], 3.0f);   // Bass
+            run (*plugin, std::vector<float> ((size_t) block * 4, 0.0f));
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (300);
+            check (plugin->getLatencySamples() == 0, "on the Bass range too, the host is told 0 samples");
+            set (*range, all[(size_t) Index::range], 0.0f);
+        }
     }
 
     //== A saved state comes back ===============================================
     {
-        auto* engine = find (*plugin, "Engine");
+        auto* scale = find (*plugin, "Scale");
         auto* retune = find (*plugin, "Retune Speed");
-        check (engine != nullptr && retune != nullptr && key != nullptr, "Engine, Retune Speed and Key exist to save");
+        check (scale != nullptr && retune != nullptr && key != nullptr, "Scale, Retune Speed and Key exist to save");
 
-        if (engine != nullptr && retune != nullptr && key != nullptr)
+        if (scale != nullptr && retune != nullptr && key != nullptr)
         {
-            set (*engine, all[(size_t) Index::engine], 1.0f);
+            set (*scale, all[(size_t) Index::scale], 2.0f);
             set (*retune, all[(size_t) Index::retune], 37.5f);
             set (*key, all[(size_t) Index::key], 15.0f);
 
@@ -202,8 +197,8 @@ int main (int argc, char** argv)
                     return a != nullptr && b != nullptr && std::abs (a->getValue() - b->getValue()) < 1.0e-4f;
                 };
 
-                check (same ("Engine") && same ("Retune Speed") && same ("Key"),
-                       "Hybrid, Retune 37.5 and Key Bb survive a save and reload");
+                check (same ("Scale") && same ("Retune Speed") && same ("Key"),
+                       "Minor, Retune 37.5 and Key Bb survive a save and reload");
             }
         }
     }

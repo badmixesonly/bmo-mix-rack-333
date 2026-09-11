@@ -297,25 +297,6 @@ int main()
         }
     }
 
-    //== Glide: HYBRID only (spec §4.5) ========================================
-    {
-        const auto step = (size_t) (0.2 * fs);
-        const auto track = [step] (size_t i) { return i < step ? 440.0 : 493.88; };   // A4 -> B4
-
-        CorrectionSettings s;
-        s.glideMs = 50.0;
-        s.glideAllowed = true;
-        const auto g = drive (track, (size_t) (0.5 * fs), s);
-        const auto mid = g.out[step + (size_t) (0.025 * fs)];
-        report ("glide 50 ms: target 25 ms into an A4->B4 step", 100.0 * (mid - 69.0), "c");
-        check (std::abs (100.0 * (mid - 69.0) - 100.0) < 15.0, "a 50 ms glide is halfway through a whole tone at 25 ms");
-
-        s.glideAllowed = false;   // CLASSIC
-        const auto c = drive (track, (size_t) (0.5 * fs), s);
-        const auto cmid = c.out[step + (size_t) (0.025 * fs)];
-        check (std::abs (100.0 * (cmid - 71.0)) < 1.0, "CLASSIC ignores glide: the target is the new note at once");
-    }
-
     //== Flex knee =============================================================
     {
         check (CorrectionLaw::flexGain (3.0, 0.0) == 1.0, "flex 0 corrects everything");

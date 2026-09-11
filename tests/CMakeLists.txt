@@ -11,10 +11,7 @@ bmo_tune_test(detector     DetectorTests.cpp)
 bmo_tune_test(interpolator InterpolatorTests.cpp)
 bmo_tune_test(correction   CorrectionTests.cpp)
 bmo_tune_test(core         CoreTests.cpp)
-bmo_tune_test(lpc          LpcTests.cpp)
-bmo_tune_test(hybrid       HybridTests.cpp)
 bmo_tune_test(schema       SchemaTests.cpp)
-bmo_tune_test(mode         ModeTests.cpp)
 
 # The real panel, laid out with no display: needs JUCE and the product.
 if(NOT BMO_DSP_ONLY)
