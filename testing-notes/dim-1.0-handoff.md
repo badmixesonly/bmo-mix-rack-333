@@ -284,6 +284,11 @@ suggestion there is to rename BMO EQ — "Console EQ" over "Vintage EQ" — with
 the full change list, what must not change, and the one real code change it
 implies. **Nothing has been renamed. It is a proposal.**
 
+> **Since superseded (2026-09-10):** "BMO Parametric" is now **BMO DEQ**,
+> and it inherits `Bpar` and the teal. BMO EQ is to become **BMO CEQ**,
+> which has not been done yet. `products/AGENTS.md` is current; this
+> paragraph records what was true when the handoff was written.
+
 ---
 
 ## 8. Building this locally

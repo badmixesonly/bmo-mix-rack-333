@@ -16,8 +16,9 @@ const ModuleDef& module()
     // is a stale document rather than a claim on the colour.
     //
     // It is also the best-separated hue left: 64.4 degrees from BMO EQ's pink,
-    // its nearest neighbour, where the teal this module was going to take sat
-    // 26.8 from the utility azure that appears on every panel in the suite. On
+    // its nearest neighbour, where the teal this module was going to take (now
+    // held for BMO DEQ -- see products/AGENTS.md) sat 26.8 from the utility
+    // azure that appears on every panel in the suite. On
     // the dark plate it reads 6.80:1 raw.
     //
     // 220 to match BMO Opto, whose panel this one is built on.
