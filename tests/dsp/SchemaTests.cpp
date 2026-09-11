@@ -13,6 +13,12 @@
     parameter by a hash of its id and state is saved by id, so removing moves
     no other parameter. Their ids are retired, and checked here as such.
 
+    2026-09-11, later: retune (a unitless knob) removed and retune_ms appended
+    on the end, 146 steps in milliseconds (Frosty: "display ms ... .1 ms
+    increments for 0-5 ms and then 1 ms increments through 100 ms"). A new id,
+    not a new meaning for the old one, because a saved 36 meant 10 ms and
+    would silently have become 36 ms. Argued in full at the head of params.h.
+
     Also checked: that the ModuleDsp adapter maps every value the way the
     spec list says, and that the schema fits a rack slot's 32 parameters
     (not a requirement for this product, but a free option on the future).
@@ -22,6 +28,7 @@
 #include "tests/TestUtil.h"
 #include "tools/common/Signals.h"
 
+#include <cmath>
 #include <cstring>
 #include <string>
 
@@ -33,8 +40,7 @@ namespace
     struct Row { const char* id; bmo::ParamKind kind; float min, max, def, step; };
 
     const Row kGolden[] = {
-        { "retune",        bmo::ParamKind::Float,  0.0f,   100.0f, 0.0f,   0.1f },
-        { "key",           bmo::ParamKind::Choice, 0.0f,   16.0f,  0.0f,   1.0f },
+        { "key",          bmo::ParamKind::Choice, 0.0f,   16.0f,  0.0f,   1.0f },
         { "scale",         bmo::ParamKind::Choice, 0.0f,   2.0f,   0.0f,   1.0f },
         { "range",         bmo::ParamKind::Choice, 0.0f,   4.0f,   0.0f,   1.0f },
         { "vibrato",       bmo::ParamKind::Float,  0.0f,   150.0f, 0.0f,   1.0f },
@@ -46,7 +52,20 @@ namespace
         { "note_fs", bmo::ParamKind::Bool, 0, 1, 1, 1 }, { "note_g",  bmo::ParamKind::Bool, 0, 1, 1, 1 },
         { "note_gs", bmo::ParamKind::Bool, 0, 1, 1, 1 }, { "note_a",  bmo::ParamKind::Bool, 0, 1, 1, 1 },
         { "note_as", bmo::ParamKind::Bool, 0, 1, 1, 1 }, { "note_b",  bmo::ParamKind::Bool, 0, 1, 1, 1 },
+        { "retune_ms",     bmo::ParamKind::Choice, 0.0f,   145.0f, 0.0f,   1.0f },
     };
+
+    /** Retune Speed's 146 names, written out from the rule Frosty gave rather
+        than from params.h, so a slip in either shows. */
+    std::vector<std::string> retuneNames()
+    {
+        std::vector<std::string> n;
+        for (int tenths = 0; tenths <= 50; ++tenths)
+            n.push_back (std::to_string (tenths / 10) + "." + std::to_string (tenths % 10) + " ms");
+        for (int ms = 6; ms <= 100; ++ms)
+            n.push_back (std::to_string (ms) + " ms");
+        return n;
+    }
 
     /** Every choice parameter's names, in order. Renaming or reordering one
         re-points every saved session that chose it. */
@@ -56,6 +75,7 @@ namespace
         { "key",     { "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B" } },
         { "scale",   { "Chromatic", "Major", "Minor" } },
         { "range",   { "Auto", "Soprano", "Alto/Tenor", "Bass", "Instrument" } },
+        { "retune_ms", retuneNames() },
     };
 }
 
@@ -121,9 +141,24 @@ int main()
     for (const auto& p : s)
         v.push_back (p.def);
     const auto d = TuneParams::fromValues (v.data(), (int) v.size());
-    check (d.retune == 0.0 && d.scale == ScaleType::chromatic && d.allowed == kAllNotes && d.refA == 440.0,
+    check (d.retuneMs == 0.0 && d.scale == ScaleType::chromatic && d.allowed == kAllNotes && d.refA == 440.0,
            "the defaults are a hard-tune, chromatic instance");
     check (d.key == 0, "in C");
+
+    {
+        // Each Retune Speed step reaches the core as the milliseconds its
+        // name says -- the host shows the name, the core hears the number.
+        const auto names = retuneNames();
+        bool all = true;
+        for (int step = 0; step < kNumRetuneSteps; ++step)
+        {
+            auto w = v;
+            w[(size_t) Index::retuneMs] = (float) step;
+            const auto p = TuneParams::fromValues (w.data(), (int) w.size());
+            all = all && std::abs (p.retuneMs - std::stod (names[(size_t) step])) < 1.0e-9;
+        }
+        check (all, "every Retune Speed step reaches the core as the ms its name reads");
+    }
 
     {
         auto bFlat = v;

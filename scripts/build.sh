@@ -52,7 +52,7 @@ if [[ $mode == --plugin ]]; then
     snap="$dir/tools/${bin}bmo-tune-snapshot"
     mkdir -p snapshots
     for look in dark light; do
-        "$snap" "snapshots/a-minor-$look.png"  appearance=$look key=A scale=Minor retune=14 vibrato=45
+        "$snap" "snapshots/a-minor-$look.png"  appearance=$look key=A scale=Minor retune_ms=12 vibrato=45
         "$snap" "snapshots/bb-major-$look.png" appearance=$look key=Bb scale=Major note_d=0
     done
     echo "VST3: $dir/products/tune/BmoTuneRT_artefacts/${bin}VST3/BMO Tune RT.vst3"

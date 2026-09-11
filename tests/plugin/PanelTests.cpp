@@ -115,6 +115,30 @@ int main()
 
     params.setReal (Index::refA, 440.0f);
 
+    {
+        // Retune Speed's readout, over all 146 steps.
+        float worst = -1.0e9f;
+        std::string worstText;
+        for (int step = 0; step < kNumRetuneSteps; ++step)
+        {
+            params.setReal (Index::retuneMs, (float) step);
+            panel->syncNow();
+            const auto r = panel->retuneReadout();
+            if (r.overflow > worst) { worst = r.overflow; worstText = r.text.toStdString(); }
+        }
+
+        params.setReal (Index::retuneMs, 57.0f);
+        panel->syncNow();
+        check (panel->retuneReadout().text == "12 ms", "the panel shows Retune Speed in ms: step 57 reads \"12 ms\"");
+        params.setReal (Index::retuneMs, 4.0f);
+        panel->syncNow();
+        check (panel->retuneReadout().text == "0.4 ms", "and step 4 reads \"0.4 ms\"");
+
+        params.setReal (Index::retuneMs, 0.0f);
+        report ("widest Retune Speed readout, px to spare", -worst);
+        check (worst <= 0.0f, "every Retune Speed value fits its readout; widest is \"" + worstText + "\"");
+    }
+
     //== Nothing overlaps, and all of it is on the panel ========================
     std::vector<juce::Component*> visible;
     for (int i = 0; i < Index::count; ++i)
@@ -152,11 +176,16 @@ int main()
         juce::AudioProcessor::copyXmlToBinary (old, blob);
         processor->setStateInformation (blob.getData(), (int) blob.getSize());
 
-        check (params.getReal (Index::retune) == 22.5f && params.getReal (Index::key) == 15.0f
+        check (params.getReal (Index::key) == 15.0f
                && params.getReal (Index::scale) == 2.0f && params.getReal (Index::range) == 3.0f
                && params.getReal (Index::vibrato) == 40.0f && params.getReal (Index::flex) == 10.0f
                && params.getReal (Index::refA) == 442.0f && params.getReal (Index::noteD) == 0.0f,
-               "a 0.1 session's state loads: every remaining value comes back, the retired five are ignored");
+               "a 0.1 session's state loads: every remaining value comes back, the retired six are ignored");
+
+        // 0.1's retune 22.5 was a knob position (about 2.6 ms). It must not
+        // come back as 22.5 of anything: Retune Speed stays at its default.
+        check (params.getReal (Index::retuneMs) == 0.0f,
+               "and 0.1's unitless retune is not read as milliseconds: Retune Speed is at 0.0 ms");
     }
 
     processor->editorBeingDeleted (editor.get());

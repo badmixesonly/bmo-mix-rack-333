@@ -15,7 +15,7 @@ TuneParams TuneParams::fromValues (const float* v, int count) noexcept
     const auto choice = [v] (int i, int n) { return std::clamp ((int) std::lround (v[i]), 0, n - 1); };
     const auto on = [v] (int i) { return v[i] >= 0.5f; };
 
-    p.retune = v[Index::retune];
+    p.retuneMs = retuneMsOfStep (choice (Index::retuneMs, kNumRetuneSteps));
     p.key = pitchClassOfKey (choice (Index::key, kNumKeySpellings));
     p.scale = (ScaleType) choice (Index::scale, (int) ScaleType::count);
     p.range = (Range) choice (Index::range, 5);
@@ -81,7 +81,7 @@ void TuneCore::applyParams() noexcept
     cs.key = params.key;
     cs.scale = params.scale;
     cs.allowed = params.allowed;
-    cs.retuneMs = CorrectionLaw::retuneMsFromKnob (params.retune);
+    cs.retuneMs = params.retuneMs;
     cs.vibratoAmount = params.vibratoPercent / 100.0;
     cs.flex = params.flexPercent / 100.0;
     cs.clarityLo = ds.clarityLo;

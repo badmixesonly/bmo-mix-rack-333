@@ -10,6 +10,7 @@
 #include "modules/tune/dsp/CorrectionLaw.h"
 #include "modules/tune/dsp/Pitch.h"
 #include "modules/tune/dsp/Scale.h"
+#include "modules/tune/params.h"
 #include "tests/TestUtil.h"
 #include "tools/common/Signals.h"
 
@@ -149,15 +150,21 @@ int main()
     }
 
     //== Retune speed ==========================================================
-    std::printf ("retune settling (10-90 %%) on a 40-cent step, vs knob\n");
+    std::printf ("retune settling (10-90 %%) on a 40-cent step, vs Retune Speed in ms\n");
     {
-        check (CorrectionLaw::retuneMsFromKnob (0.0) == 0.0, "retune knob 0 is exactly 0 ms");
-        check (near (CorrectionLaw::retuneMsFromKnob (100.0), 400.0, 1.0e-9), "retune knob 100 is 400 ms");
+        // The steps a host can set (retune_ms): 0.1 ms apart to 5, then 1 ms.
+        check (retuneMsOfStep (0) == 0.0, "Retune Speed's first step is exactly 0 ms, the snap");
+        check (near (retuneMsOfStep (1), 0.1, 1.0e-12) && near (retuneMsOfStep (50), 5.0, 1.0e-12),
+               "steps 1 to 50 are 0.1 to 5.0 ms");
+        check (retuneMsOfStep (51) == 6.0 && retuneMsOfStep (kNumRetuneSteps - 1) == 100.0,
+               "then 6 ms up to 100 ms, 1 ms apart");
+        check (retuneStepOfMs (0.4) == 4 && retuneStepOfMs (12.0) == 57 && retuneStepOfMs (5.5) == -1,
+               "a value on a step finds it, and one between steps does not");
 
-        for (auto knob : { 0.0, 20.0, 50.0, 80.0 })
+        for (auto tau : { 0.0, 0.5, 3.0, 10.0, 24.0, 100.0 })
         {
             CorrectionSettings s;
-            s.retuneMs = CorrectionLaw::retuneMsFromKnob (knob);
+            s.retuneMs = tau;
 
             // Locked on A4 for 0.2 s, then the singer goes 40 cents sharp.
             const auto step = (size_t) (0.2 * fs);
@@ -174,14 +181,14 @@ int main()
 
             const auto ms = 1000.0 * (double) (t90 - t10) / fs;
             char buf[96];
-            std::snprintf (buf, sizeof buf, "knob %.0f (tau %.1f ms): 10-90 %% settling", knob, s.retuneMs);
+            std::snprintf (buf, sizeof buf, "Retune Speed %.1f ms: 10-90 %% settling", tau);
             report (buf, ms, "ms");
 
-            if (knob == 0.0)
-                check (t90 > 0 && t90 - step <= 24, "at knob 0 the full correction lands within one evaluation");
+            if (tau == 0.0)
+                check (t90 > 0 && t90 - step <= 24, "at 0 ms the full correction lands within one evaluation");
             else
                 check (t90 > 0 && std::abs (ms - 2.197 * s.retuneMs) < 0.05 * 2.197 * s.retuneMs + 1.0,
-                       std::string ("settling is 2.2 tau for a one-pole, knob ") + std::to_string ((int) knob));
+                       std::string ("settling is 2.2 tau for a one-pole, at ") + buf);
 
             const auto finalOut = r.out.back();
             check (std::abs (100.0 * (finalOut - 69.0)) < 0.01, "and it settles on the note");

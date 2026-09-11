@@ -4,7 +4,7 @@
     The smallest JSON the tools need: a flat object of string keys to
     numbers, booleans or strings, for parameter files --
 
-        { "retune": 0, "scale": "Major", "key": "A", "latency": "Studio" }
+        { "retune_ms": 0.4, "scale": "Major", "key": "A" }
 
     -- and a writer for flat scorecards. Nested values are rejected with a
     message rather than half-parsed; a parameter file is flat by design.

@@ -4,8 +4,8 @@
 //
 //   bmo-tune-snapshot out.png [width height] [param=value ...]
 //
-// Parameters by their ids, choices by name or index: engine=Hybrid, key=Bb,
-// scale=Minor, note_d=0. "appearance=dark|light" renders the other palette
+// Parameters by their ids, choices by name or index: key=Bb, scale=Minor,
+// note_d=0; Retune Speed by its milliseconds, retune_ms=12. "appearance=dark|light" renders the other palette
 // for this process only -- it neither writes nor reads the machine-wide
 // preference, so it cannot flip the look of plugins that happen to be open.
 //
@@ -25,10 +25,19 @@ namespace
 {
     std::optional<float> realValueFor (const bmo::ParamSet& params, int index, const juce::String& text)
     {
-        if (text.containsOnly ("0123456789.-+"))
-            return text.getFloatValue();
-
         const auto& spec = params.spec (index);
+
+        // Choices named by numbers (Retune Speed's "12 ms") take the number,
+        // never an index: retune_ms=12 is 12 ms, not step 12 (1.2 ms).
+        if (spec.numChoices() > 0 && juce::CharacterFunctions::isDigit (spec.choices[0][0]))
+        {
+            if (text.containsOnly ("0123456789.-+"))
+                for (int i = 0; i < spec.numChoices(); ++i)
+                    if (std::abs (juce::String (spec.choices[(size_t) i]).getDoubleValue() - text.getDoubleValue()) < 1.0e-6)
+                        return (float) i;
+        }
+        else if (text.containsOnly ("0123456789.-+"))
+            return text.getFloatValue();
 
         for (int i = 0; i < spec.numChoices(); ++i)
             if (text.equalsIgnoreCase (juce::String (spec.choices[(size_t) i])))

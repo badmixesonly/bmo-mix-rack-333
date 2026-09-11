@@ -14,16 +14,6 @@ namespace
     }
 }
 
-double CorrectionLaw::retuneMsFromKnob (double knob) noexcept
-{
-    // 400 (2^(8k) - 1) / (2^8 - 1), k in [0, 1]: 0 at 0, 3 ms at 20, 24 ms at
-    // 50, 400 ms at 100. The low end is where hard tuning lives, so it gets
-    // most of the knob's travel; a linear 0-400 ms knob would spend its
-    // first 5 % on everything anyone sets for the effect.
-    const auto k = std::clamp (knob, 0.0, 100.0) / 100.0;
-    return k <= 0.0 ? 0.0 : 400.0 * (std::exp2 (8.0 * k) - 1.0) / 255.0;
-}
-
 double CorrectionLaw::flexGain (double u, double flex) noexcept
 {
     // The spec's knee (§4.3a) with its own curve corrected: it writes

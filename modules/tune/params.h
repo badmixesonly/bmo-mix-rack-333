@@ -1,7 +1,11 @@
 #pragma once
 
 #include "core/state/ParamSpec.h"
+#include <cmath>
+#include <cstdio>
 #include <iterator>
+#include <string>
+#include <vector>
 
 namespace bmo::tune
 {
@@ -21,13 +25,21 @@ namespace bmo::tune
 // session reloads everything but the five that are gone. Those ids are
 // retired -- never reuse one for something else. The code that used them is
 // on branch archive/hybrid-studio; testing-notes/nrt-tune-handoff-2026-09-11.md.
+//
+// A second, 2026-09-11: `retune` (a unitless 0-100 knob, exponential to
+// 0-400 ms inside the core) was REMOVED and `retune_ms` APPENDED in its place
+// (Frosty: "display ms"). A new id rather than new meaning for the old one:
+// a 0.1 session holding retune = 36 meant 10 ms, and read as milliseconds it
+// would become 36 ms without a word. So the old id is retired with the rest,
+// and a 0.1 session comes back at the new parameter's default, the hard snap.
+// The shoot-out that showed why is testing-notes/shootout-2026-09-11.md.
 //==============================================================================
 
 inline constexpr auto kModuleId   = "tune";
 inline constexpr auto kModuleName = "BMO Tune RT";
 
 // What a user reaches for first: how hard, and toward what.
-inline constexpr auto kRetune  = "retune";
+inline constexpr auto kRetuneMs = "retune_ms";
 inline constexpr auto kKey     = "key";
 inline constexpr auto kScale   = "scale";
 inline constexpr auto kRange   = "range";
@@ -42,7 +54,7 @@ inline constexpr auto kRefA    = "ref_a";
 /** Ids that 0.1 had and this version does not. Retired for good: a new
     parameter must never take one, or a 0.1 session would feed it a value
     meant for something else. SchemaTests checks none comes back. */
-inline constexpr const char* kRetiredIds[] = { "engine", "glide", "formant", "formant_shift", "latency" };
+inline constexpr const char* kRetiredIds[] = { "engine", "glide", "formant", "formant_shift", "latency", "retune" };
 
 // The twelve-note allow map: each pitch class may be switched out of the
 // scale. Twelve booleans rather than one packed integer so a host can
@@ -53,13 +65,74 @@ inline constexpr const char* kNoteIds[12] = {
 
 enum Index
 {
-    retune, key, scale, range,
+    key, scale, range,
     vibrato, flex,
     refA,
     noteC, noteCs, noteD, noteDs, noteE, noteF,
     noteFs, noteG, noteGs, noteA, noteAs, noteB,
+    retuneMs,
     count
 };
+
+/** Retune Speed's steps, in milliseconds (Frosty, 2026-09-11): 0.1 ms apart
+    from 0 to 5 ms, where hard tuning lives, then 1 ms apart to 100 ms.
+
+    A choice parameter of 146 steps rather than a float, because the rack's
+    ParamSpec is linear with one step size and the pinned core cannot be
+    changed from here. As a choice, the host shows each step's name ("0.4 ms",
+    "12 ms"), every step is exactly reachable, and the knob gives 0-5 ms about
+    a third of its travel -- a linear 0-100 ms float would give it 5 %.
+
+    The value is the one-pole time constant of the correction (tau, as
+    CorrectionLaw uses it). On the 2026-09-11 shoot-out, tau matched to
+    Antares' and Waves' 10 and 20 ms settings landed with them on real vocals,
+    so the number means about what theirs does. */
+inline constexpr int kNumRetuneSteps = 146;
+inline constexpr int kRetuneFineSteps = 51;     ///< 0.0 ... 5.0 ms, 0.1 apart
+
+inline double retuneMsOfStep (int step) noexcept
+{
+    step = step < 0 ? 0 : (step >= kNumRetuneSteps ? kNumRetuneSteps - 1 : step);
+    return step < kRetuneFineSteps ? 0.1 * step : (double) (step - kRetuneFineSteps + 6);
+}
+
+/** The step whose value is exactly `ms`, or -1 if it is not on a step. */
+inline int retuneStepOfMs (double ms) noexcept
+{
+    for (int s = 0; s < kNumRetuneSteps; ++s)
+        if (std::abs (retuneMsOfStep (s) - ms) < 1.0e-6)
+            return s;
+
+    return -1;
+}
+
+/** "0.0 ms" ... "5.0 ms", then "6 ms" ... "100 ms". Static, so the pointers
+    live as long as specs() does. */
+inline const std::vector<const char*>& retuneStepNames()
+{
+    static const std::vector<std::string> text = []
+    {
+        std::vector<std::string> t;
+        char buf[16];
+        for (int s = 0; s < kNumRetuneSteps; ++s)
+        {
+            if (s < kRetuneFineSteps) std::snprintf (buf, sizeof buf, "%.1f ms", retuneMsOfStep (s));
+            else                      std::snprintf (buf, sizeof buf, "%d ms", (int) retuneMsOfStep (s));
+            t.emplace_back (buf);
+        }
+        return t;
+    }();
+
+    static const std::vector<const char*> names = []
+    {
+        std::vector<const char*> n;
+        for (const auto& s : text)
+            n.push_back (s.c_str());
+        return n;
+    }();
+
+    return names;
+}
 
 /** The Key parameter's choices: every spelling a key signature uses, so the
     host's automation lane shows the key the way it was picked -- B♭, not A#.
@@ -115,11 +188,8 @@ inline const ParamSpecs& specs()
     {
         ParamSpecs p
         {
-            // RETUNE SPEED: 0 is the hard snap and the default, because that
-            // is what this plugin is for. The knob is exponential inside the
-            // core (CorrectionLaw::retuneMsFromKnob), so the range stays
-            // linear for the rack's ParamSpec/JUCE agreement.
-            S::floatParam (kRetune, "Retune Speed", 0.0f, 100.0f, 0.1f, 0.0f),
+            // (Retune Speed was here until 2026-09-11; it is now the last
+            // parameter, retune_ms. See the head of this file.)
 
             S::choiceParam (kKey, "Key", { std::begin (kKeySpellings), std::end (kKeySpellings) }, 0),
 
@@ -151,6 +221,10 @@ inline const ParamSpecs& specs()
 
         for (int i = 0; i < 12; ++i)
             p.push_back (S::boolParam (kNoteIds[i], names[i], true));
+
+        // RETUNE SPEED, in ms: 0.0 ms is the hard snap and the default,
+        // because that is what this plugin is for. Appended, 2026-09-11.
+        p.push_back (S::choiceParam (kRetuneMs, "Retune Speed", retuneStepNames(), 0));
 
         return p;
     }();

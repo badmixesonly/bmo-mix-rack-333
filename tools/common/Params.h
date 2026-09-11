@@ -2,7 +2,7 @@
 
 /*
     Parameters for the offline tools, by the same IDs and in the same real
-    units a host sees: `retune=0`, `scale=Major`, `latency=Studio`. Values go
+    units a host sees: `retune_ms=0.4`, `scale=Major`, `key=Bb`. Values go
     through ParamSpec::clampReal, so a tool can never set something a host
     could not.
 */
@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -60,6 +61,30 @@ inline bool setFromText (std::vector<float>& values, const std::string& id, cons
                 values[(size_t) index] = (float) c;
                 return true;
             }
+
+        // A choice list whose names are numbers with a unit -- Retune
+        // Speed's "0.4 ms", "12 ms" -- takes the number: retune_ms=12 is
+        // 12 ms. Never an index there, or retune_ms=12 would quietly be step
+        // 12, which is 1.2 ms.
+        if (spec.numChoices() > 0 && std::isdigit ((unsigned char) spec.choices[0][0]))
+        {
+            try
+            {
+                size_t used = 0;
+                const auto v = std::stod (text, &used);
+                for (int c = 0; c < spec.numChoices(); ++c)
+                    if (used == text.size() && std::abs (std::stod (spec.choices[(size_t) c]) - v) < 1.0e-6)
+                    {
+                        values[(size_t) index] = (float) c;
+                        return true;
+                    }
+            }
+            catch (...) {}
+
+            error = "'" + text + "' is not one of " + id + "'s steps (" + spec.choices.front()
+                    + " ... " + spec.choices.back() + ")";
+            return false;
+        }
     }
 
     if (spec.kind == ParamKind::Bool)

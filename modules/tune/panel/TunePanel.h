@@ -47,6 +47,10 @@ public:
     struct BoxText { juce::String id, text; float overflow; };
     std::vector<BoxText> boxTexts();
 
+    /** The Retune Speed readout under the big knob, and how much wider it is
+        than the room it is drawn in. */
+    BoxText retuneReadout();
+
     /** Reads every parameter back into the panel now, rather than on the next
         timer tick. For the snapshot tool and the tests, which have no message
         loop to wait on. */
@@ -82,6 +86,10 @@ private:
 
     juce::String keyText() const;
     juce::String refText() const;
+    juce::String retuneText() const;
+
+    static constexpr float kRetuneReadoutSize = 15.0f;
+    static juce::Rectangle<float> retuneReadoutArea();
 
     struct KnobPlace { ui::PlainKnob* knob; const char* caption; juce::Point<int> centre; int face; float captionSize; };
     std::vector<KnobPlace> knobPlaces();

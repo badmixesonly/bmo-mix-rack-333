@@ -147,7 +147,7 @@ int main()
     //== Block-size invariance and determinism (T-1) ===========================
     {
         TuneParams p;
-        p.retune = 20.0;
+        p.retuneMs = 3.2;   // 0.1's knob 20, which this check was written at
         p.vibratoPercent = 50.0;
         const auto c = sig::concat ({ sig::silence (0.05, fs), sig::vibrato (233.0, 60.0, 5.5, 0.6, fs),
                                       sig::silence (0.05, fs), sig::glide (180.0, 500.0, 0.5, fs) });

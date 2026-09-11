@@ -12,7 +12,7 @@ namespace bmo::tune
     takes, and what the adapter fills from the host's values by Index. */
 struct TuneParams
 {
-    double retune = 0.0;                 ///< 0-100 knob
+    double retuneMs = 0.0;               ///< tau in ms, on retune_ms's steps; 0 is the snap
     int key = 0;
     ScaleType scale = ScaleType::chromatic;
     Range range = Range::autoRange;

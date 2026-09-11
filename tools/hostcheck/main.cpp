@@ -177,8 +177,12 @@ int main (int argc, char** argv)
         if (scale != nullptr && retune != nullptr && key != nullptr)
         {
             set (*scale, all[(size_t) Index::scale], 2.0f);
-            set (*retune, all[(size_t) Index::retune], 37.5f);
+            set (*retune, all[(size_t) Index::retuneMs], (float) retuneStepOfMs (12.0));
             set (*key, all[(size_t) Index::key], 15.0f);
+
+            check (retune->getCurrentValueAsText() == "12 ms", "the host shows Retune Speed in ms: got "
+                                                               + retune->getCurrentValueAsText().toStdString());
+            check (retune->getNumSteps() == kNumRetuneSteps, "Retune Speed has 146 steps, 0.0 to 100 ms");
 
             juce::MemoryBlock state;
             plugin->getStateInformation (state);
@@ -198,7 +202,7 @@ int main (int argc, char** argv)
                 };
 
                 check (same ("Scale") && same ("Retune Speed") && same ("Key"),
-                       "Minor, Retune 37.5 and Key Bb survive a save and reload");
+                       "Minor, Retune 12 ms and Key Bb survive a save and reload");
             }
         }
     }

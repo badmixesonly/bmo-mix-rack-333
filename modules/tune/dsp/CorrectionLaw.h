@@ -71,10 +71,6 @@ public:
 
     const CorrectionState& state() const noexcept { return st; }
 
-    /** The retune knob (0-100) as a time constant: exponential, 0 ms at 0
-        and 400 ms at 100 (spec §4.2). Zero must be reachable exactly. */
-    static double retuneMsFromKnob (double knob) noexcept;
-
     /** The flex soft knee on its own, for its test: gain in [0, 1]. */
     static double flexGain (double absCents, double flex) noexcept;
 

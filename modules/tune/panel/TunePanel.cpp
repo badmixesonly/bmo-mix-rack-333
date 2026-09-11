@@ -294,7 +294,7 @@ private:
 //==============================================================================
 TunePanel::TunePanel (ui::ModuleContext ctx)
     : ModulePanel (std::move (ctx)),
-      retune  (context.params.param (Index::retune),  {}, ui::Knob::Style::character,
+      retune  (context.params.param (Index::retuneMs), {}, ui::Knob::Style::character,
                (float) kRetuneFace / (float) knobSide (kRetuneFace), kAccent),
       vibrato (context.params.param (Index::vibrato), {}, ui::Knob::Style::character,
                (float) kSmallFace / (float) knobSide (kSmallFace), kAccent),
@@ -446,6 +446,31 @@ void TunePanel::paintPanel (juce::Graphics& g)
         ui::drawLabel (g, k.caption, { (float) k.centre.x - 70.0f, top, 140.0f, k.captionSize * 1.2f },
                        juce::Justification::centredTop, ui::captionFont (k.captionSize), ink);
     }
+
+    // Retune Speed in milliseconds, under its caption (Frosty, 2026-09-11:
+    // "display ms"). The number is what a session is set by and what the
+    // other tuners print, so it is on the panel rather than only in the host.
+    ui::drawLabel (g, retuneText(), retuneReadoutArea(), juce::Justification::centredTop,
+                   ui::labelFont (kRetuneReadoutSize), t.text1);
+}
+
+juce::String TunePanel::retuneText() const
+{
+    return juce::String (specs()[(size_t) Index::retuneMs].text ((float) choiceOf (Index::retuneMs)));
+}
+
+juce::Rectangle<float> TunePanel::retuneReadoutArea()
+{
+    const auto track = (float) kRetuneFace * 0.5f + ui::Tokens::trackGap;
+    const auto captionTop = (float) kClock.y + track * 0.74f + 8.0f;
+    return { (float) kClock.x - 50.0f, captionTop + 18.0f * 1.2f + 4.0f, 100.0f, kRetuneReadoutSize * 1.3f };
+}
+
+TunePanel::BoxText TunePanel::retuneReadout()
+{
+    return { "Retune Speed", retuneText(),
+             juce::GlyphArrangement::getStringWidth (ui::labelFont (kRetuneReadoutSize), retuneText())
+                 - retuneReadoutArea().getWidth() };
 }
 
 //==============================================================================
@@ -480,7 +505,7 @@ std::vector<juce::Component*> TunePanel::controlsFor (int index)
 {
     switch (index)
     {
-        case Index::retune:       return { &retune };
+        case Index::retuneMs:     return { &retune };
         case Index::key:          return { keyBox.get(), &sharpButton, &flatButton };
         case Index::scale:        return { scaleBox.get() };
         case Index::range:        return { rangeBox.get() };
