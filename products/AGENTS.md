@@ -19,10 +19,17 @@ Permanent. Allocate here before the first build of anything new.
 | BMO Dimension | `dim` | `Bdim` | `com.lt3audio.bmodimension` | `.bmodim` |
 | BMO Mix Rack | -- | `Brck` | `com.lt3audio.bmomixrack` | `.bmorack` |
 | BMO DEQ | `deq` | `Bpar` | `com.lt3audio.bmodeq` | `.bmodeq` |
+| BMO Tune RT -- **not in the rack** | `tune` | `Btun` | `com.lt3audio.bmotunert` | `.bmotune` |
 
 Manufacturer code `LT3a`, company "LT3 Audio", preset root `LT3 Audio/`.
 BMO EQ keeps FrostyEQ's code and bundle id on purpose: that is what makes
 existing sessions open.
+
+**BMO Tune RT is in this repository but not in the rack** (Frosty,
+2026-09-11): its module id is allocated here so nothing else can take it, and
+so that joining the rack later needs no rename, but it is in no registry and
+on no rack link line. `modules/tune/AGENTS.md` has the rest, including the two
+build switches that keep the two sides independent.
 
 BMO Opto is a two-knob opto-style leveling compressor (CRUSH, LEVEL): a
 feedback-topology detector (the sidechain reads the signal after gain
@@ -163,6 +170,17 @@ there are distinguishable ones.
 | BMO Dimension | `#d4a4ff` | 271.6° | 6.80 | 1.73 |
 | *(not an accent)* utility azure `#4fb8e8` | | 198.8° | 6.02 | -- |
 | BMO DEQ | `#5ecfc0` teal | 172.0° | **7.19** | 1.64 |
+| BMO Tune RT (not in the rack) | `#b6e35d` lime | 80.1° | **9.10** | **1.29** |
+
+**The lime was picked outside this table**, while Tune was still its own
+repository, and its two figures are computed by the WCAG formula on AURORA
+rather than by any tool in this tree. Two things to weigh now that it is here.
+Its separation is the best that was left: 48.4° from the Saturator and 48.8°
+from BMO Util, in what was the widest remaining gap. But **1.29 on the pale
+plate is the lowest figure in the table**, where the shipped accents run 1.64
+to 2.00, so on `#efefef` it is a fainter mark than any of them. That is
+Frosty's to accept or re-pick, and it costs nothing today: no rack panel is
+near it, and a later module cannot take the lime while Tune holds it.
 
 BMO Opto has no accent and is not holding one: its panel went greyscale in
 0.2.2 so that the only colour on it could mean "engaged". Its red `#e0685a`
