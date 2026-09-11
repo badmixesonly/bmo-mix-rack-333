@@ -14,3 +14,4 @@ target_link_libraries(probe PRIVATE bmo_tune_dsp)
 
 bmo_tune_test(interpolator InterpolatorTests.cpp)
 bmo_tune_test(core CoreTests.cpp)
+bmo_tune_test(correction CorrectionTests.cpp)
