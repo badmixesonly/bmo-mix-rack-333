@@ -1,45 +1,20 @@
-# BMO Tune RT as a plugin: the rack's bmo_add_plugin, written out here because
-# this product is not built by the rack's CMakeLists.txt.
+# BMO Tune RT as a plugin, on the suite's bmo_add_plugin like every other
+# product. It is a product of this repository; it is not in the rack.
 #
 # The manufacturer code is the suite's and the plugin code is this product's.
 # Both are inputs to the VST3 identity, so both are permanent: changing either
 # orphans every session that references the plugin. Btun and
 # com.lt3audio.bmotunert were allocated by Frosty on 2026-09-10.
 #
-# Never copied into the system plugin folder by the build. Install by hand
-# from build-plugin/products/tune/BmoTuneRT_artefacts/Release/VST3.
-
-juce_add_plugin(BmoTuneRT
-    COMPANY_NAME                "LT3 Audio"
-    BUNDLE_ID                   "com.lt3audio.bmotunert"
-    PLUGIN_MANUFACTURER_CODE    LT3a
-    PLUGIN_CODE                 Btun
-    FORMATS                     VST3 Standalone
-    PRODUCT_NAME                "BMO Tune RT"
-    VERSION                     ${PROJECT_VERSION}
-    IS_SYNTH                    FALSE
-    NEEDS_MIDI_INPUT            FALSE
-    NEEDS_MIDI_OUTPUT           FALSE
-    IS_MIDI_EFFECT              FALSE
-    EDITOR_WANTS_KEYBOARD_FOCUS FALSE
-    COPY_PLUGIN_AFTER_BUILD     FALSE
-    VST3_CATEGORIES             "Fx" "Pitch Shift"
-    AU_MAIN_TYPE                kAudioUnitType_Effect)
-
-target_sources(BmoTuneRT PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
-
-target_compile_definitions(BmoTuneRT PUBLIC
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0
-    JUCE_VST3_CAN_REPLACE_VST2=0
-    JUCE_REPORT_APP_USAGE=0)
-
-target_link_libraries(BmoTuneRT
-    PRIVATE
-        bmo_tune
-        juce::juce_audio_utils
-        juce::juce_dsp
-    PUBLIC
-        juce::juce_recommended_config_flags
-        juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags)
+# INSTALL_AFTER_BUILD FALSE, where the rack's products take the suite default:
+# a Debug build installs itself over the user's plugin folder, and Tune's
+# builds are still being compared by ear against the installed 0.1. Install it
+# by hand from products/tune/BmoTuneRT_artefacts/<config>/VST3.
+bmo_add_plugin(BmoTuneRT
+    PRODUCT_NAME        "BMO Tune RT"
+    PLUGIN_CODE         Btun
+    BUNDLE_ID           "com.lt3audio.bmotunert"
+    CATEGORIES          "Fx" "Pitch Shift"
+    INSTALL_AFTER_BUILD FALSE
+    SOURCES             ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    LIBRARIES           bmo_tune)
