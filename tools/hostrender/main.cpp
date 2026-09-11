@@ -8,6 +8,7 @@
 //   bmo-tune-hostrender <plugin.vst3> [--type <name part>] in.wav out.wav
 //                       [--set "<parameter name>=<text>"] ...
 //                       [--setn "<parameter name>=<0..1>"] ... [--block N]
+//                       [--preroll seconds]
 //
 // --type picks one plugin out of a shell (WaveShell holds hundreds). --set
 // goes through the plugin's own text parsing, so values are typed as its UI
@@ -79,6 +80,7 @@ int main (int argc, char** argv)
     juce::StringArray sets;
     bool listTypes = false, listParams = false;
     int block = 128;
+    double preroll = 0.0;
 
     for (int i = 2; i < argc; ++i)
     {
@@ -89,6 +91,7 @@ int main (int argc, char** argv)
         else if (a == "--set" && i + 1 < argc)    sets.add (juce::CharPointer_UTF8 (argv[++i]));
         else if (a == "--setn" && i + 1 < argc)   sets.add ("#" + juce::String (juce::CharPointer_UTF8 (argv[++i])));
         else if (a == "--block" && i + 1 < argc)  block = juce::String (argv[++i]).getIntValue();
+        else if (a == "--preroll" && i + 1 < argc) preroll = juce::String (argv[++i]).getDoubleValue();
         else if (inPath.isEmpty())                inPath = a;
         else                                      outPath = a;
     }
@@ -149,14 +152,16 @@ int main (int argc, char** argv)
         std::cout << "set " << name << " = " << p->getCurrentValueAsText() << "\n";
     }
 
-    // Half a second of silence first, discarded: parameter changes land and
-    // any start-up state settles, without moving the timeline -- the plugin's
-    // delay line holds silence either way.
+    // No pre-roll unless asked for: the plugin starts fresh at sample 0, as
+    // Ableton's export starts it. Silence before the file is not neutral --
+    // BMO's detector evaluates on a grid of samples counted from the start,
+    // so any pre-roll moves every evaluation and changes the output (the
+    // first version ran 0.5 s of it and differed from Ableton by -28 dB).
     const auto& x = in.front();
     juce::AudioBuffer<float> buffer (2, block);
     juce::MidiBuffer midi;
 
-    for (int k = 0; k < (int) (0.5 * fs) / block; ++k)
+    for (int k = 0; k < (int) (preroll * fs) / block; ++k)
     {
         buffer.clear();
         plugin->processBlock (buffer, midi);
