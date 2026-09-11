@@ -1,175 +1,152 @@
-# Handoff: testing the questionable audio
+# Handoff: after the 2026-09-11 shoot-out and the first hiccup fixes
 
-For a fresh session reviewing BMO Tune RT against **23 audio examples**
-Frosty recorded in Ableton on 2026-09-11 -- the "hiccups" heard in the first
-build ("it works! its got some hiccups but it works"). Written on **AURORA**,
-2026-09-11, at the end of the session that built the plugin.
+For the next session on BMO Tune RT. Written on **AURORA** at the end of the
+2026-09-11 session that ran the shoot-out, measured the competition, and
+fixed the worst of the hiccups. Frosty wants the next session to **review
+the maths, the tests and the test architecture**, then **pick up the
+testing where it stopped** -- round three of the blind listening.
 
-Read first: `AGENTS.md`, then `modules/tune/AGENTS.md` (invariants, what was
-measured, what is open). This file is only about the audio.
+Read first, in this order: root `AGENTS.md` (the latency rule is new),
+`modules/tune/AGENTS.md` (the departures table has three new rows; "Open"
+is current), `testing-notes/shootout-2026-09-11.md` (what was heard, three
+rounds), `testing-notes/latency-and-lag-2026-09-11.md` (what was measured).
 
-> **Update, later on 2026-09-11, on AURORA.** What arrived was a shoot-out
-> rather than hiccup examples: two songs through Antares, Waves and 0.1 at
-> 0 / 10 / 20. It is analysed in `testing-notes/shootout-2026-09-11.md`;
-> true latency and correction lag against both, measured on a synthetic
-> reference, in `testing-notes/latency-and-lag-2026-09-11.md`. Three things
-> changed as a result: **Retune is now in milliseconds** (`retune_ms`; 0.1's
-> `retune` was a unitless knob -- 0.1's knob k was 400 (2^(8k/100) - 1) / 255
-> ms, so 10 was 1.2 ms and 36 was 10 ms -- and is retired), **the latency
-> rule** (root `AGENTS.md`), and **the open hard-tune work**
-> (`tests/dsp/HardTuneTests.cpp --target`). The method below still holds for
-> any hiccup example that turns up; read a 0.1 Retune value through that
-> formula.
-
-## Where the code is
+## Where everything is
 
 | | |
 |---|---|
-| Repository | `bmo-tune-rt`, its own repository. Pushed to Frosty's fork as branches, since it has no remote of its own: `badmixesonly/bmo-mix-rack-333`, branch **`bmo-tune-rt`** (this code) and **`bmo-tune-rt-archive-hybrid-studio`** (the engine that was set aside). Its history is unrelated to the rack's; never merge either branch into the fork's `main`, and never push anything to Kevin's `kevkloud/bmo-mix-rack`. |
-| Clone | `git clone -b bmo-tune-rt https://github.com/badmixesonly/bmo-mix-rack-333.git bmo-tune-rt`, then `git submodule update --init libs/bmo-mix-rack` |
-| Build | `scripts/build.sh` (DSP, tests, tools -- no JUCE needed for any of the audio work below); `scripts/build.sh --plugin` for the VST3 |
+| Code | this repository. Fork `badmixesonly/bmo-mix-rack-333`, branch **`bmo-tune-rt`**, pushed to `f9e479b`. Local `main` is **ahead**: `f2b0f8a` (steadier note, guard 4's later checks) and the commit that adds this file and `bmo-tune-field`. **Not pushed: Frosty's say first.** Never push to Kevin's repository. |
+| Field audio | gitignored, on AURORA only: `field-audio/shootout-2026-09-11/` -- the drys and Antares/Waves exports (`failure/`, `fuji/`, the redo folders), and BMO renders by generation: `bmo-renders/` (0.1's detector), `bmo-renders-guard4/` (`989a5ef`), `bmo-renders-hold/` (`f2b0f8a`). The blind manifests are beside them. |
+| Blind sets | `field-audio/blind-2026-09-11/` round one (answered), `-guard4/` round two (answered), **`-round3/` not yet heard.** |
+| Reference stimulus | `field-audio/reference/stimulus-48k.wav` (regenerate with `bmo-tune-ref stimulus`). Frosty's Ableton bounces of it: `C:\Users\thesp\OneDrive\Desktop\BMO TUNE refs\`. |
+| Checklist | the artifact "Tune RT Reference Run", https://claude.ai/code/artifact/beb2a260-931d-43a7-b431-ebbd563a267b -- pinned in Frosty's sidebar; rounds one and two ticked, round three added. It saves itself (the `artifact` capability): read it with the Artifact tool to see Frosty's ticks and calls. |
+| Installed VST3 | AURORA still has 0.1 in `C:\Program Files\Common Files\VST3`. Frosty has not heard any of today's changes in Ableton, only in blind renders. |
 
-## Read this before listening to anything: which build made the audio
+## What happened on 2026-09-11
 
-The examples were made with **0.1**, commit `6710e73`, the build installed in
-`C:\Program Files\Common Files\VST3` on AURORA. The code on `bmo-tune-rt` is
-**newer**: on 2026-09-11 the product went CLASSIC and Live only (`5b46af7`).
+| | found | done | heard |
+|---|---|---|---|
+| Retune | a unitless knob; the shoot-out's "10 ms" BMO was 1.2 ms | `retune_ms`, 146 steps in ms (`fd714e7`) | -- |
+| Latency | BMO 3.8 ms true, Antares 6.5 (reports 2.33), Waves 10.6 (reports 0) | the latency rule: never later than Waves (`9599b0f`) | -- |
+| Hard tune | BMO's correction lands about a cycle late on a moving voice | `hardtune_target` holds it, disabled until fixed | -- |
+| Round one | BMO last in 4 of 6 groups: pops, clicks, hunting, skips, weak phrase ends | -- | blind, Frosty |
+| Detector | a weak-fundamental voice read an octave or a twelfth up, estimate swinging a semitone | guard 4 (`989a5ef`) | round two: better than 0.1 in every group, still behind Antares |
+| Note decision | at vibrato 0, a singer between two scale notes flipped with every wobble | the dwell, "hold the note steadier" (Frosty's call); guard 4 refined (`f2b0f8a`) | **round three, not yet** |
 
-So for each example, first sort it:
+## The measurement and test architecture -- for review
 
-- **Recorded on Hybrid, or with Studio latency, Glide, or the formant
-  controls in play** -- that code is no longer in Tune RT. Note it and set it
-  aside for the non-real-time handoff
-  (`testing-notes/nrt-tune-handoff-2026-09-11.md`); do not spend time fixing
-  it here.
-- **Recorded on Classic, Live** -- this is Tune RT today, and the rest of
-  this file applies. The CLASSIC signal path did not change between 0.1 and
-  now except that Glide was removed (it was already inert on CLASSIC, proved
-  bit-exact by the old `ModeTests`), so a Classic example reproduces on
-  current code.
+Everything below is in the repository. The house rule stands: measure,
+never judge by eye or ear alone; nothing is fixed that a test does not
+first fail on; and Frosty hears every fix before it is called fixed.
 
-To render an example on 0.1 exactly, build the old commit side by side:
-`git worktree add ../tune-0.1 6710e73`.
+**The ruler** -- `tools/common/Analysis.h` `measureHz`: a full-segment
+NSDF, McLeod's peak rule, then a golden-section search on the sinc-shifted
+self-difference. Shares nothing with the plugin's detector, so it cannot
+agree with it by construction. On a voice whose fundamental is under its
+second harmonic it must be **kept to the voice's range** (60-400 Hz for a
+low male) or it is fooled the same way (Failure 1.00 s: 606 Hz unbounded,
+303 bounded). Its sinc kernel is now computed once per trial period (same
+answer to ~1e-10 c, the suites several times faster).
 
-## What Frosty should give for each example
+**The reference stimulus** -- `tools/common/Stimulus.h`, 19.5 s at 48 kHz:
+four in-tune held notes (A2 D3 E3 A3, with 30 % shimmer so a waveform
+cross-correlation has one peak), four vibratos to flatten (40-45 c,
+5.5-6.5 Hz), two notes held 30-35 c off and marked with 20 ms level dips.
+- *True latency*: the worst of the in-tune delays (waveform
+  cross-correlation) and the held-off delays (10 ms RMS envelope
+  cross-correlation, which a pitch shift does not move).
+- *Correction lag*: a correction L late leaves `out - target = L x slope`;
+  per vibrato, `L = sum(dev * slope) / sum(slope^2)` over frames of the
+  bounded ruler, the slope taken from the known contour at the output's
+  delay. Negative means looking ahead.
+- `HardTuneTests` first proves the ruler: a plain 2.5 ms delay reads 2.5 ms
+  within 0.05; ideal correctors 0, 5 and 2 ms late (the last with 3 ms of
+  audio delay) read their lag within 0.04 ms.
 
-The audio is most useful as a pair: the **dry vocal** that went into the
-plugin, and the **plugin's output** as heard. The DSP is deterministic and
-bit-identical at any host block size, so a dry file and its settings
-reproduce the output exactly -- which turns "it sounded wrong" into a
-number. Only the output? Still useful, but the session has to infer the
-input.
+**References** -- `tools/common/References.h`: Antares Auto-Tune Artist
+(Low Male) and Waves Tune Real-Time (Mono), each rendered through
+`bmo-tune-hostrender` uncompensated at 48 kHz / 128, settings recorded.
+Frosty's Ableton bounces (buffer 2048, Delay Compensation off) matched: Antares
+to -105 dB, Waves bit for bit.
 
-Put the files in `field-audio/` at the repository root. It is **gitignored**:
-the vocals may not be ours to publish, and the fork is public. Never commit
-them; a test gets a synthetic stand-in instead (below).
+**Suites** (`scripts/build.sh`): kernel, detector, interpolator,
+correction, core, schema, **hardtune** (the latency rule every run; the
+regression guard on lag), **voice** (weak fundamental, `VoiceSettings::
+fundamentalDb`, 15 cases + a held D4 through the whole plugin), and
+`hardtune_target` (disabled, fails today by design: as close as Antares).
+`--plugin` adds panel and hostcheck. `--corpus` scores 72 synthetic items.
 
-One row per example, in `field-audio/manifest.md` (a copy of this table):
+**Tools**:
 
-| # | files (dry / out) | engine | latency | key, scale | range | retune | vibrato | flex | notes off | ref A | rate / buffer | track | where (m:ss) | what it sounded like |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | `01-dry.wav` / `01-out.wav` | Classic | Live | A minor | Auto | 0 | 0 | 0 | -- | 440 | 48k / 128 | mono | 0:12, 0:31 | click on the held note |
-
-"What it sounded like" in plain words is the most important column. The
-useful vocabulary: *click or pop*, *dropout* (correction cuts out), *wrong
-note*, *octave jump*, *warble* (flips between two notes), *late* (the snap
-comes after the note starts), *doubling or phasing*, *level dip*, *robotic
-where it should not be*, *not robotic where it should be*.
-
-Also worth knowing per example: a mono or stereo track (see "stereo" below),
-and whether anything was automated during the take.
-
-## Reproducing one
-
-```
-build/tools/Release/bmo-tune-cli field-audio/01-dry.wav field-audio/01-render.wav ^
-    --set key=A --set scale=Minor --set retune_ms=0 --set vibrato=0 ^
-    --dump-analysis field-audio/01.csv
-build/tools/Release/bmo-tune-cli --list        # every parameter id and its choices
-```
-
-Choices go by name (`key=Bb`, `scale=Minor`, `range=Bass`); a note switched
-out is `note_d=0`. `--block N` sets the host block size, which should change
-nothing -- if it does, that is a bug in itself.
-
-**Confirm the reproduction before diagnosing.** Null the render against
-Frosty's output file (subtract, sample-aligned; `tools/common/Analysis.h`
-has `delayOf` for the alignment). If they do not null, find out why first --
-settings, automation, the 0.1-versus-now question, or stereo:
-
-- **Stereo.** The plugin corrects the **left** channel and copies it to the
-  right. `bmo-tune-cli` **sums** multichannel input to mono. On a stereo
-  source whose channels differ, the two disagree. Split the left channel out
-  first, or give the CLI a `--channel` option (a small, worthwhile change).
-  And if a stereo vocal is part of the complaint -- "the right side
-  vanished", "it went narrow" -- that is the known limitation in
-  `testing-notes/tune-0.1-first-build-2026-09-10.md`, not a new fault.
-
-## Reading the analysis
-
-`--dump-analysis` writes one row per detector evaluation and per splice:
-
-| column | meaning |
+| tool | what for |
 |---|---|
-| `n` | sample index -- seconds = n / rate |
-| `evaluated`, `f0`, `clarity` | the detector ran here; its pitch in Hz and its confidence, 0-1 |
-| `voiced` | whether it believes a note is sounding |
-| `pitch_in` | the pitch the correction used, in semitones from A4 (after jump confirmation) |
-| `target`, `note` | the note it is correcting toward |
-| `applied_cents` | the correction sent to the engine |
-| `ratio`, `lag` | the engine's read rate and its delay behind the input, in samples |
-| `splice` | 1 where the engine jumped a whole period to stay in its window |
+| `bmo-tune-ref` | writes the stimulus; scores any render of it; `bmo` renders and scores BMO |
+| `bmo-tune-hostrender` | any VST3, uncompensated, no pre-roll unless `--preroll` (pre-roll shifts BMO's detector grid). Auto-Tune's choices only take `--setn` (Low Male = 0.5) |
+| `bmo-tune-blind` | a blind set from a manifest: onset-aligned (within 0.11 ms), level-matched, 24-bit, shuffled letters, `KEY.txt` apart |
+| **`bmo-tune-field`** | new: the hiccup numbers for a real take -- detector vs ruler (on the note / octave up / twelfth up / octave down), note-name flips (neighbours vs jumps), dropouts, splices |
+| `bmo-tune-cli`, `-latency`, `-bench`, `-gen`, `-score` | as before |
 
-What to look for, by complaint -- starting points, not conclusions:
+**Things learned the hard way** -- a 16-bit dithered dry cannot null
+against a render sample for sample (compare pitch tracks instead); Ableton
+matches the offline core bit for bit until 4.71 s of the stimulus and then
+drifts at -79 dB (cause unknown, moves no score); Waves' output depends on
+the host block size; the Files pane has no save button, so Frosty answers
+by commenting on the lines of `ANSWERS.md` and the session writes them in;
+the scratchpad is wiped between sessions, so tools belong in the repository.
 
-| complaint | look at | likely suspects |
-|---|---|---|
-| click / pop | `splice` rows at that time; `lag` jumping | a splice over material that is not periodic (breath, a voiced consonant), where the half-period crossfade has nothing correlated to cross; the homing fade |
-| wrong note, octave jump | `f0` against the real pitch; `note` changes | an octave error the jump confirmation let through (it waits for one agreeing estimate); the note decision; the scale mask |
-| warble on a held note | `note` flipping between two neighbours | the **known** vibrato 0 behaviour -- at vibrato 0 the note follows the raw pitch, so a vibrato across a boundary flips (`modules/tune/AGENTS.md`, "Open"). By design for hard tune; whether it is too much is Frosty's call |
-| dropout / correction cutting in and out | `voiced` toggling; `clarity` near 0.60-0.85 | the voicing hysteresis (0.85 on, 0.60 off), the -55 dB gate, the stability gate; the 10 ms release |
-| late snap at note starts | time from onset to the first `voiced` row near the note | lock takes 2.2-2.6 periods by measurement -- about 11 ms on an A3; the quarter-period attack |
-| doubling, phasing, comb | `lag` wandering during a note | the Live window: the read wanders up to a period behind while correcting (1.5 ms at A4, 2.5 ms at A3) -- against a dry copy of the vocal elsewhere in the session, that is a comb filter |
-| chipmunk or dark tone on big corrections | -- | CLASSIC moves formants with the pitch by design (spec §5.3). Not a fault |
+## Numbers to hold -- the baseline at `f2b0f8a`, on AURORA
 
-## Turning a hiccup into a test, then a fix
+```
+build/tools/Release/bmo-tune-field "field-audio/shootout-2026-09-11/failure/Antares Failure DRY.wav" --set key=D --set scale=Major --set retune_ms=0
+  on the note 90.2 % | octave up 0.7 % | twelfth up 0.5 % | octave down 1.4 % | other 5.8 % | unvoiced 1.4 %
+  note-name changes 322; flips back within 80 ms 99 (neighbours 33, jumps 66); dropouts 15; splices 155
+build/tools/Release/bmo-tune-field "field-audio/shootout-2026-09-11/fuji/Waves Tune Fuji no tune.wav" --set key=G --set scale=Major --set retune_ms=0
+  on the note 91.2 % | octave up 0.4 % | twelfth up 0.1 % | octave down 0.0 % | other 4.2 % | unvoiced 4.1 %
+  note-name changes 149; flips back within 80 ms 19 (neighbours 16, jumps 3); dropouts 12; splices 96
+build/tools/Release/bmo-tune-ref bmo
+  true latency 3.66 ms | correction lag 6.21 ms mean, 8.96 worst | RMS 6.61 c   (Waves ceiling 10.62)
+```
 
-The house rule, from both repositories: **measure, never judge a render by
-eye or ear alone** -- and fix nothing a test does not first fail on.
+Corpus: mean gross error 1.934 % (1.935 % before today). Two residuals
+against "no score worse anywhere": `transition_octave_0ms` one frame
+(0.3791 -> 0.3794 %), `onset_220Hz` 20 ms and 100 ms lock 0.11 ms later.
+Frosty has not accepted those; they are Frosty's call. CPU median 0.88-0.94 %
+at 48 kHz / 128. (Note: 0.1 on Failure had 8.5 % octave up and 2 % twelfth
+up; the flip counts from the day's scratch scripts, 407 -> 103, counted
+across unvoiced gaps and read a few higher than `bmo-tune-field`.)
 
-1. Find the shortest excerpt that shows it, and the analysis rows that
-   explain it.
-2. Rebuild it synthetically -- `tools/common/Signals.h` (`voice`, `glide`,
-   `vibrato`, `step`, noise at an SNR) or a new `bmo-tune-gen` corpus item --
-   so the test ships without anyone's vocal in it. If it will not reproduce
-   synthetically, that is a finding too: say what the real audio has that
-   the generator lacks.
-3. Write the failing check in `tests/dsp/` (one `check` per claim, the claim
-   as a sentence, the measured number `report`ed), measured with
-   `tools/common/Analysis.h` -- never the plugin's own detector.
-4. Fix it. Then all of `scripts/build.sh`, `scripts/build.sh --plugin`,
-   `scripts/build.sh --corpus`, `bmo-tune-latency --range all` and
-   `bmo-tune-bench --quick` must pass, and the corpus scores should not get
-   worse anywhere (today: gross pitch error 0.10 % mean, 1.06 % worst).
-5. Record it in `modules/tune/AGENTS.md` -- the departure, the number, the
-   test that holds it -- and move the item out of "Open".
+## Pick up here, in order
 
-Frosty listens to every fix before it is called fixed; a passing test
-is necessary, not sufficient.
+1. **Round three.** Frosty listens to `field-audio/blind-2026-09-11-round3`
+   (Failure 0 and 20 ms: round two's BMO against today's; Fuji 0 ms: 0.1
+   against today's; Antares in each). Answers arrive as comments on the
+   lines of its `ANSWERS.md` -- write them in, then open `KEY.txt`, then
+   record the result in `testing-notes/shootout-2026-09-11.md`, as rounds
+   one and two are. The checklist has the same three groups.
+2. **Frosty's calls** (on the checklist): push `f2b0f8a` and this commit;
+   accept the two corpus residuals or keep working.
+3. **The pops still heard** -- the 66 jump flips on Failure, mostly on
+   scoops: a harmonic read during a slide, each a splice by a wrong period.
+   `bmo-tune-field --csv` gives BMO's estimate per evaluation; the ruler
+   bounded gives the truth. Rebuild one synthetically (a scoop of 150-200 c
+   in 50-80 ms on a weak-fundamental voice is the first guess), make it fail
+   in `VoiceTests`, fix, re-measure on both takes and the corpus.
+4. **Dropouts and weak phrase ends** -- 15 on Failure, 12 on Fuji under 80
+   ms; the voicing hysteresis (0.85 on / 0.60 off), the -55 dB gate and the
+   10 ms release are the suspects.
+5. **The correction lag** -- `hardtune_target`. Predict the pitch forward by
+   the estimate's age, or delay the audio up to the Waves ceiling (BMO has
+   ~7 ms of headroom). Frosty listens before it is called fixed.
+6. **Waves' ceiling across block sizes** -- measured at 128 and 2048 only;
+   its output depends on the block size. Sweep 32-2048 with `hostrender`
+   and keep the lowest as the ceiling if they differ.
 
 ## Rules that still hold
 
-- Name the machine in anything that records where something happened --
+- Name the machine in anything that records where something happened:
   AURORA (laptop, `C:\Users\thesp`) or ICE QUEEN (desktop, `C:\Users\stefr`).
-  Never infer ICE QUEEN's state from AURORA's disk.
-- The parameter schema is frozen; five ids are retired for good
-  (`kRetiredIds`). A fix that needs a new parameter appends one, and argues
-  for it in `tests/dsp/SchemaTests.cpp`.
+- The schema is frozen; new meaning gets a new id (`kRetiredIds`).
 - No FFT in the correction path; nothing allocates after `prepare()`; the
-  host is told 0 latency, always.
-- Pushes only with Frosty's say, to the fork's `bmo-tune-rt` branch -- never
-  to Kevin's repository.
-- Downloads (pluginval, real corpora, anything) need Frosty's permission.
-- The licensed fonts and the field audio are never committed.
-- The installed VST3 on AURORA is still 0.1 until someone copies a new build
-  over it.
+  host is told 0; true latency never over Waves' (the latency rule).
+- Field audio, blind sets and the licensed fonts are never committed.
+- Pushes only with Frosty's say, to the fork's `bmo-tune-rt`.

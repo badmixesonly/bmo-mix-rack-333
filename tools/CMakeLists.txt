@@ -13,6 +13,7 @@ bmo_tune_tool(bmo-tune-latency latency/main.cpp)
 bmo_tune_tool(bmo-tune-bench bench/main.cpp)
 bmo_tune_tool(bmo-tune-ref ref/main.cpp)
 bmo_tune_tool(bmo-tune-blind blind/main.cpp)
+bmo_tune_tool(bmo-tune-field field/main.cpp)
 
 # The panel, rendered to a PNG with no display: needs JUCE and the product.
 if(NOT BMO_DSP_ONLY)
