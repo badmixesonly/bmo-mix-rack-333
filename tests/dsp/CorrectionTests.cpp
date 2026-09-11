@@ -263,6 +263,41 @@ int main()
         check (k.noteChanges == 0, "at 100 % the same vibrato never changes note");
     }
 
+    //== Outliers and leaps never become interval-sized corrections ============
+    // The bug the corpus found: a note median paired a held note with a pitch
+    // that had already jumped, and the engine was told to shift by the whole
+    // interval -- +1200 cents on a one-frame octave error at a note's end.
+    {
+        CorrectionSettings s;   // chromatic: no correction should ever exceed 50 cents
+
+        // One evaluation an octave low, mid-note.
+        const auto blip = (size_t) (0.3 * fs);
+        const auto outlier = drive ([blip] (size_t i) { return (i >= blip && i < blip + 24) ? 220.0 : 441.0; },
+                                    (size_t) (0.6 * fs), s);
+        double worst = 0.0;
+        for (auto a : outlier.applied)
+            worst = std::max (worst, std::abs (a));
+        report ("one-frame octave outlier: largest correction", worst, "c");
+        check (worst < 50.0, "a lone octave-error frame never drives more than a chromatic correction");
+        check (outlier.noteChanges == 0, "and never changes the note");
+
+        // Real leaps, sung slightly off: every correction stays chromatic-sized.
+        for (auto semis : { 5, 7, 12, -12 })
+        {
+            const auto step = (size_t) (0.3 * fs);
+            const auto to = 330.0 * std::exp2 (semis / 12.0) * std::exp2 (15.0 / 1200.0);
+            const auto leap = drive ([step, to] (size_t i) { return i < step ? 330.0 * std::exp2 (-10.0 / 1200.0) : to; },
+                                     (size_t) (0.6 * fs), s);
+            double biggest = 0.0;
+            for (auto a : leap.applied)
+                biggest = std::max (biggest, std::abs (a));
+            char buf[96];
+            std::snprintf (buf, sizeof buf, "leap of %+d semitones: largest correction", semis);
+            report (buf, biggest, "c");
+            check (biggest <= 50.0, std::string ("a real leap is never corrected by its interval: ") + std::to_string (semis));
+        }
+    }
+
     //== Glide: HYBRID only (spec §4.5) ========================================
     {
         const auto step = (size_t) (0.2 * fs);

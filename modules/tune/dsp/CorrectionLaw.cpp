@@ -12,11 +12,6 @@ namespace
     {
         return seconds > 0.0 ? 1.0 - std::exp (-1.0 / (sampleRate * seconds)) : 1.0;
     }
-
-    int medianOf3 (int a, int b, int c)
-    {
-        return std::max (std::min (a, b), std::min (std::max (a, b), c));
-    }
 }
 
 double CorrectionLaw::retuneMsFromKnob (double knob) noexcept
@@ -64,10 +59,10 @@ void CorrectionLaw::reset()
 {
     pitchIn = pitchSlow = 0.0;
     havePitch = voiced = false;
+    havePendingJump = false;
     clarity = period = 0.0;
     note = -1;
     haveNote = false;
-    recentCount = 0;
     target = glideFrom = glideTo = 0.0;
     glideLength = glidePosition = 0;
     errorSlow = applied = confidence = gate = 0.0;
@@ -107,27 +102,48 @@ bool CorrectionLaw::decideNote (double pitch, const MidiTarget& midi, int& decid
             return false;
     }
 
-    int raw = 0;
-    if (! nearestAllowed (pitch, mask, note, haveNote, s.hysteresisCents, raw))
-        return false;
+    return nearestAllowed (pitch, mask, note, haveNote, s.hysteresisCents, decided);
+}
 
-    // Median of the last three raw decisions (guard 5 in spec §3.5): on the
-    // note decision, never on the period, so it costs no audio latency --
-    // one evaluation of delay on a note change, a quarter period at most.
-    if (recentCount == 0)
+double CorrectionLaw::confirmPitch (double latest) noexcept
+{
+    // Guard 5 of spec §3.5, moved from the note to the pitch, and narrowed to
+    // jumps.
+    //
+    // The spec puts a median on the note decision only, to keep it off the
+    // period. But a median on the note, with the error computed from the
+    // fresh pitch, pairs a held note with a pitch that has already moved, and
+    // the engine is then told to correct by the whole interval. Measured: a
+    // one-frame octave error at a note's end drove +1200 cents, and every real
+    // leap drove its full interval for a hop or two.
+    //
+    // A median on the pitch fixed that but delayed every estimate by a hop,
+    // which doubled the residual on a fast vibrato (1.0 to 2.0 cents peak to
+    // peak) for no gain: vibrato, jitter and glides move a few cents per hop,
+    // never 75. So only a jump has to be confirmed -- by the next estimate
+    // agreeing with it. A lone outlier is dropped from the note and the error
+    // together; a real leap lands one evaluation late (half a millisecond, or
+    // a quarter period) with nothing in between; everything else is untouched.
+    constexpr double jump = 0.75;   // semitones
+
+    if (! havePendingJump && std::abs (latest - pitchIn) <= jump)
+        return latest;
+
+    if (havePendingJump && std::abs (latest - pendingJump) <= jump)
     {
-        recent.fill (raw);
-        recentCount = 3;
-    }
-    else
-    {
-        recent[0] = recent[1];
-        recent[1] = recent[2];
-        recent[2] = raw;
+        havePendingJump = false;
+        return latest;
     }
 
-    decided = medianOf3 (recent[0], recent[1], recent[2]);
-    return true;
+    if (havePendingJump && std::abs (latest - pitchIn) <= jump)
+    {
+        havePendingJump = false;   // the jump was a lone outlier
+        return latest;
+    }
+
+    pendingJump = latest;
+    havePendingJump = true;
+    return pitchIn;
 }
 
 void CorrectionLaw::setNote (int newNote) noexcept
@@ -176,16 +192,21 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated, const MidiTa
         if (e.voiced && e.period > 0.0)
         {
             period = e.period;
-            pitchIn = pitch::semitonesFromHz (fs / e.period, s.refA);
+            const auto fresh = pitch::semitonesFromHz (fs / e.period, s.refA);
 
             if (e.onset || ! havePitch)
             {
                 // A new note starts from itself: no slow state carried from
-                // the last phrase, no correction carried either.
-                pitchSlow = pitchIn;
-                recentCount = 0;
+                // the last phrase, no correction carried either, and nothing
+                // to confirm a jump against.
+                pitchIn = pitchSlow = fresh;
+                havePendingJump = false;
                 haveNote = false;
                 applied = 0.0;
+            }
+            else
+            {
+                pitchIn = confirmPitch (fresh);
             }
 
             havePitch = true;

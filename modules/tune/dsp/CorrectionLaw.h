@@ -46,8 +46,11 @@ struct CorrectionState
 
     The chain, in order:
 
-        quantize   nearest allowed note (or the MIDI note), median-of-3 over
-                   evaluations, with hysteresis toward the held note
+        confirm    a pitch jump of more than 3/4 semitone waits for the next
+                   estimate to agree; see confirmPitch() for why this replaces
+                   the spec's median on the note
+        quantize   nearest allowed note (or the MIDI note), with hysteresis
+                   toward the held note
         glide      target slew on a note change -- HYBRID only
         error      e = 100 (target - p_in)
         vibrato    e - beta (e - LP3Hz(e)): correct the slow part of the
@@ -86,6 +89,7 @@ public:
 
 private:
     bool decideNote (double pitchForDecision, const MidiTarget&, int& note) noexcept;
+    double confirmPitch (double latest) noexcept;
     void setNote (int note) noexcept;
 
     CorrectionSettings s;
@@ -104,8 +108,8 @@ private:
     // Target-side state.
     int note = -1;
     bool haveNote = false;
-    std::array<int, 3> recent {};
-    int recentCount = 0;
+    double pendingJump = 0.0;
+    bool havePendingJump = false;
     double target = 0.0, glideFrom = 0.0, glideTo = 0.0;
     int glideLength = 0, glidePosition = 0;
 

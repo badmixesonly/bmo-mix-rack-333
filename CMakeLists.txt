@@ -51,6 +51,9 @@ function(bmo_add_dsp_tool target)
     add_executable(${target} ${ARGN})
     target_include_directories(${target} PRIVATE ${BMO_INCLUDE_ROOTS})
     bmo_tune_warnings(${target})
+    if(MSVC)
+        target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS)
+    endif()
 endfunction()
 
 # Sanitizers for the offline harness (spec T-1). MSVC has ASan only; UBSan,
