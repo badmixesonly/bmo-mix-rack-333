@@ -476,16 +476,39 @@ bool Detector::refine (double centre, double& period, double& clarity) noexcept
     if (hi <= lo)
         return false;
 
+    // Coarse to fine inside the bracket. The bracket is 2 x decimation wide,
+    // which is 37 lags at 192 kHz, each a period of multiply-adds -- about
+    // 260k in one evaluation, landing in one host block. Stepping by half the
+    // decimation factor and then refining around the best visits ~19 lags
+    // instead; the NSDF peak spans several samples at these rates, so the
+    // stride cannot step over it.
+    const auto stride = std::max (1, decimation / 2);
     int bestLag = lo;
     double bestValue = -2.0;
 
-    for (int L = lo; L <= hi; ++L)
+    for (int L = lo; L <= hi; L += stride)
     {
         const auto v = fullNsdf (L, window);
         if (v > bestValue)
         {
             bestValue = v;
             bestLag = L;
+        }
+    }
+
+    if (stride > 1)
+    {
+        const auto centreLag = bestLag;
+        for (int L = std::max (lo, centreLag - stride + 1); L <= std::min (hi, centreLag + stride - 1); ++L)
+        {
+            if (L == centreLag)
+                continue;
+            const auto v = fullNsdf (L, window);
+            if (v > bestValue)
+            {
+                bestValue = v;
+                bestLag = L;
+            }
         }
     }
 
