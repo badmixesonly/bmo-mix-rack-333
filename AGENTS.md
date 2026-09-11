@@ -58,6 +58,9 @@ A saved session references these, so they are permanent once shipped:
   (`com.lt3audio.*`), the manufacturer code `LT3a`, and product names.
 - Module ids (`eq`, `sat`, `util`) and the state tags `PARAMS`, `RACK`, `SLOT`.
 - The rack grid: 8 slots x 32 parameters, spec index `i` on `slotN_p(i+1)`.
+  That is a count of host lanes, not a cap on a module: one with more than
+  32 parameters keeps the rest off the grid (`core/rack/SlotOverflow.h`),
+  so they cannot be automated in a rack.
 
 `tests/plugin/*Tests.cpp` write all of this out and fail on drift. If a
 change is genuinely wanted, the test is where the decision gets recorded --

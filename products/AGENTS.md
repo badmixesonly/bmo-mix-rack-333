@@ -18,6 +18,7 @@ Permanent. Allocate here before the first build of anything new.
 | BMO Opto | `opto` | `Bopt` | `com.lt3audio.bmoopto` | `.bmoopto` |
 | BMO Dimension | `dim` | `Bdim` | `com.lt3audio.bmodimension` | `.bmodim` |
 | BMO Mix Rack | -- | `Brck` | `com.lt3audio.bmomixrack` | `.bmorack` |
+| *BMO DEQ -- held, not built* | `deq` | `Bpar` | `com.lt3audio.bmodeq` | `.bmodeq` |
 
 Manufacturer code `LT3a`, company "LT3 Audio", preset root `LT3 Audio/`.
 BMO EQ keeps FrostyEQ's code and bundle id on purpose: that is what makes
@@ -42,46 +43,63 @@ It takes the lavender `#d4a4ff` that BMO Opto carried until 0.2.2 and gave
 up when its panel went greyscale. Nothing else uses it; see
 `modules/opto/Module.cpp` for why it was free.
 
-Reserved for later products (not built, do not reuse): `Bpar` parametric EQ
-(BMO Parametric, `com.lt3audio.bmoparametric`, `.bmopar`), `Bfet` FET comp,
+**BMO DEQ** is the zero-latency dynamic parametric EQ, and the row above is
+its identity. It was reserved as "BMO Parametric" until 2026-09-10, when
+Frosty named it BMO DEQ and gave it everything that reservation held: the
+plugin code `Bpar` and the teal `#5ecfc0` carry over unchanged. The bundle id
+and preset extension, which were `com.lt3audio.bmoparametric` and `.bmopar`,
+were re-derived from the new name, and the module id is `deq` rather than
+`par`. None of these had shipped, so changing them cost nothing. The row is
+permanent from the product's first build, and until then it is held and
+nothing else may use it.
+
+BMO DEQ may have more than 32 parameters. A rack slot still has 32 host
+lanes; the module's first 32 parameters take them and the rest are kept in
+the slot's state, off the host grid -- see `modules/AGENTS.md`, step 2.
+
+Reserved for later products (not built, do not reuse): `Bfet` FET comp,
 `Bdyn` dynamics, `Bdes` de-esser, `Bovr` overdrive,
 `Bcmp` compressor, `Bdly` delay, `Brvb` reverb.
 
-## BMO EQ and BMO Parametric — settle the name before building the module
+## BMO EQ and BMO DEQ — settle BMO EQ's name
 
-**Status: BMO Parametric is deferred until BMO Dimension passes its Ableton
-pass.** Nothing is being built. `Bpar`, the bundle id, the preset extension
-and the teal are held, not spent.
+**Status (2026-09-10): not decided.** **BMO CEQ**, for console EQ, is the
+leading proposal for BMO EQ's new name. Frosty has not chosen it or any
+other name, and nothing has been renamed. BMO DEQ's identity is settled
+(above) and the core lets it go past 32 parameters.
+
+This section was written while BMO DEQ was still "BMO Parametric", and the
+argument below is that one's. The new names make the fix clearer, not
+different.
 
 **The two do not fight over function.** BMO EQ is a Neve 1084 model:
 frequency selectors are *stepped* choice parameters, the curve shapes come
 out of the LC network in `modules/eq/dsp/EqNetwork.h` rather than from
 coefficients, there is no continuous Q anywhere -- only a Hi-Q toggle on the
-mid -- and it saturates and oversamples. A parametric EQ is continuous
-frequency, continuous Q, and clean. Those are two different instruments and
-a mix wants both.
+mid -- and it saturates and oversamples. BMO DEQ is continuous frequency,
+continuous Q, dynamic, and clean. Those are two different instruments and a
+mix wants both.
 
 **They fight over the name, and the name is backwards.** "BMO EQ" claims
-the generic word while being the *specific* product, and "BMO Parametric"
-reads as a variant while being the general-purpose one. Someone scanning a
-device list will reach for BMO EQ expecting a full EQ, find stepped
-frequencies and no Q, and conclude the suite is missing something it is not.
+the generic word while being the *specific* product. Next to it, "BMO DEQ"
+reads as a variant of BMO EQ while being the general-purpose one. Someone
+scanning a device list will reach for BMO EQ expecting a full EQ, find
+stepped frequencies and no Q, and conclude the suite is missing something
+it is not.
 
-**The fix is to rename BMO EQ so its name says what it is.** "BMO Vintage
-EQ" works. **"BMO Console EQ" is better** -- it is literally a console
-channel EQ, and "vintage" is a word about marketing rather than about
-behaviour, so it tells a user nothing when they are choosing between two
-equalisers. Either beats leaving the generic word on the specific product.
-Do not rename BMO Parametric to solve this; the general-purpose one is the
-one entitled to plain naming.
+**The proposed fix is to rename BMO EQ so its name says what it is.** The
+proposal is **BMO CEQ**. It would pair with BMO DEQ as two equals, where "BMO
+EQ" and "BMO DEQ" read as a product and its variant. The earlier proposal
+was "BMO Console EQ", over "BMO Vintage EQ", because "vintage" describes
+marketing rather than behaviour. Whatever the name, do not rename BMO DEQ to
+solve this.
 
-**Rename it after the Ableton pass and before BMO Parametric starts.** Not
-before: BMO EQ is in the build under test right now, and changing its name
-mid-cycle muddies a test that is about Dimension. Not later either -- the
-cost of this rename is proportional to how many testers are on the old name,
-so it only ever gets more expensive. It is also the *second* rename in this
-product's life, after FrostyEQ, which is an argument for doing it once more
-and never again rather than for flinching.
+**Proposed timing: before BMO DEQ ships. Not decided either.** This used to
+say "after the Ableton pass": BMO EQ was in the build under test, and a
+rename mid-cycle would muddy a test about Dimension. The other half still
+holds. The cost of the rename grows with every tester on the old name, and
+it is the *second* rename in this product's life after FrostyEQ. That argues
+for doing it once more and never again, not for flinching.
 
 ### What the rename touches
 
@@ -100,7 +118,7 @@ and never again rather than for flinching.
 - **Module id `eq`.** It is in saved state, rack presets and automation.
   Ids and display names are already decoupled everywhere -- `util` is "BMO
   Util", `dim` is "BMO Dimension" -- so `eq` staying `eq` under a new display
-  name is the existing pattern, not an exception. BMO Parametric takes `par`.
+  name is the existing pattern, not an exception. BMO DEQ takes `deq`.
 - **The parameter schema.** Untouched; this is a label change.
 
 ### The one real code change
@@ -139,7 +157,7 @@ there are distinguishable ones.
 | BMO Opto | none -- `tokens().neutral` `#ababab` | -- | -- | -- |
 | BMO Dimension | `#d4a4ff` | 271.6° | 6.80 | 1.73 |
 | *(not an accent)* utility azure `#4fb8e8` | | 198.8° | 6.02 | -- |
-| **reserved** -- BMO Parametric | `#5ecfc0` teal | 172.0° | **7.19** | 1.64 |
+| **held** -- BMO DEQ | `#5ecfc0` teal | 172.0° | **7.19** | 1.64 |
 
 BMO Opto has no accent and is not holding one: its panel went greyscale in
 0.2.2 so that the only colour on it could mean "engaged". Its red `#e0685a`
@@ -150,15 +168,22 @@ The azure is not a module accent and is not available as one. It is the
 utility-knob colour and appears on every panel in the suite, which is
 exactly what makes it the hue everything else has to stay away from.
 
-**The teal reservation carries a known objection, recorded so it is not
-rediscovered as new.** It was the candidate for BMO Dimension and lost to
+**The teal is BMO DEQ's.** It was held for "BMO Parametric" and passed to
+BMO DEQ with the rest of that reservation on 2026-09-10. It is spent on the
+module's first build: its `ModuleDef` takes `0xff5ecfc0`, and this row loses
+"held".
+
+**The teal carries a known objection, recorded so it is not rediscovered as
+new.** It was the candidate for BMO Dimension and lost to
 the lavender on separation: teal sits **26.8° from the utility azure**, and
 the azure is on every panel including whichever one takes the teal. Lavender
 had 64.4° to its nearest neighbour. Teal is the best of a thin remaining
 field rather than a good hue, and it wins on the dark plate -- 7.19:1 is the
 highest in the table. Also worth weighing before it is spent: at 172° it is
 about as far from BMO EQ's 336° as two colours get, which reads as
-*unrelated*, and a parametric EQ may want to read as EQ's sibling instead.
+*unrelated*, and BMO DEQ may want to read as the console EQ's sibling
+instead. Frosty assigned the teal knowing this; the objection is here so
+that nobody raises it again as a new finding.
 
 If the teal is passed over, the field measured for Dimension was
 periwinkle `#8fa4ff` (228.8°, 29.9° from azure, 5.74 dark), gold `#e8c95a`

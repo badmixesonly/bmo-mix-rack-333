@@ -7,6 +7,10 @@
     It is spec order -- parameter i of a module lands on p(i+1) -- and the
     bank tables here spell that out per module so that reordering a specs()
     list turns into a failing build.
+
+    A module may have more parameters than a slot has lanes. The grid does
+    not grow for it; the ones past p32 are held off the grid, and a synthetic
+    40-parameter module below checks everything still reaches them.
 */
 
 #include "TestUtil.h"
@@ -17,6 +21,7 @@
 #include "modules/eq/params.h"
 #include "modules/opto/params.h"
 #include "modules/sat/params.h"
+#include "modules/util/Module.h"
 #include "modules/util/params.h"
 
 using namespace test;
@@ -51,6 +56,56 @@ namespace
             out.push_back (rack.getModuleAt (s)->id);
         return out;
     }
+
+    //== A module with more parameters than a slot has lanes ==================
+    // Nothing shipping has one yet. Forty plain 0..1 parameters, the last of
+    // which is the module's gain, so a test can hear whether a parameter past
+    // the grid reaches the DSP.
+    constexpr int kWideParams = 40;
+
+    struct WideDsp final : bmo::ModuleDsp
+    {
+        void prepare (double, int, int) override {}
+        void reset() override {}
+        void setParams (const float* v, int count) override { gain = count == kWideParams ? v[kWideParams - 1] : 0.0f; }
+        int latencyForParams (const float*, int) const override { return 0; }
+
+        void process (float* const* channels, int numChannels, int numSamples) override
+        {
+            for (int ch = 0; ch < numChannels; ++ch)
+                juce::FloatVectorOperations::multiply (channels[ch], gain, numSamples);
+        }
+
+        float gain = 1.0f;
+    };
+
+    const bmo::ModuleDef& wideModule()
+    {
+        static const std::vector<std::string> ids = []
+        {
+            std::vector<std::string> out;
+            for (int i = 1; i <= kWideParams; ++i)
+                out.push_back ("p" + std::string (i < 10 ? "0" : "") + std::to_string (i));
+            return out;
+        }();
+
+        static const bmo::ParamSpecs specs = []
+        {
+            bmo::ParamSpecs out;
+            for (const auto& id : ids)
+                out.push_back (bmo::ParamSpec::floatParam (id.c_str(), id.c_str(), 0.0f, 1.0f, 0.0f, 1.0f));
+            return out;
+        }();
+
+        static const std::vector<bmo::FactoryPreset> presets { { "Init", {} } };
+
+        static const bmo::ModuleDef def {
+            "wide", "Wide", 1, 160, juce::Colours::grey, specs, presets,
+            [] { return std::make_unique<WideDsp>(); },
+            {} };
+
+        return def;
+    }
 }
 
 int main()
@@ -79,10 +134,11 @@ int main()
 
         check (registry.size() == 5, "the registry holds util, eq, sat, opto and dim");
 
+        // A bank is a module's host lanes, so it stops at 32 even if the
+        // module does not. Past that, its golden schema test pins the order.
         for (auto* def : registry)
         {
-            check ((int) def->specs.size() <= RackProcessor::kParamsPerSlot,
-                   juce::String (def->id) + " fits in a slot");
+            const auto lanes = juce::jmin (def->specs.size(), (size_t) RackProcessor::kParamsPerSlot);
 
             const Bank* bank = nullptr;
             for (const auto& b : kBanks)
@@ -95,11 +151,11 @@ int main()
                 continue;
             }
 
-            check (bank->ids.size() == def->specs.size(),
-                   juce::String (def->id) + " has " + juce::String ((int) def->specs.size())
-                       + " parameters; the bank table lists " + juce::String ((int) bank->ids.size()));
+            check (bank->ids.size() == lanes,
+                   juce::String (def->id) + " has " + juce::String ((int) lanes)
+                       + " host lanes; the bank table lists " + juce::String ((int) bank->ids.size()));
 
-            for (size_t i = 0; i < juce::jmin (bank->ids.size(), def->specs.size()); ++i)
+            for (size_t i = 0; i < juce::jmin (bank->ids.size(), lanes); ++i)
                 check (juce::String (def->specs[i].id) == bank->ids[i],
                        juce::String (def->id) + " p" + juce::String ((int) i + 1) + " should be '"
                            + bank->ids[i] + "', is '" + def->specs[i].id + "'");
@@ -301,6 +357,92 @@ int main()
         juce::FloatVectorOperations::fill (buffer.getWritePointer (0), 0.7f, 512);
         rack->processBlock (buffer, midi);
         checkClose (buffer.getSample (0, 100), 0.7, 1.0e-6, "an empty rack passes audio");
+    }
+
+    //== More than 32 parameters: the grid stays, the rest go off it ===========
+    // The first 32 take the slot's lanes as any module's do. The rest are the
+    // module's in every way but one -- panel, DSP, presets, saved state and
+    // chain edits all reach them -- and the host never sees them.
+    {
+        const auto sandbox = juce::File::getSpecialLocation (juce::File::tempDirectory)
+                                 .getChildFile ("bmo-rack-wide-tests");
+        sandbox.deleteRecursively();
+        bmo::PresetManager::setDirectoryForTesting (sandbox);
+
+        auto& wide = wideModule();
+        auto& util = bmo::util::module();
+        const auto last = kWideParams - 1;
+
+        const auto makeRack = [&]
+        {
+            return std::make_unique<RackProcessor> (std::vector<const bmo::ModuleDef*> { &util, &wide },
+                                                    bmo::products::rackInfo(),
+                                                    std::vector<bmo::RackPreset> { { "Wide", { { "wide", {} } } } });
+        };
+
+        auto rack = makeRack();
+        rack->addModule (wide);
+        auto& params = rack->getEngineAt (0)->params();
+
+        check (rack->getParameters().size() == RackProcessor::kSlots * RackProcessor::kParamsPerSlot,
+               "the grid does not grow for a wide module");
+        check (params.size() == kWideParams, "the module sees all of its parameters, got " + juce::String (params.size()));
+        check (rack->getSlotParameter (0, 31).getName (64) == "1: p32", "its 32nd takes the slot's last lane");
+        check (rack->getSlotParameter (1, 0).getName (64) == "Slot 2 P01", "its 33rd does not spill into the next slot");
+
+        auto& past = params.param (last);
+        check (! rack->getParameters().contains (static_cast<juce::AudioProcessorParameter*> (&past)),
+               "a parameter past the grid is not the host's");
+        check (past.getParameterIndex() >= 0, "but it belongs to a processor, so a knob's gesture on it is legal");
+        check (past.getName (64) == "1: p40", "and it is named like a lane");
+
+        past.beginChangeGesture();
+        params.setReal (last, 0.5f);
+        past.endChangeGesture();
+
+        rack->setPlayConfigDetails (2, 2, 48000.0, 512);
+        rack->prepareToPlay (48000.0, 512);
+
+        juce::AudioBuffer<float> buffer (2, 512);
+        juce::MidiBuffer midi;
+        juce::FloatVectorOperations::fill (buffer.getWritePointer (0), 1.0f, 512);
+        juce::FloatVectorOperations::fill (buffer.getWritePointer (1), 1.0f, 512);
+        rack->processBlock (buffer, midi);
+        checkClose (buffer.getSample (0, 100), 0.5, 1.0e-6, "a parameter past the grid reaches the DSP");
+
+        // Chain edits carry it with the module, and the lanes follow the slot.
+        rack->addModule (util);
+        rack->moveModule (0, 1);
+        check (chainIds (*rack) == std::vector<juce::String> { "util", "wide" }, "a wide module moves");
+        checkClose (rack->getEngineAt (1)->params().getReal (last), 0.5, 1.0e-4, "and takes its settings past the grid with it");
+        check (rack->getEngineAt (1)->params().param (last).getName (64) == "2: p40", "which are renamed for their new slot");
+        check (rack->getSlotParameter (1, 31).getName (64) == "2: p32", "its lanes move to the new slot");
+
+        // Saved state carries it.
+        juce::MemoryBlock state;
+        rack->getStateInformation (state);
+
+        auto restored = makeRack();
+        restored->setStateInformation (state.getData(), (int) state.getSize());
+        check (chainIds (*restored) == std::vector<juce::String> { "util", "wide" }, "a wide chain restores");
+        checkClose (restored->getEngineAt (1)->params().getReal (last), 0.5, 1.0e-4, "with its settings past the grid");
+
+        // So do presets, and moving one marks the preset edited.
+        auto& presets = restored->getPresets();
+        presets.loadFactory (0);
+        check (chainIds (*restored) == std::vector<juce::String> { "wide" }, "a rack preset loads a wide module");
+        checkClose (restored->getEngineAt (0)->params().getReal (last), 1.0, 1.0e-4, "at its defaults");
+        check (! presets.isEdited(), "unedited");
+        restored->getEngineAt (0)->params().setReal (last, 0.25f);
+        check (presets.isEdited(), "a parameter past the grid marks the preset edited");
+
+        // A module arriving in a slot starts from Init, past the grid too.
+        restored->setModule (0, util);
+        restored->setModule (0, wide);
+        checkClose (restored->getEngineAt (0)->params().getReal (last), 1.0, 1.0e-4, "a replaced wide module starts from its defaults");
+
+        sandbox.deleteRecursively();
+        bmo::PresetManager::setDirectoryForTesting ({});
     }
 
     //== Rack presets define order and settings ================================

@@ -57,7 +57,9 @@ the manufacturer code `LT3a` are all permanent once a session has been saved
 with them. `tests/plugin/*Tests.cpp` write each product's schema out in full
 and fail the build if it drifts. The rack's 8 x 32 generic parameter grid
 (`slot1_p01` ... `slot8_p32`) maps to each module in spec order, and
-`RackTests.cpp` pins that mapping per module.
+`RackTests.cpp` pins that mapping per module. A module may have more than 32
+parameters. The ones past the 32nd are saved with the rack and work on its
+panel, but they have no host lane, so a rack cannot automate them.
 
 ## Presets and themes
 

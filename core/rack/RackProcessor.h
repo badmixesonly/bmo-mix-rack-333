@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SlotOverflow.h"
 #include "SlotParameter.h"
 #include "core/product/ModuleEngine.h"
 #include "core/product/ProductInfo.h"
@@ -29,6 +30,10 @@ struct RackPreset
     moving one shuffles the rest. Each shuffle re-assigns the slot parameters,
     which is why a host's automation lanes follow the slot, not the module --
     the plan calls this scheme A, and the rack tests pin the mapping.
+
+    A module is not limited to the 32 lanes a slot has. Its first 32
+    parameters take them; any past that are held off the grid in a
+    SlotOverflow, where everything but host automation still reaches them.
 */
 class RackProcessor final : public juce::AudioProcessor,
                             public PresetTarget,
@@ -37,6 +42,9 @@ class RackProcessor final : public juce::AudioProcessor,
 {
 public:
     static constexpr int kSlots         = 8;
+
+    /** Host lanes per slot -- permanent, since sessions reference them. Not a
+        cap on a module's parameter count: see SlotOverflow. */
     static constexpr int kParamsPerSlot = 32;
 
     static constexpr auto kRootTag = "RACK";
@@ -121,6 +129,10 @@ private:
     struct Slot
     {
         const ModuleDef* def = nullptr;
+
+        // Before the engine, so it outlives it: the engine's ParamSet points
+        // into it.
+        std::unique_ptr<SlotOverflow> overflow;
         std::unique_ptr<ModuleEngine> engine;
     };
 
