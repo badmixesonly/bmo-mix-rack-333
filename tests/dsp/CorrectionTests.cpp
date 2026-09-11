@@ -263,10 +263,55 @@ int main()
         report ("vibrato 0 %, +10 +/-30 c: output peak-to-peak", flatDepth, "c");
         check (flatDepth < 2.0, "vibrato 0 % flattens a vibrato onto the note, to within a hop's movement");
 
+        // Until 2026-09-11 this vibrato, which reaches 12 cents past the E/F
+        // midpoint, warbled between E and F at 0 % -- asserted as "the
+        // effect". Frosty's blind test heard that as hunting and chose "hold
+        // the note steadier": a switch by a small margin now has to hold for
+        // noteDwellMs, and this one never does.
         const auto crossing = drive (track, to, flat);
-        report ("vibrato 0 %, +20 +/-40 c (crosses E/F): note changes", crossing.noteChanges);
-        check (crossing.noteChanges > 5, "at 0 % a vibrato crossing a boundary warbles between notes (the effect)");
+        report ("vibrato 0 %, +20 +/-40 c (just crosses E/F): note changes", crossing.noteChanges);
+        check (crossing.noteChanges == 0, "at 0 % a vibrato that only just crosses a boundary holds its note");
         check (k.noteChanges == 0, "at 100 % the same vibrato never changes note");
+
+        // A vibrato that goes well across still changes note every swing:
+        // the hard-tune warble is there when the singer really crosses.
+        const auto wide = [] (size_t i)
+        {
+            const auto t = (double) i / fs;
+            return 330.0 * std::exp2 ((50.0 + 90.0 * std::sin (2.0 * kPi * 5.5 * t)) / 1200.0);
+        };
+        const auto w = drive (wide, to, flat);
+        report ("vibrato 0 %, +/-90 c centred on the E/F midpoint: note changes", w.noteChanges);
+        check (w.noteChanges >= 10, "at 0 % a vibrato well across a boundary still changes note each swing");
+    }
+
+    //== Holding a note, and not holding it late (vibrato 0) ===================
+    {
+        CorrectionSettings flat;   // vibrato 0, chromatic
+
+        // A clean step E4 -> F4: the new note is 100 cents closer at once.
+        const auto step = (size_t) (0.3 * fs);
+        const auto st = drive ([step] (size_t i) { return i < step ? 329.63 : 349.23; }, (size_t) (0.6 * fs), flat);
+        size_t landed = 0;
+        for (size_t i = step; i < st.out.size() && landed == 0; ++i)
+            if (std::abs (100.0 * (st.out[i] - pitch::semitonesFromHz (349.23))) < 5.0)
+                landed = i;
+        const auto stepMs = 1000.0 * (double) (landed - step) / fs;
+        report ("E4 -> F4 step at vibrato 0: time until the output is on F4", stepMs, "ms");
+        check (landed > 0 && stepMs < 2.0, "a real step is not held: the output is on the new note within 2 ms");
+
+        // Settling just past the midpoint -- 58 cents over E4, 42 under F4,
+        // a margin of 16 cents -- is a new note only once it has stayed.
+        const auto drift = (size_t) (0.3 * fs);
+        const auto dr = drive ([drift] (size_t i) { return 329.63 * std::exp2 ((i < drift ? 30.0 : 58.0) / 1200.0); },
+                               (size_t) (0.6 * fs), flat);
+        size_t moved = 0;
+        for (size_t i = drift; i < dr.out.size() && moved == 0; ++i)
+            if (std::abs (100.0 * (dr.out[i] - pitch::semitonesFromHz (349.23))) < 5.0)
+                moved = i;
+        const auto driftMs = 1000.0 * (double) (moved - drift) / fs;
+        report ("settling 8 cents past the E/F midpoint: time until the note changes", driftMs, "ms");
+        check (moved > 0 && std::abs (driftMs - 40.0) < 2.0, "a pitch that settles just past the midpoint changes note after the 40 ms dwell");
     }
 
     //== Outliers and leaps never become interval-sized corrections ============

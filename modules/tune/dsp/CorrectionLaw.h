@@ -20,6 +20,18 @@ struct CorrectionSettings
     double flex = 0.0;                    ///< 0..1 soft-knee deadzone; 0 is off
     double hysteresisCents = 8.0;         ///< see nearestAllowed()
 
+    /** At vibrato 0 the note follows the raw pitch, so a singer sitting near
+        a boundary between two scale notes flipped between them with every
+        wobble -- "hunting", in Frosty's blind test (2026-09-11), who chose
+        "hold the note steadier". A switch now needs the new note to be
+        noteClearCents closer than the held one (the pitch 30 cents across the
+        midpoint: a real step arrives 100-200 cents closer, at once), or to
+        stay closer, past the hysteresis, for noteDwellMs. 30 was tried first
+        and was too little: on Failure the singer sits on D#, midway between
+        D and E, and a +/-15 cent wobble there still flipped every time. */
+    double noteClearCents = 60.0;
+    double noteDwellMs = 40.0;
+
     double clarityLo = 0.60, clarityHi = 0.85;   ///< confidence ramp (spec §4.4)
     double maxCorrectionCents = 1200.0;          ///< hard clamp (spec §6.1)
 };
@@ -42,7 +54,9 @@ struct CorrectionState
         confirm    a pitch jump of more than 3/4 semitone waits for the next
                    estimate to agree; see confirmPitch() for why this replaces
                    the spec's median on the note
-        quantize   nearest allowed note, with hysteresis toward the held note
+        quantize   nearest allowed note, with hysteresis toward the held note;
+                   at vibrato 0, a switch by a small margin must also hold
+                   for noteDwellMs (see holdOrSwitch())
         error      e = 100 (target - p_in)
         vibrato    e - beta (e - LP3Hz(e)): correct the slow part of the
                    error, pass beta of the fast part
@@ -76,6 +90,7 @@ public:
 
 private:
     bool decideNote (double pitchForDecision, int& note) noexcept;
+    int holdOrSwitch (double pitch, int candidate) noexcept;
     double confirmPitch (double latest) noexcept;
     void setNote (int note) noexcept;
 
@@ -98,6 +113,11 @@ private:
     double pendingJump = 0.0;
     bool havePendingJump = false;
     double target = 0.0;
+
+    // A note switch waiting out noteDwellMs: which note, since which sample.
+    int pendingNote = -1;
+    long long pendingNoteSince = 0, samples = 0;
+    long long dwellSamples = 0;
 
     // The law's own state.
     double errorSlow = 0.0, applied = 0.0, confidence = 0.0, gate = 0.0;

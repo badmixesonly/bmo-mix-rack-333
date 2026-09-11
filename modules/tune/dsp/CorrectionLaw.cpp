@@ -53,6 +53,8 @@ void CorrectionLaw::reset()
     clarity = period = 0.0;
     note = -1;
     haveNote = false;
+    pendingNote = -1;
+    pendingNoteSince = samples = 0;
     target = 0.0;
     errorSlow = applied = confidence = gate = 0.0;
     st = {};
@@ -66,6 +68,49 @@ void CorrectionLaw::setSettings (const CorrectionSettings& settings) noexcept
 
     // Exactly zero, not "very fast": at tau = 0 the pole is bypassed.
     retuneAlpha = s.retuneMs > 0.0 ? std::exp (-1.0 / (fs * s.retuneMs * 0.001)) : 0.0;
+    dwellSamples = (long long) std::lround (std::max (0.0, s.noteDwellMs) * 0.001 * fs);
+}
+
+int CorrectionLaw::holdOrSwitch (double pitch, int candidate) noexcept
+{
+    // At vibrato 0 the decision reads the raw pitch, and a singer sitting
+    // near the boundary between two scale notes crossed it with every
+    // wobble: 71 of the note-name flips left on the Failure take were
+    // between neighbours, and Frosty heard them as "hunting" and chose "hold
+    // the note steadier" (2026-09-11). So a switch by a small margin has to
+    // hold still for noteDwellMs first; a switch by a clear one -- the pitch
+    // well across the midpoint, where every real step and leap arrives
+    // within a few milliseconds -- is taken at once, as before.
+    const auto mask = (NoteMask) (scaleMask (s.scale, s.key) & s.allowed);
+
+    if (! haveNote || candidate == note || ! allows (mask, note))
+    {
+        pendingNote = -1;
+        return candidate;
+    }
+
+    const auto margin = 100.0 * (std::abs (pitch - note) - std::abs (pitch - candidate));
+
+    if (margin >= s.noteClearCents)
+    {
+        pendingNote = -1;
+        return candidate;
+    }
+
+    if (candidate != pendingNote)
+    {
+        pendingNote = candidate;
+        pendingNoteSince = samples;
+        return note;
+    }
+
+    if (samples - pendingNoteSince >= dwellSamples)
+    {
+        pendingNote = -1;
+        return candidate;
+    }
+
+    return note;
 }
 
 bool CorrectionLaw::decideNote (double pitch, int& decided) noexcept
@@ -149,6 +194,7 @@ void CorrectionLaw::setNote (int newNote) noexcept
 double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
 {
     voiced = e.voiced;
+    ++samples;
 
     if (evaluated)
     {
@@ -191,10 +237,21 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
         if (evaluated && voiced)
         {
             int decided = 0;
-            if (decideNote (s.vibratoAmount > 0.0 ? pitchSlow : pitchIn, decided))
+            const auto decideOn = s.vibratoAmount > 0.0 ? pitchSlow : pitchIn;
+
+            if (decideNote (decideOn, decided))
+            {
+                // Kept vibrato decides on the slow pitch, which already never
+                // flips; the raw pitch at 0 % gets the dwell.
+                if (s.vibratoAmount <= 0.0)
+                    decided = holdOrSwitch (decideOn, decided);
                 setNote (decided);
+            }
             else
+            {
                 haveNote = false;
+                pendingNote = -1;
+            }
         }
     }
 

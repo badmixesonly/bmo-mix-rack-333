@@ -106,6 +106,7 @@ void Detector::setSettings (const Settings& s) noexcept
     voicedRun = unvoicedRun = 0;
     guardFactor = 1;
     guardLag = 0;
+    guardPending = 0;
     guardPeriod = 0.0;
 }
 
@@ -134,6 +135,7 @@ void Detector::reset()
     heldPeriod = 0.0;
     guardFactor = 1;
     guardLag = 0;
+    guardPending = 0;
     guardPeriod = 0.0;
     guardDueAt = 0;
     current = {};
@@ -623,10 +625,7 @@ bool Detector::multipleOf (double base, int& factor, int& lag) const noexcept
         // at its third harmonic, on and off, for 20 ms). When the multiple is
         // the period the detector was just holding, being the more periodic
         // of the two is enough -- but only when the shorter lag is clearly
-        // not a period (heldMultipleFloor). Right after a real leap up an
-        // octave, the old period is exactly twice the new one and the new
-        // note repeats near-perfectly; without that floor the corpus's
-        // octave and fifth transitions picked up octave errors at the leap.
+        // not a period (heldMultipleFloor).
         const auto held = current.voiced && heldPeriod > 0.0
                        && std::abs (std::log2 ((double) longerLag / heldPeriod)) < 60.0 / 1200.0
                        && dHere > settings.heldMultipleFloor;
@@ -634,9 +633,25 @@ bool Detector::multipleOf (double base, int& factor, int& lag) const noexcept
 
         if (dHere > settings.multipleFloor && dLonger < ratio * dHere)
         {
-            factor = k;
-            lag = longerLag;
-            return true;
+            // And the same answer over the most recent long period alone.
+            // The long window looks back two of them, so right after an
+            // instant leap it still holds mostly the old note -- which is
+            // periodic at the old period, a multiple of the new one -- and it
+            // kept the old note ~9 ms past a step (the corpus's instant octave
+            // and fifth transitions lost 2-3 frames each). The recent stretch
+            // already hears the new note, where the short period repeats, and
+            // vetoes. On a steady voice read an octave up, both agree.
+            const auto recent = std::max (8, (int) std::lround (longer));
+            int recentHereLag = 0, recentLongerLag = 0;
+            const auto dHereRecent = 1.0 - lowPeak (base, 2, recent, recentHereLag);
+            const auto dLongerRecent = 1.0 - lowPeak ((double) longerLag, 1, recent, recentLongerLag);
+
+            if (dHereRecent > settings.multipleFloor && dLongerRecent < ratio * dHereRecent)
+            {
+                factor = k;
+                lag = longerLag;
+                return true;
+            }
         }
     }
 
@@ -684,14 +699,13 @@ void Detector::preferWholeCycle (double& period, double& clarity) noexcept
 
     if (moved || samplesSeen >= guardDueAt)
     {
-        guardFactor = 1;
-        guardLag = 0;
         guardPeriod = period;
         guardDueAt = samplesSeen + (std::int64_t) (0.002 * sampleRate);
 
         // Up to two steps, so a lock two octaves up (a fourth harmonic)
         // comes all the way down: each step takes 2 or 3 x what the last
         // one found.
+        int found = 1, foundLag = 0;
         auto base = period;
         for (int step = 0; step < 2; ++step)
         {
@@ -699,10 +713,34 @@ void Detector::preferWholeCycle (double& period, double& clarity) noexcept
             if (! multipleOf (base, k, lag))
                 break;
 
-            guardFactor *= k;
-            guardLag = lag;
+            found *= k;
+            foundLag = lag;
             base = (double) lag;
         }
+
+        // A multiple that would move the detector to a period it is not
+        // already holding is taken only when two runs agree -- a fresh 2 ms
+        // of signal each. A lock on a harmonic is there run after run; a
+        // chance alignment of a jittered voice is not (one 2 %-jitter
+        // corpus voice lost two evaluations to it). One that lands on the
+        // held period is taken at once: the raw search can alternate between
+        // the true period and a harmonic from one evaluation to the next,
+        // and waiting each time let the harmonic through every other time.
+        const auto onHeld = found > 1 && heldPeriod > 0.0
+                         && std::abs (std::log2 ((double) foundLag / heldPeriod)) < 60.0 / 1200.0;
+
+        if (found > 1 && ! onHeld && found != guardPending)
+        {
+            guardPending = found;
+            found = 1;
+        }
+        else
+        {
+            guardPending = 0;
+        }
+
+        guardFactor = found;
+        guardLag = found > 1 ? foundLag : 0;
     }
 
     if (guardFactor > 1 && guardLag > 0)

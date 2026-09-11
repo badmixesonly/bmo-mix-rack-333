@@ -164,6 +164,7 @@ private:
     // Guard 4's standing decision: the period is guardFactor x what the
     // search finds, decided for guardPeriod, due again at guardDueAt.
     int guardFactor = 1, guardLag = 0;   // guardLag: where the multiple was found, for guardPeriod
+    int guardPending = 0;                // a multiple found once, waiting for a second run to agree
     double guardPeriod = 0.0;
     std::int64_t guardDueAt = 0;
 
