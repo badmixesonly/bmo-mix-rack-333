@@ -34,8 +34,7 @@ namespace
         int noteChanges = 0;
     };
 
-    Run drive (const std::function<double (size_t)>& hz, size_t n, const CorrectionSettings& s,
-               const MidiTarget& midi = {}, int hop = 24)
+    Run drive (const std::function<double (size_t)>& hz, size_t n, const CorrectionSettings& s, int hop = 24)
     {
         CorrectionLaw law;
         law.prepare (fs);
@@ -69,7 +68,7 @@ namespace
                 e.onset = false;
             }
 
-            const auto a = law.tick (e, evaluated, midi);
+            const auto a = law.tick (e, evaluated);
             r.applied[i] = a;
             r.out[i] = (f > 0.0 ? pitch::semitonesFromHz (f, s.refA) : 0.0) + a / 100.0;
         }
@@ -141,12 +140,12 @@ int main()
 
         // Scale masks and keys.
         check (scaleMask (ScaleType::major, 0) == 0b101010110101, "C major is C D E F G A B");
-        check (scaleMask (ScaleType::major, 7) == 0b110010110101 || scaleMask (ScaleType::major, 7) == 0b101011010101,
-               "G major is C D E F# G A B");
+        check (scaleMask (ScaleType::major, 7) == 0b101011010101, "G major is G A B C D E F#");
         check (allows (scaleMask (ScaleType::major, 7), 66) && ! allows (scaleMask (ScaleType::major, 7), 65),
                "G major allows F#4 and not F4");
-        check (scaleMask (ScaleType::minorPentatonic, 9) == ((1u << 9) | (1u << 0) | (1u << 2) | (1u << 4) | (1u << 7)),
-               "A minor pentatonic is A C D E G");
+        check (scaleMask (ScaleType::minor, 9) == scaleMask (ScaleType::major, 0), "A minor has the same notes as C major");
+        check (scaleMask (ScaleType::minor, 4) == scaleMask (ScaleType::major, 7), "E minor has the same notes as G major");
+        check (scaleMask (ScaleType::minor, 0) == 0b010110101101, "C minor is C D Eb F G Ab Bb");
     }
 
     //== Retune speed ==========================================================
@@ -330,20 +329,16 @@ int main()
         check (std::abs (slope (20.0 + 1e-4) - slope (20.0 - 1e-4)) < 1e-2, "and leaves the deadzone with no kink");
     }
 
-    //== MIDI latch ============================================================
+    //== Every note switched off (T-4, "all-notes-bypassed") ==================
     {
-        MidiTarget m;
-        m.noteOn (60);
-        m.noteOn (64);
-        m.noteOff (60);
-        int n = 0;
-        check (m.targetNote (false, n) && n == 64, "the most recent held note is the target");
-        m.noteOff (64);
-        check (! m.targetNote (false, n), "released and unlatched: no target");
-        check (m.targetNote (true, n) && n == 64, "released and latched: the last note stays");
-        check (m.heldMask (true) == ((1u << 0) | (1u << 4)), "latched chord mask is the chord that was played");
-        m.noteOn (67);
-        check (m.heldMask (true) == (1u << 7), "a new note after release starts a new latched chord");
+        CorrectionSettings s;
+        s.allowed = 0;
+        const auto r = drive ([] (size_t) { return 452.0; }, (size_t) (0.5 * fs), s);
+        double worst = 0.0;
+        for (auto a : r.applied)
+            worst = std::max (worst, std::abs (a));
+        check (worst == 0.0, "with every note switched off the correction is exactly zero, every sample");
+        check (r.noteChanges == 0, "and no note is ever chosen");
     }
 
     return finish ("correction");

@@ -30,7 +30,7 @@ namespace
     const Row kGolden[] = {
         { "retune",        bmo::ParamKind::Float,  0.0f,   100.0f, 0.0f },
         { "key",           bmo::ParamKind::Choice, 0.0f,   11.0f,  0.0f },
-        { "scale",         bmo::ParamKind::Choice, 0.0f,   9.0f,   0.0f },
+        { "scale",         bmo::ParamKind::Choice, 0.0f,   2.0f,   0.0f },
         { "engine",        bmo::ParamKind::Choice, 0.0f,   1.0f,   0.0f },
         { "range",         bmo::ParamKind::Choice, 0.0f,   4.0f,   0.0f },
         { "vibrato",       bmo::ParamKind::Float,  0.0f,   150.0f, 0.0f },
@@ -38,9 +38,6 @@ namespace
         { "glide",         bmo::ParamKind::Float,  0.0f,   200.0f, 0.0f },
         { "formant",       bmo::ParamKind::Bool,   0.0f,   1.0f,   1.0f },
         { "formant_shift", bmo::ParamKind::Float, -600.0f, 600.0f, 0.0f },
-        { "midi_mode",     bmo::ParamKind::Choice, 0.0f,   2.0f,   0.0f },
-        { "midi_latch",    bmo::ParamKind::Bool,   0.0f,   1.0f,   0.0f },
-        { "midi_required", bmo::ParamKind::Bool,   0.0f,   1.0f,   0.0f },
         { "latency",       bmo::ParamKind::Choice, 0.0f,   1.0f,   0.0f },
         { "ref_a",         bmo::ParamKind::Float,  380.0f, 480.0f, 440.0f },
         { "note_c",  bmo::ParamKind::Bool, 0, 1, 1 }, { "note_cs", bmo::ParamKind::Bool, 0, 1, 1 },

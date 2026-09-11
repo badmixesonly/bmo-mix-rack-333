@@ -1,7 +1,6 @@
 #pragma once
 
 #include "modules/tune/dsp/Detector.h"
-#include "modules/tune/dsp/MidiTarget.h"
 #include "modules/tune/dsp/Scale.h"
 #include <array>
 
@@ -25,10 +24,6 @@ struct CorrectionSettings
 
     double clarityLo = 0.60, clarityHi = 0.85;   ///< confidence ramp (spec §4.4)
     double maxCorrectionCents = 1200.0;          ///< hard clamp (spec §6.1)
-
-    MidiTarget::Mode midiMode = MidiTarget::Mode::off;
-    bool midiLatch = false;
-    bool midiRequired = false;
 };
 
 /** What the law decided on the latest sample; --dump-analysis writes it. */
@@ -49,8 +44,7 @@ struct CorrectionState
         confirm    a pitch jump of more than 3/4 semitone waits for the next
                    estimate to agree; see confirmPitch() for why this replaces
                    the spec's median on the note
-        quantize   nearest allowed note (or the MIDI note), with hysteresis
-                   toward the held note
+        quantize   nearest allowed note, with hysteresis toward the held note
         glide      target slew on a note change -- HYBRID only
         error      e = 100 (target - p_in)
         vibrato    e - beta (e - LP3Hz(e)): correct the slow part of the
@@ -76,7 +70,7 @@ public:
     void setSettings (const CorrectionSettings&) noexcept;
 
     /** One sample. `evaluated` is the detector's evaluatedThisSample(). */
-    double tick (const PitchEstimate&, bool evaluated, const MidiTarget&) noexcept;
+    double tick (const PitchEstimate&, bool evaluated) noexcept;
 
     const CorrectionState& state() const noexcept { return st; }
 
@@ -88,7 +82,7 @@ public:
     static double flexGain (double absCents, double flex) noexcept;
 
 private:
-    bool decideNote (double pitchForDecision, const MidiTarget&, int& note) noexcept;
+    bool decideNote (double pitchForDecision, int& note) noexcept;
     double confirmPitch (double latest) noexcept;
     void setNote (int note) noexcept;
 

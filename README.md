@@ -5,9 +5,10 @@
 tuning and retune speed: the snap the genre is made of, at the lowest latency
 a software-only tuner can honestly claim.
 
-It is not a BMO Mix Rack module -- it takes MIDI, is mono, and has a latency
-contract a rack slot cannot carry -- but it is built the same way and reuses
-the suite's shared code from a BMO Mix Rack checkout.
+It has a repository of its own and is not a BMO Mix Rack module -- it is
+mono, and has a latency contract a rack slot is not built around -- but it
+follows every suite convention and reuses the shared code from Kevin's
+main, pinned as a submodule.
 
 Two engines share one detector:
 
@@ -23,14 +24,15 @@ code departs from it, `AGENTS.md` says where and why.
 ## Building
 
 ```
-cmake -S . -B build -DBMO_RACK_DIR=../bmo-mix-rack-333
+git submodule update --init libs/bmo-mix-rack     # Kevin's main; not --recursive
+cmake -S . -B build
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
 Requirements: CMake 3.22+, a C++20 compiler (MSVC 2022 / Xcode 15 / GCC 12),
-and a BMO Mix Rack checkout beside this one (or wherever `BMO_RACK_DIR`
-points). The DSP, its tests and every tool build with no framework at all.
+and the pinned BMO Mix Rack submodule. The DSP, its tests and every tool
+build with no framework at all.
 
 ## Status
 

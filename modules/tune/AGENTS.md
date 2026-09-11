@@ -5,7 +5,7 @@ signal path, in the order a sample meets it:
 
 ```
 Detector        recursive E/H kernel -> coarse NSDF at ~12 kHz -> full-rate refinement
-CorrectionLaw   jump confirmation -> quantize/MIDI -> glide -> vibrato split -> flex -> retune -> gates
+CorrectionLaw   jump confirmation -> quantize -> glide -> vibrato split -> flex -> retune -> gates
 ClassicEngine   fractional-rate read, whole-period splices          } one plays, the other is fed;
 HybridEngine    PSOLA, analysis one period per grain, grain-rate formants } a switch crossfades 20 ms
 ```
@@ -42,6 +42,8 @@ named; undoing one should fail that test.
 | §3.5 guard 5: median-of-3 on the note decision | a jump > 3/4 semitone waits for the next estimate to agree | A note median paired a held note with a pitch that had already moved: every leap was briefly corrected by its own interval, and a one-frame octave error drove +1200 cents. `CorrectionLaw::confirmPitch`, `CorrectionTests` |
 | §4.3a: `((u-u0)/(u1-u0))^2`, "C1 at both ends" | real smoothstep, `3t^2 - 2t^3` | The square has slope 2/(u1-u0) at u1; the applied correction kinks there. `CorrectionTests` |
 | §4.3b: `Q(p_slow) + beta p_vib` | the same split, written on the error | Equivalent with the target held; on the error a note change is a step the slow state can be shifted by. At vibrato 0 the note follows the raw pitch -- see "open" below |
+| §4.6: MIDI target, MIDI as scale, latch, "MIDI required" | none; the key and scale are parameters | Frosty, 2026-09-10: nothing is tracked but the vocal being corrected. It is also what lets the rack's own `SingleModuleProcessor` host this, which does not accept MIDI. MIDI could be appended in a later version without moving a saved session |
+| §4.1: key + scale, ten scales in the first build | Chromatic, Major, Minor | Frosty, 2026-09-10: the three a hard-tune session uses. More are appended to the choice list, never inserted |
 | §6.1: PSOLA costs ~T0 of lookahead; §7 pitch marks | analysis advances one period per grain; no mark detector | Neighbouring grains one cycle apart is all pitch-synchronous needs. HYBRID keeps CLASSIC's latency: 19 samples idle, not ~T0. `HybridTests` |
 | §6.2: LPC inverse / PSOLA / resynthesis | not in the signal path; formants by PSOLA, shift by grain rate | Order 24 at 48 kHz modelled the empty band to Nyquist and no formants; a 16 kHz envelope mapped up through its LSFs was too ill-conditioned (coefficients ~1e5) to survive grain interpolation. PSOLA alone holds formants at 1.000 +/- 0.001 of scale; the spec gate is 2 %. `HybridTests` |
 
@@ -75,6 +77,14 @@ table records both; the spec's 1.5 ms is met by the floor, not by the mean.
 
 ## Open, and not for one session to settle
 
+- **Formant Correct: keep or cut** (Frosty's call, asked 2026-09-10). In
+  HYBRID, on keeps the singer's formants, off lets them follow the
+  correction as CLASSIC's do. Cutting it changes nothing else; the only
+  combinations lost are HYBRID with formants following the pitch *and* Glide,
+  or *and* Formant Shift, since CLASSIC has neither. Its code is one line in
+  `HybridEngine::scheduleGrains`. The audible difference on chromatic
+  corrections (<= 50 cents, formants moved <= 3 %) is small; on a semitone
+  or more it is obvious.
 - **Vibrato 0 % warbles on a boundary.** The note decision follows the raw
   pitch at vibrato 0, so a vibrato straddling a note boundary flips between
   the two notes -- the classic hard-tune sound, kept on purpose because hard

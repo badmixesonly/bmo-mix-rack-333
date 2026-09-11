@@ -37,14 +37,14 @@ namespace
     constexpr double fs = 48000.0;
 
     std::vector<float> render (const std::vector<float>& in, const TuneParams& p, int block = 128,
-                               const std::vector<NoteEvent>& notes = {}, int switchAt = -1, Engine switchTo = Engine::hybrid)
+                               int switchAt = -1, Engine switchTo = Engine::hybrid)
     {
         TuneCore core;
         core.setParams (p);
         core.prepare (fs, 4096);
 
         auto out = in;
-        size_t at = 0, noteIndex = 0;
+        size_t at = 0;
         sig::Random rng (3);
         bool switched = false;
 
@@ -61,15 +61,7 @@ namespace
                 switched = true;
             }
 
-            std::vector<NoteEvent> blockNotes;
-            while (noteIndex < notes.size() && (size_t) notes[noteIndex].offset < at + (size_t) n)
-            {
-                auto e = notes[noteIndex++];
-                e.offset = (int) ((size_t) e.offset - at);
-                blockNotes.push_back (e);
-            }
-
-            core.process (out.data() + at, n, blockNotes.data(), (int) blockNotes.size());
+            core.process (out.data() + at, n);
             at += (size_t) n;
         }
 
@@ -183,8 +175,7 @@ int main()
     for (auto formant : { false, true })
     {
         auto p = hybrid (formant);
-        p.midiMode = MidiTarget::Mode::target;
-        p.midiRequired = true;   // correction exactly zero
+        p.allowed = 0;   // every note switched off: correction exactly zero
 
         const auto x = sig::voice (sig::steady (196.0, 0.6, fs), fs).samples;
         const auto y = render (x, p);
@@ -228,8 +219,9 @@ int main()
     //== Formants: HYBRID keeps them, CLASSIC moves them (spec §9, T-3) ========
     std::printf ("formant scale after a +/-100-cent correction (1.000 = unmoved)\n");
     {
-        // C3 input, MIDI-steered a semitone either way: a correction a tuner
-        // actually applies, on a voice with thirty harmonics under 4 kHz.
+        // C3 input, steered a semitone either way by switching on only the
+        // note a semitone off (C# or B): a correction a tuner actually
+        // applies, on a voice with thirty harmonics under 4 kHz.
         const double f0 = 130.81;
         const auto x = sig::voice (sig::steady (f0, 1.0, fs), fs).samples;
         check (std::abs (formantScale (x, f0) - 1.0) < 0.005, "the fit reads the unprocessed input as unmoved");
@@ -238,15 +230,15 @@ int main()
         {
             const auto outHz = f0 * std::exp2 (semis / 12.0);
             const auto rho = std::exp2 (semis / 12.0);
-            const std::vector<NoteEvent> note { { 0, 48 + semis, true } };
+            const auto only = (NoteMask) (1u << ((12 + semis) % 12));
 
             auto h = hybrid (true);
-            h.midiMode = MidiTarget::Mode::target;
-            const auto sh = formantScale (render (x, h, 128, note), outHz);
+            h.allowed = only;
+            const auto sh = formantScale (render (x, h), outHz);
 
             TuneParams c;
-            c.midiMode = MidiTarget::Mode::target;
-            const auto sc = formantScale (render (x, c, 128, note), outHz);
+            c.allowed = only;
+            const auto sc = formantScale (render (x, c), outHz);
 
             report (label ("HYBRID formant on, %+.0f semitone: formant scale", semis), sh);
             report (label ("CLASSIC,           %+.0f semitone: formant scale", semis), sc);
@@ -258,8 +250,7 @@ int main()
         // Formant Shift: +200 cents on the envelope, pitch left where it is.
         auto h = hybrid (true);
         h.formantShiftCents = 200.0;
-        h.midiMode = MidiTarget::Mode::target;
-        const auto shifted = formantScale (render (x, h, 128, { { 0, 48, true } }), f0);
+        const auto shifted = formantScale (render (x, h), f0);   // C3 in, chromatic: no correction
         report ("HYBRID formant shift +200 c: formant scale (ratio 1.1225)", shifted);
         check (shifted > 1.08, "Formant Shift +200 cents moves the formants up by most of 12 %");
     }
@@ -268,8 +259,7 @@ int main()
     {
         auto p = hybrid (true);
         p.latency = LatencyMode::studio;
-        p.midiMode = MidiTarget::Mode::target;
-        p.midiRequired = true;
+        p.allowed = 0;
 
         sig::VoiceSettings fingerprint;
         fingerprint.shimmer = 0.3;
@@ -303,7 +293,7 @@ int main()
     {
         TuneParams p;   // CLASSIC, switching to HYBRID at 0.4 s
         const auto x = sig::voice (sig::steady (233.0, 0.8, fs), fs).samples;
-        const auto y = render (x, p, 128, {}, (int) (0.4 * fs), Engine::hybrid);
+        const auto y = render (x, p, 128, (int) (0.4 * fs), Engine::hybrid);
 
         // Largest sample-to-sample step around the switch, against the same
         // measure well away from it.

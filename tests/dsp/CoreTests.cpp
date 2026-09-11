@@ -9,7 +9,7 @@
       - reported latency is 0 in Live and the measured rest delay in Studio
       - at retune 0 a steady note settles within 3 cents of its target (§9)
       - the output is identical at every block size, and run to run (T-1)
-      - a MIDI note is the target; a scale is the set of targets (§4.1, §4.6)
+      - a scale is the set of targets, and switching notes off narrows it (§4.1)
       - one NaN does not break anything for longer than it takes to re-lock
 */
 
@@ -30,8 +30,7 @@ namespace an = bmo::tune::analysis;
 namespace
 {
     /** Renders through a fresh core. blockSize 0 = pseudo-random blocks. */
-    std::vector<float> render (const std::vector<float>& in, const TuneParams& p, double fs,
-                               int blockSize = 128, const std::vector<NoteEvent>& notes = {})
+    std::vector<float> render (const std::vector<float>& in, const TuneParams& p, double fs, int blockSize = 128)
     {
         TuneCore core;
         core.setParams (p);
@@ -39,24 +38,13 @@ namespace
 
         auto out = in;
         sig::Random rng (42);
-        size_t at = 0, noteIndex = 0;
-        std::vector<NoteEvent> blockNotes;
+        size_t at = 0;
 
         while (at < out.size())
         {
             auto n = blockSize > 0 ? blockSize : 1 + (int) (rng.next() % 700);
             n = (int) std::min<size_t> ((size_t) n, out.size() - at);
-
-            // Notes are given in absolute samples; re-stamp them per block.
-            blockNotes.clear();
-            while (noteIndex < notes.size() && (size_t) notes[noteIndex].offset < at + (size_t) n)
-            {
-                auto e = notes[noteIndex++];
-                e.offset = (int) ((size_t) e.offset - at);
-                blockNotes.push_back (e);
-            }
-
-            core.process (out.data() + at, n, blockNotes.data(), (int) blockNotes.size());
+            core.process (out.data() + at, n);
             at += (size_t) n;
         }
 
@@ -104,7 +92,7 @@ int main()
         // second the read drifts ~0.015 samples, which on a 0.8 sine at
         // 440 Hz is a -63 dBFS difference from the plain delayed input. That
         // is the correction working, not an error. Bit-exactness is claimed
-        // where the correction is exactly zero: MIDI Required, nothing held.
+        // where the correction is exactly zero: every note switched off.
         double worst = 0.0;
         for (size_t i = (size_t) d; i < x.size(); ++i)
             worst = std::max (worst, (double) std::abs (y[i] - x[i - (size_t) d]));
@@ -113,8 +101,7 @@ int main()
         check (an::delayOf (x, y, 200) == d, "cross-correlation finds the same delay with correction enabled (T-5)");
 
         TuneParams zero = p;
-        zero.midiMode = MidiTarget::Mode::target;
-        zero.midiRequired = true;
+        zero.allowed = 0;
         const auto yz = render (sig::sine (sig::steady (452.0, 0.5, fs), fs, 0.8).samples, zero, fs);
         const auto xz = sig::sine (sig::steady (452.0, 0.5, fs), fs, 0.8).samples;
         bool exact = true;
@@ -204,16 +191,17 @@ int main()
         check (render (x, p, fs, 0) == render (x, p, fs, 0), "two runs with the same input are bit-identical");
     }
 
-    //== MIDI and scales =======================================================
+    //== Scales and the note switches =========================================
     {
+        // Only A# switched on: an A3 input has one place to go, a semitone up.
         TuneParams p;
-        p.midiMode = MidiTarget::Mode::target;
+        p.allowed = (NoteMask) (1u << 10);
         const auto c = sig::steady (220.0, 0.8, fs);
-        const auto y = render (sig::voice (c, fs).samples, p, fs, 128, { { 0, 58, true } });
+        const auto y = render (sig::voice (c, fs).samples, p, fs);
         const auto target = 440.0 * std::exp2 ((58 - 69) / 12.0);
         const auto err = measuredCents (y, fs, target, 0.3, 0.4);
-        report ("MIDI target A#3 from an A3 input: output error", err, "c");
-        check (std::abs (err) < 3.0, "a held MIDI note is the target, a semitone away from the input");
+        report ("only A# allowed, A3 input: error against A#3", err, "c");
+        check (std::abs (err) < 3.0, "with one note switched on, a voice a semitone away is pulled onto it");
 
         TuneParams q;
         q.scale = ScaleType::major;   // C major: no C#
@@ -224,13 +212,19 @@ int main()
         check (std::abs (errD) < 3.0, "outside the scale, the nearest allowed note wins (C# is not in C major)");
 
         TuneParams r;
-        r.midiMode = MidiTarget::Mode::target;
-        r.midiRequired = true;
+        r.allowed = 0;
         const auto off = sig::steady (230.0, 0.6, fs);
         const auto xr = sig::voice (off, fs).samples;
         const auto yr = render (xr, r, fs);
         const auto errR = measuredCents (yr, fs, 230.0, 0.3, 0.25);
-        check (std::abs (errR) < 0.5, "MIDI required with no note held leaves the pitch alone");
+        check (std::abs (errR) < 0.5, "with every note switched off the pitch is left alone (T-4)");
+
+        TuneParams m;
+        m.scale = ScaleType::minor;
+        m.key = 9;   // A minor: no C#, so 282 Hz goes to D4 as in C major
+        const auto ym = render (sig::voice (cs, fs).samples, m, fs);
+        const auto errM = measuredCents (ym, fs, 293.66, 0.3, 0.4);
+        check (std::abs (errM) < 3.0, "A minor pulls the same 282 Hz to D4");
     }
 
     //== One NaN ==============================================================

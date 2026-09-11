@@ -26,14 +26,11 @@ inline constexpr auto kVibrato = "vibrato";
 inline constexpr auto kFlex    = "flex";
 inline constexpr auto kGlide   = "glide";
 
-// HYBRID's formant stage.
+// HYBRID's formants: kept where the singer put them (on), or left to follow
+// the correction (off), and shifted independently. Kept pending Frosty's call
+// on 2026-09-10 -- see modules/tune/AGENTS.md, "Open".
 inline constexpr auto kFormant      = "formant";
 inline constexpr auto kFormantShift = "formant_shift";
-
-// MIDI (spec §4.6).
-inline constexpr auto kMidiMode     = "midi_mode";
-inline constexpr auto kMidiLatch    = "midi_latch";
-inline constexpr auto kMidiRequired = "midi_required";
 
 // Set once per session and left.
 inline constexpr auto kLatency = "latency";
@@ -51,7 +48,6 @@ enum Index
     retune, key, scale, engine, range,
     vibrato, flex, glide,
     formant, formantShift,
-    midiMode, midiLatch, midiRequired,
     latency, refA,
     noteC, noteCs, noteD, noteDs, noteE, noteF,
     noteFs, noteG, noteGs, noteA, noteAs, noteB,
@@ -106,9 +102,10 @@ inline const ParamSpecs& specs()
 
             // Chromatic by default: a fresh instance corrects to the nearest
             // semitone without knowing the song, which is the safe wrong answer.
-            S::choiceParam (kScale, "Scale", { "Chromatic", "Major", "Minor", "Harmonic Minor",
-                                               "Melodic Minor", "Major Pentatonic", "Minor Pentatonic",
-                                               "Blues", "Dorian", "Mixolydian" }, 0),
+            // Three scales, the ones a hard-tune session uses (Frosty,
+            // 2026-09-10); more can be appended to the choice list later
+            // without moving any saved session, since new entries go on the end.
+            S::choiceParam (kScale, "Scale", { "Chromatic", "Major", "Minor" }, 0),
 
             S::choiceParam (kEngine, "Engine", { "Classic", "Hybrid" }, 0),
             S::choiceParam (kRange, "Pitch Range", { "Auto", "Soprano", "Alto/Tenor", "Bass", "Instrument" }, 0),
@@ -126,10 +123,6 @@ inline const ParamSpecs& specs()
 
             S::boolParam (kFormant, "Formant Correct", true),
             S::floatParam (kFormantShift, "Formant Shift", -600.0f, 600.0f, 1.0f, 0.0f),
-
-            S::choiceParam (kMidiMode, "MIDI", { "Off", "Target", "Scale" }, 0),
-            S::boolParam (kMidiLatch, "MIDI Latch", false),
-            S::boolParam (kMidiRequired, "MIDI Required", false),
 
             // Live is the default: Frosty's call on spec Part IV question 4,
             // 2026-09-10. Live reports 0 to the host and runs dynamically

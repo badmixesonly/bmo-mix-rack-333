@@ -9,18 +9,17 @@ namespace bmo::tune
 /** Which pitch classes a correction may land on (spec §4.1).
 
     A scale is a 12-bit mask, bit 0 = C, in every octave. Key and scale type
-    build one; the user's per-note allow map and incoming MIDI notes are
-    masks too, and the quantizer only ever sees the intersection. Keeping all
-    of them as the same type is what lets MIDI-as-scale be a one-line change
-    rather than a second quantizer. */
+    build one; the user's per-note allow map is a mask too, and the quantizer
+    only ever sees the intersection. */
 using NoteMask = std::uint16_t;
 
 inline constexpr NoteMask kAllNotes = 0x0FFF;
 
+/** In the order of the Scale parameter's choices. New scales go on the end,
+    so a saved session's index keeps meaning the scale it meant. */
 enum class ScaleType
 {
-    chromatic, major, naturalMinor, harmonicMinor, melodicMinor,
-    majorPentatonic, minorPentatonic, blues, dorian, mixolydian,
+    chromatic, major, minor,
     count
 };
 
@@ -37,17 +36,10 @@ inline NoteMask intervalsOf (ScaleType type) noexcept
 
     switch (type)
     {
-        case ScaleType::chromatic:       return kAllNotes;
-        case ScaleType::major:           return bits ({ 0, 2, 4, 5, 7, 9, 11 });
-        case ScaleType::naturalMinor:    return bits ({ 0, 2, 3, 5, 7, 8, 10 });
-        case ScaleType::harmonicMinor:   return bits ({ 0, 2, 3, 5, 7, 8, 11 });
-        case ScaleType::melodicMinor:    return bits ({ 0, 2, 3, 5, 7, 9, 11 });
-        case ScaleType::majorPentatonic: return bits ({ 0, 2, 4, 7, 9 });
-        case ScaleType::minorPentatonic: return bits ({ 0, 3, 5, 7, 10 });
-        case ScaleType::blues:           return bits ({ 0, 3, 5, 6, 7, 10 });
-        case ScaleType::dorian:          return bits ({ 0, 2, 3, 5, 7, 9, 10 });
-        case ScaleType::mixolydian:      return bits ({ 0, 2, 4, 5, 7, 9, 10 });
-        case ScaleType::count:           break;
+        case ScaleType::chromatic: return kAllNotes;
+        case ScaleType::major:     return bits ({ 0, 2, 4, 5, 7, 9, 11 });
+        case ScaleType::minor:     return bits ({ 0, 2, 3, 5, 7, 8, 10 });   // natural minor
+        case ScaleType::count:     break;
     }
 
     return kAllNotes;

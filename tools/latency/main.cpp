@@ -86,7 +86,7 @@ namespace
 
     struct Row
     {
-        int midi = 0;
+        int noteNumber = 0;
         double hz = 0.0, restMs = 0.0, lockMs = 0.0, meanMs = 0.0, worstMs = 0.0, leastMs = 0.0, reportedMs = 0.0;
     };
 }
@@ -153,18 +153,19 @@ int main (int argc, char** argv)
 
             double worstRest = 0.0;
 
-            for (int midi = lowest; midi <= highest; ++midi)
+            for (int noteNumber = lowest; noteNumber <= highest; ++noteNumber)
             {
-                const auto hz = 440.0 * std::exp2 ((midi - 69) / 12.0);
+                const auto hz = 440.0 * std::exp2 ((noteNumber - 69) / 12.0);
                 Row row;
-                row.midi = midi;
+                row.noteNumber = noteNumber;
                 row.hz = hz;
                 row.reportedMs = 1000.0 * reported / fs;
 
                 // Rest: correction disabled, analysis path live (spec T-5) --
-                // MIDI Required with nothing held makes the correction exactly
-                // zero while the detector runs. Two things the first runs got
-                // wrong, both recorded so nobody undoes them:
+                // every note switched off gives the quantizer nothing to aim at,
+                // so the correction is exactly zero while the detector runs.
+                // Two things the first runs got wrong, both recorded so nobody
+                // undoes them:
                 //
                 //  - A steady tone correlates with itself at every whole
                 //    period, so on a plain one the rig picked an arbitrary
@@ -177,12 +178,11 @@ int main (int argc, char** argv)
                 {
                     sig::VoiceSettings fingerprint;
                     fingerprint.shimmer = 0.3;
-                    fingerprint.seed = 1000u + (unsigned) midi;
+                    fingerprint.seed = 1000u + (unsigned) noteNumber;
                     const auto x = sig::voice (sig::steady (hz, 0.5, fs), fs, fingerprint).samples;
 
                     auto idle = params;
-                    idle.midiMode = MidiTarget::Mode::target;
-                    idle.midiRequired = true;
+                    idle.allowed = 0;
                     const auto y = run (x, idle, fs, nullptr);
                     row.restMs = 1000.0 * an::delayOf (x, y, (int) (0.03 * fs)) / fs;
                     worstRest = std::max (worstRest, row.restMs);
@@ -204,11 +204,11 @@ int main (int argc, char** argv)
                 }
 
                 std::snprintf (line, sizeof line, "| %s%d | %.1f | %.2f | %.2f | %.2f | %.2f | %.2f |\n",
-                               kNoteNames[midi % 12], midi / 12 - 1, hz, row.restMs, row.lockMs, row.meanMs, row.worstMs, row.reportedMs);
+                               kNoteNames[noteNumber % 12], noteNumber / 12 - 1, hz, row.restMs, row.lockMs, row.meanMs, row.worstMs, row.reportedMs);
                 md += line;
 
                 std::snprintf (line, sizeof line, "%s,%s,%s,%s%d,%.3f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n",
-                               engineName.c_str(), rangeSpec.choices[(size_t) r], modeName, kNoteNames[midi % 12], midi / 12 - 1,
+                               engineName.c_str(), rangeSpec.choices[(size_t) r], modeName, kNoteNames[noteNumber % 12], noteNumber / 12 - 1,
                                hz, row.restMs, row.lockMs, row.meanMs, row.worstMs, row.leastMs, row.reportedMs);
                 csv += line;
 

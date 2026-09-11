@@ -79,29 +79,11 @@ void CorrectionLaw::setSettings (const CorrectionSettings& settings) noexcept
     retuneAlpha = s.retuneMs > 0.0 ? std::exp (-1.0 / (fs * s.retuneMs * 0.001)) : 0.0;
 }
 
-bool CorrectionLaw::decideNote (double pitch, const MidiTarget& midi, int& decided) noexcept
+bool CorrectionLaw::decideNote (double pitch, int& decided) noexcept
 {
-    const auto latch = s.midiLatch;
-
-    if (s.midiMode == MidiTarget::Mode::target)
-    {
-        if (midi.targetNote (latch, decided))
-            return true;
-
-        if (s.midiRequired)
-            return false;
-    }
-
-    NoteMask mask = (NoteMask) (scaleMask (s.scale, s.key) & s.allowed);
-
-    if (s.midiMode == MidiTarget::Mode::scale)
-    {
-        if (midi.anyHeld (latch))
-            mask = midi.heldMask (latch);
-        else if (s.midiRequired)
-            return false;
-    }
-
+    // An empty mask -- every note switched off -- gives no target, and so no
+    // correction at all: the voice passes through at the engine's rest delay.
+    const auto mask = (NoteMask) (scaleMask (s.scale, s.key) & s.allowed);
     return nearestAllowed (pitch, mask, note, haveNote, s.hysteresisCents, decided);
 }
 
@@ -181,7 +163,7 @@ void CorrectionLaw::setNote (int newNote) noexcept
     haveNote = true;
 }
 
-double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated, const MidiTarget& midi) noexcept
+double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
 {
     voiced = e.voiced;
 
@@ -226,7 +208,7 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated, const MidiTa
         if (evaluated && voiced)
         {
             int decided = 0;
-            if (decideNote (s.vibratoAmount > 0.0 ? pitchSlow : pitchIn, midi, decided))
+            if (decideNote (s.vibratoAmount > 0.0 ? pitchSlow : pitchIn, decided))
                 setNote (decided);
             else
                 haveNote = false;

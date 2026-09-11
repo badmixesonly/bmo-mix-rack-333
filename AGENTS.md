@@ -21,13 +21,19 @@ measurement or listening result happened.
 ## How the pieces fit
 
 - `modules/tune/dsp` is the whole product's sound, JUCE-free, and must stay
-  so (spec §8). `TuneCore` is float in, float out, a parameter struct and MIDI
-  notes; `TuneDsp` puts it behind the rack's `ModuleDsp` so a wrapper built on
-  the rack's `core/product` drives it like any module.
-- The rack's `core/dsp/ModuleDsp.h` and `core/state/ParamSpec.h` are used
-  **from a BMO Mix Rack checkout**, not copied: `BMO_RACK_DIR`, default
-  `../bmo-mix-rack-333`. When this repository gets a remote, that becomes a
-  submodule under `libs/`. Do not fork those headers into this tree.
+  so (spec §8). `TuneCore` is float in, float out and a parameter struct --
+  the voice is the only input: no MIDI, no sidechain (Frosty, 2026-09-10).
+  `TuneDsp` puts it behind the rack's `ModuleDsp`, which is all the rack's
+  `SingleModuleProcessor` needs to host it, so the wrapper is a product built
+  on Kevin's `core/product` like every other BMO product.
+- Shared code comes from **Kevin's main, pinned as a submodule** at
+  `libs/bmo-mix-rack` (`git submodule update --init libs/bmo-mix-rack`; not
+  recursive until the wrapper needs JUCE). Today that is
+  `core/dsp/ModuleDsp.h` and `core/state/ParamSpec.h`; the wrapper will add
+  `core/product`, `core/state` and `core/ui`. Do not fork any of it into this
+  tree, and do not point the build at a working copy of the rack -- a working
+  copy is on whatever branch someone left it on. Move the pin forward with
+  `git -C libs/bmo-mix-rack pull origin main` and commit the new pointer.
 - Two include roots that never collide: this repository owns `modules/tune`,
   `tools/` and `tests/`; the rack owns `core/`.
 - `tools/` are the spec's offline harness (T-1, T-3, T-5, T-11). Every one

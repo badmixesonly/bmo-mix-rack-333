@@ -8,14 +8,13 @@ CLI, then the JUCE wrapper.
 
 ## 1. Where it is
 
-- Repository: `C:\Users\thesp\OneDrive\Documents\REPO\bmo-tune-rt`, a sibling
-  of `bmo-mix-rack-333`. Local git only -- **no remote, nothing pushed**, by
+- Repository: `C:\Users\thesp\OneDrive\Documents\REPO\bmo-tune-rt`, a
+  repository of its own. Local git only -- **no remote, nothing pushed**, by
   Frosty's decision on 2026-09-10. Pushes wait for Frosty's approval.
-- Branch `main`, eight commits, each a coherent stage with its evidence in the
+- Branch `main`, each commit a coherent stage with its evidence in the
   message.
-- It builds against the rack checkout next to it (`BMO_RACK_DIR`), for
-  `core/dsp/ModuleDsp.h` and `core/state/ParamSpec.h`. Nothing in the rack was
-  changed.
+- The shared code comes from Kevin's main, pinned as a submodule at
+  `libs/bmo-mix-rack` (9c4a948, after PR #8). Nothing in the rack was changed.
 - Licence: the rack's `LICENSE` (AGPL-3.0), copied verbatim from Kevin's
   `main`. **Kevin's README says "MIT, see LICENSE"**, which contradicts the file
   it points at; this repository's README says AGPL-3.0 to match its file. That
@@ -25,7 +24,10 @@ CLI, then the JUCE wrapper.
 
 | Question (spec Part IV) | Decision |
 |---|---|
-| Where it lives | new sibling repo, reusing the rack's shared code |
+| Where it lives | its own repository, reusing Kevin's main (submodule), following every suite convention |
+| MIDI (spec §4.6) | **dropped**: the vocal is the only thing tracked; key and scale are parameters |
+| Scales | Chromatic, Major, Minor |
+| Formant Correct | **pending** -- see `modules/tune/AGENTS.md`, "Open" |
 | Push target | local only for now |
 | Pitch range floor (Q3) | 80 Hz default and Auto; 55 Hz in Bass and Instrument |
 | Latency contract (Q4) | **Live** default; Studio as the option |
@@ -54,11 +56,11 @@ C++, and rtsan/TSan/UBSan are wired for a clang toolchain but not run.
    retune 0, 20 and 50, and the vibrato-0 warble case (§5 below). Record what
    was heard, with settings and the machine, before proposing any change.
 2. **Decide vibrato 0's note decision** (§5) on what was heard.
-3. **The JUCE wrapper.** It needs MIDI in, which the rack's
-   `SingleModuleProcessor` does not take (`acceptsMidi() == false`), so it is a
-   processor of its own built from the rack's `core/state` and `core/ui`, with
-   `TuneDsp` as its engine. Allocate the plugin code, bundle id, preset
-   extension and accent in the rack's `products/AGENTS.md` table first.
+3. **The JUCE wrapper**, as a product on Kevin's `core/product`: a
+   `ModuleDef` for Tune RT, `SingleModuleProcessor` hosting `TuneDsp`, a panel
+   on `ui::ModulePanel`. With MIDI gone nothing new is needed from the rack.
+   Allocate the plugin code, bundle id, preset extension and accent first --
+   in the rack's `products/AGENTS.md` table, which is Kevin's file, so ask.
 4. **pluginval, host matrix, Ableton pass** -- Frosty's, on the wrapper build.
 5. **Real corpora** (PTDB-TUG etc.) need downloading; ask first.
 

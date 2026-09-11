@@ -11,7 +11,6 @@
           --params file.json     flat object of parameter id -> value
           --set id=value         one parameter; repeatable; after --params
           --block N | random     host block size (default 128)
-          --midi notes.csv       "sample,note,on" rows (on = 1 or 0)
           --dump-analysis a.csv  one row per detector evaluation and splice
           --pcm24                write 24-bit PCM rather than 32-bit float
           --seed N               seed for --block random (default 1)
@@ -45,7 +44,7 @@ namespace
 
         std::fprintf (stderr,
             "usage: bmo-tune-cli in.wav out.wav [--params p.json] [--set id=value ...]\n"
-            "                    [--block N|random] [--midi notes.csv] [--dump-analysis a.csv]\n"
+            "                    [--block N|random] [--dump-analysis a.csv]\n"
             "                    [--pcm24] [--seed N]\n"
             "       bmo-tune-cli --list\n");
         return 2;
@@ -67,27 +66,6 @@ namespace
                 std::printf (" [%g .. %g]", (double) s.min, (double) s.max);
             std::printf ("\n");
         }
-    }
-
-    bool loadMidi (const std::string& path, std::vector<NoteEvent>& events)
-    {
-        std::ifstream f (path);
-        if (! f)
-            return false;
-
-        std::string line;
-        while (std::getline (f, line))
-        {
-            if (line.empty() || line[0] == '#' || ! std::isdigit ((unsigned char) line[0]))
-                continue;
-
-            long long sample = 0;
-            int note = 0, on = 1;
-            if (std::sscanf (line.c_str(), "%lld,%d,%d", &sample, &note, &on) >= 2)
-                events.push_back ({ (int) sample, note, on != 0 });
-        }
-
-        return true;
     }
 
     struct Dump
@@ -123,7 +101,7 @@ int main (int argc, char** argv)
     int block = 128;
     bool randomBlocks = false, pcm24 = false;
     unsigned long long seed = 1;
-    std::string midiPath, dumpPath, error;
+    std::string dumpPath, error;
 
     for (int i = 3; i < argc; ++i)
     {
@@ -144,7 +122,6 @@ int main (int argc, char** argv)
             if (b == "random") randomBlocks = true;
             else block = std::max (1, std::atoi (b.c_str()));
         }
-        else if (a == "--midi")          midiPath = next();
         else if (a == "--dump-analysis") dumpPath = next();
         else if (a == "--pcm24")         pcm24 = true;
         else if (a == "--seed")          seed = std::strtoull (next().c_str(), nullptr, 10);
@@ -160,10 +137,6 @@ int main (int argc, char** argv)
     for (const auto& ch : in)
         for (size_t i = 0; i < mono.size(); ++i)
             mono[i] += ch[i] / (float) in.size();
-
-    std::vector<NoteEvent> notes;
-    if (! midiPath.empty() && ! loadMidi (midiPath, notes))
-        return usage (("cannot read " + midiPath).c_str());
 
     TuneCore core;
     const auto params = tools::toParams (values);
@@ -181,23 +154,13 @@ int main (int argc, char** argv)
     }
 
     signals::Random rng (seed);
-    std::vector<NoteEvent> blockNotes;
-    size_t at = 0, noteIndex = 0;
+    size_t at = 0;
 
     while (at < mono.size())
     {
         auto n = randomBlocks ? 1 + (int) (rng.next() % 1024) : block;
         n = (int) std::min<size_t> ((size_t) n, mono.size() - at);
-
-        blockNotes.clear();
-        while (noteIndex < notes.size() && (size_t) notes[noteIndex].offset < at + (size_t) n)
-        {
-            auto e = notes[noteIndex++];
-            e.offset = (int) ((size_t) e.offset - at);
-            blockNotes.push_back (e);
-        }
-
-        core.process (mono.data() + at, n, blockNotes.data(), (int) blockNotes.size());
+        core.process (mono.data() + at, n);
         at += (size_t) n;
     }
 

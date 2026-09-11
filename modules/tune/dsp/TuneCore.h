@@ -4,7 +4,6 @@
 #include "modules/tune/dsp/CorrectionLaw.h"
 #include "modules/tune/dsp/Detector.h"
 #include "modules/tune/dsp/HybridEngine.h"
-#include "modules/tune/dsp/MidiTarget.h"
 #include "modules/tune/params.h"
 
 namespace bmo::tune
@@ -24,22 +23,12 @@ struct TuneParams
     double glideMs = 0.0;
     bool formant = true;
     double formantShiftCents = 0.0;
-    MidiTarget::Mode midiMode = MidiTarget::Mode::off;
-    bool midiLatch = false, midiRequired = false;
     LatencyMode latency = LatencyMode::live;
     double refA = 440.0;
     NoteMask allowed = kAllNotes;
 
     /** From an array of values in spec order, as ModuleDsp::setParams gets. */
     static TuneParams fromValues (const float* v, int count) noexcept;
-};
-
-/** One MIDI note event, stamped with its sample offset in the block. */
-struct NoteEvent
-{
-    int offset = 0;
-    int note = 60;
-    bool on = true;        ///< false = off; note < 0 with on = false = all notes off
 };
 
 /** Everything --dump-analysis writes for one sample (spec T-1). */
@@ -54,8 +43,7 @@ struct AnalysisFrame
     bool splice = false;
 };
 
-/** BMO Tune RT's DSP, whole: float in, float out, a parameter struct, and
-    MIDI notes. No framework, no host, no allocation after prepare(), and no
+/** BMO Tune RT's DSP, whole: float in, float out, and a parameter struct. No framework, no host, no allocation after prepare(), and no
     dependence on how the host slices blocks -- every stage is a per-sample
     state machine, which the block-size invariance harness checks bit for
     bit (spec §8, T-1).
@@ -67,8 +55,8 @@ public:
     void reset();
     void setParams (const TuneParams&) noexcept;
 
-    /** Mono, in place. `events` sorted by offset. */
-    void process (float* samples, int numSamples, const NoteEvent* events = nullptr, int numEvents = 0) noexcept;
+    /** Mono, in place. */
+    void process (float* samples, int numSamples) noexcept;
 
     /** What to report to the host for these parameters at this rate. */
     static int latencyFor (const TuneParams&, double sampleRate) noexcept;
@@ -95,7 +83,6 @@ private:
 
     Detector det;
     CorrectionLaw law;
-    MidiTarget midi;
     ClassicEngine engine;
     HybridEngine hybridEngine;
 

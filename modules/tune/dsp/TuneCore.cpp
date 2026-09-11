@@ -25,9 +25,6 @@ TuneParams TuneParams::fromValues (const float* v, int count) noexcept
     p.glideMs = v[Index::glide];
     p.formant = on (Index::formant);
     p.formantShiftCents = v[Index::formantShift];
-    p.midiMode = (MidiTarget::Mode) choice (Index::midiMode, 3);
-    p.midiLatch = on (Index::midiLatch);
-    p.midiRequired = on (Index::midiRequired);
     p.latency = (LatencyMode) choice (Index::latency, 2);
     p.refA = v[Index::refA];
 
@@ -71,7 +68,6 @@ void TuneCore::reset()
 {
     det.reset();
     law.reset();
-    midi.reset();
     engine.reset();
     hybridEngine.reset();
     switching = false;
@@ -109,9 +105,6 @@ void TuneCore::applyParams() noexcept
     cs.glideAllowed = params.engine == Engine::hybrid;
     cs.clarityLo = ds.clarityLo;
     cs.clarityHi = ds.clarityHi;
-    cs.midiMode = params.midiMode;
-    cs.midiLatch = params.midiLatch;
-    cs.midiRequired = params.midiRequired;
     law.setSettings (cs);
 
     engine.setLatencyMode (params.latency == LatencyMode::studio, fs / limits.minHz);
@@ -160,34 +153,19 @@ float TuneCore::runEngines (float x, double cents, double period, bool voiced, b
     return (float) (toHybrid ? out * c + in * h : out * h + in * c);
 }
 
-void TuneCore::process (float* samples, int numSamples, const NoteEvent* events, int numEvents) noexcept
+void TuneCore::process (float* samples, int numSamples) noexcept
 {
     ScopedNoDenormals noDenormals;
     applyParams();
 
-    int nextEvent = 0;
-
     for (int i = 0; i < numSamples; ++i)
     {
-        // Notes land on their own sample, so a MIDI-driven target changes
-        // where the host put the note rather than at the next block.
-        while (nextEvent < numEvents && events[nextEvent].offset <= i)
-        {
-            const auto& e = events[nextEvent++];
-            if (e.on)
-                midi.noteOn (e.note);
-            else if (e.note < 0)
-                midi.allNotesOff();
-            else
-                midi.noteOff (e.note);
-        }
-
         const auto x = samples[i];
         det.push (x);
 
         const auto& est = det.estimate();
         const auto evaluated = det.evaluatedThisSample();
-        const auto cents = law.tick (est, evaluated, midi);
+        const auto cents = law.tick (est, evaluated);
 
         // Homing is allowed once the correction has faded all the way out on
         // an unvoiced stretch -- then the engine is carrying nothing worth
