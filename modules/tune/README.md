@@ -15,8 +15,11 @@ and silence are left alone.
 
 It pulls the voice to the nearest allowed note -- chromatic by default, or a
 key with a major or minor scale, with any note switched out -- as fast as
-Retune Speed says. At 0, the default, the snap is immediate: that is the
-sound this plugin is built for.
+Retune Speed says. Retune Speed is in milliseconds, as the other tuners print
+it: 0.0 to 5.0 ms in tenths, where hard tuning lives, then 6 to 100 ms in
+whole ones. At 0.0 ms, the default, the snap is immediate: that is the sound
+this plugin is built for. (0.1's Retune was a unitless 0-100 knob; its 10
+was about 1.2 ms. A 0.1 session reopens at 0.0 ms.)
 
 - **Vibrato** 0 % flattens the singer's vibrato onto the note; 100 % keeps it
   and only corrects the note it is centred on; 150 % exaggerates it.
@@ -39,6 +42,12 @@ It reports zero to the host and costs 0.4 ms while it is not correcting.
 While it corrects, it runs up to one cycle of the note later -- the same
 contract as Waves Tune Real-Time. That is the only mode: it is what a
 singer monitoring through the plugin needs.
+
+Measured the same way on the same test file, it is the least late of the
+three tuners it is compared with: 3.8 ms at worst, against Antares Auto-Tune
+Artist's 6.5 ms and Waves Tune Real-Time's 10.6 ms -- and neither of those
+tells the host what it really costs either. The rule for changes: BMO may
+never be later than Waves (the root `AGENTS.md`, "The latency rule").
 
 ## CPU
 

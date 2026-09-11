@@ -8,6 +8,19 @@ build ("it works! its got some hiccups but it works"). Written on **AURORA**,
 Read first: `AGENTS.md`, then `modules/tune/AGENTS.md` (invariants, what was
 measured, what is open). This file is only about the audio.
 
+> **Update, later on 2026-09-11, on AURORA.** What arrived was a shoot-out
+> rather than hiccup examples: two songs through Antares, Waves and 0.1 at
+> 0 / 10 / 20. It is analysed in `testing-notes/shootout-2026-09-11.md`;
+> true latency and correction lag against both, measured on a synthetic
+> reference, in `testing-notes/latency-and-lag-2026-09-11.md`. Three things
+> changed as a result: **Retune is now in milliseconds** (`retune_ms`; 0.1's
+> `retune` was a unitless knob -- 0.1's knob k was 400 (2^(8k/100) - 1) / 255
+> ms, so 10 was 1.2 ms and 36 was 10 ms -- and is retired), **the latency
+> rule** (root `AGENTS.md`), and **the open hard-tune work**
+> (`tests/dsp/HardTuneTests.cpp --target`). The method below still holds for
+> any hiccup example that turns up; read a 0.1 Retune value through that
+> formula.
+
 ## Where the code is
 
 | | |
@@ -70,7 +83,7 @@ and whether anything was automated during the take.
 
 ```
 build/tools/Release/bmo-tune-cli field-audio/01-dry.wav field-audio/01-render.wav ^
-    --set key=A --set scale=Minor --set retune=0 --set vibrato=0 ^
+    --set key=A --set scale=Minor --set retune_ms=0 --set vibrato=0 ^
     --dump-analysis field-audio/01.csv
 build/tools/Release/bmo-tune-cli --list        # every parameter id and its choices
 ```

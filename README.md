@@ -8,7 +8,9 @@ a software-only tuner can honestly claim.
 It has a repository of its own and is not a BMO Mix Rack module -- it is
 mono, and has a latency contract a rack slot is not built around -- but it
 follows every suite convention and reuses the shared code from Kevin's
-main, pinned as a submodule.
+main, pinned as a submodule. It ships standalone for now; bringing it into
+the rack later is the hope, not a requirement (Frosty, 2026-09-11), and the
+schema still fits a rack slot's 32 parameters so that door stays open.
 
 One engine, CLASSIC: a cycle-repeat/delete rate converter, bright, with
 formants that move with the pitch, 0.4 ms behind at rest and reporting 0 to
@@ -50,6 +52,13 @@ product went CLASSIC and Live only. Every figure the spec gates on that can be m
 offline meets its gate -- `modules/tune/AGENTS.md` has the table, and
 `testing-notes/` the state of play.
 
+Against Antares Auto-Tune Artist and Waves Tune Real-Time (2026-09-11, on
+AURORA): the lowest true latency of the three (3.8 ms worst, against 6.5 and
+10.6), level with them at 10 and 20 ms retune, and behind Antares at hard
+tune on a moving voice -- its correction lands about a cycle late. That is
+the open work: `tests/dsp/HardTuneTests.cpp` holds it, and
+`testing-notes/latency-and-lag-2026-09-11.md` has the numbers.
+
 ## Layout
 
 ```
@@ -60,9 +69,13 @@ tools/          the offline harness, one executable each:
                   bmo-tune-score    GPE / FPE / RPA / RCA / VDE / time to lock
                   bmo-tune-latency  the manual's latency table, measured
                   bmo-tune-bench    CPU per block: median, p99, max
+                  bmo-tune-ref      the reference stimulus, and any tuner's render of it scored
+                  bmo-tune-blind    a blind listening set from several tuners' renders
                   bmo-tune-snapshot the panel to a PNG, no display needed
                   bmo-tune-hostcheck loads the built VST3 as a host would
-tests/          six DSP suites, the panel test and the host check, by CTest
+                  bmo-tune-hostrender renders a WAV through any VST3, uncompensated
+tests/          seven DSP suites, the panel test and the host check, by CTest
+                (and hardtune_target, disabled until it passes)
 products/tune/  the plugin target: Btun, com.lt3audio.bmotunert
 design/         the panel studies the panel was built from
 scripts/        build.sh, score-corpus.sh
@@ -72,7 +85,7 @@ testing-notes/  handoffs
 ## Hearing it
 
 ```
-build/tools/Release/bmo-tune-cli in.wav out.wav --set retune=0 --set scale=Minor --set key=A
+build/tools/Release/bmo-tune-cli in.wav out.wav --set retune_ms=0 --set scale=Minor --set key=A
 build/tools/Release/bmo-tune-cli --list        # every parameter, its range and default
 ```
 

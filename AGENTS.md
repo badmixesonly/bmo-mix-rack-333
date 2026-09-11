@@ -3,7 +3,11 @@
 BMO Tune RT, a low-latency monophonic pitch corrector by LT3a. It is not a
 BMO Mix Rack module, but it is built the rack's way and reuses the rack's
 shared code, so read the rack's root `AGENTS.md` for the conventions this
-repository inherits. Then [`modules/tune/AGENTS.md`](modules/tune/AGENTS.md),
+repository inherits. It ships standalone; integrating it into the rack later
+is the hope, not a requirement (Frosty, 2026-09-11) -- so keep it easy: the
+DSP JUCE-free behind `ModuleDsp`, and the schema within a slot's 32
+parameters. It is pushed to Frosty's fork as branch `bmo-tune-rt` (and
+`bmo-tune-rt-archive-hybrid-studio`), never to Kevin's repository. Then [`modules/tune/AGENTS.md`](modules/tune/AGENTS.md),
 which is where everything specific to the DSP lives.
 
 The design document is `bmo-tune-rt-implementation-and-test-spec.md` (v0.1,
@@ -45,7 +49,10 @@ measurement or listening result happened.
 as the rack's: parameter ids, their order in `specs()`, kinds, ranges, steps,
 defaults, and every choice's names and order. `tests/dsp/SchemaTests.cpp`
 writes the table out in full; a change is argued for there, and a new
-parameter goes at the **end** of `specs()`. Plugin code `Btun`, bundle id
+parameter goes at the **end** of `specs()`. A parameter that must mean
+something new gets a new id and the old one is retired (`kRetiredIds`) --
+never new meaning under an old id: `retune` became `retune_ms` that way on
+2026-09-11, because a saved 36 meant 10 ms. Plugin code `Btun`, bundle id
 `com.lt3audio.bmotunert` and manufacturer `LT3a` are equally permanent: they
 are what a host finds the plugin by.
 
@@ -65,19 +72,55 @@ switch-colour table, and both appearances checked every time.
 | Lower section | Retune, large (96 px face), at the centre of the section; Vibrato and Flex at 10 and 2 o'clock -- round 7's clock with its lower half gone with HYBRID (2026-09-11) |
 | Plugin code, bundle id, preset extension | `Btun`, `com.lt3audio.bmotunert`, `.bmotune` (Frosty, 2026-09-10). Not yet in the rack's `products/AGENTS.md` allocation table -- that is Kevin's repository, so it goes in with his say |
 
+## The latency rule
+
+**A change is safe to take, as far as latency goes, so long as BMO Tune RT's
+true latency does not exceed Waves Tune Real-Time's measured true latency**
+(Frosty, 2026-09-11).
+
+- **True latency** is how late the audio really is -- what a singer
+  monitoring through the plugin hears -- not what the host is told. BMO and
+  Waves both tell the host 0. It is measured on the reference stimulus
+  (`tools/common/Stimulus.h`) by `bmo-tune-ref`: the worst delay over its
+  in-tune notes and its notes held off pitch while correcting, the same code
+  for every tuner.
+- **The ceiling** is Waves Tune Real-Time 16.0.23.24 at its fastest (Speed
+  and Note Transition 0.1 ms), rendered uncompensated by
+  `bmo-tune-hostrender`: **10.62 ms**, on AURORA, 2026-09-11. It lives in
+  `tools/common/References.h` with its settings. BMO was 3.82 ms that day.
+- **Enforced** in every ctest run by `tests/dsp/HardTuneTests.cpp` ("the
+  latency rule"), and per semitone by `bmo-tune-latency`, which fails if any
+  cell's rest delay passes the ceiling.
+- **What it allows:** a change may make BMO later -- a lookahead to land the
+  correction on time, a longer detector window -- without asking, up to the
+  ceiling. Say the new true latency and the headroom left in the commit body.
+- **What it does not change:** the host is still told 0 (the Live
+  contract; reporting anything else is Frosty's call, separately). Every
+  other gate still applies -- the suites, the corpus not getting worse, and
+  Frosty hearing every fix. If the floor moves, the manual's latency table
+  (`bmo-tune-latency`) and `modules/tune/AGENTS.md` move with it.
+- **Re-measure the ceiling** when Waves Tune Real-Time updates
+  (`testing-notes/latency-and-lag-2026-09-11.md` has the commands), and
+  record it with the date and machine. If Waves gets faster, the ceiling
+  comes down with it.
+
 ## Before you say it is done
 
 ```
-scripts/build.sh              # Release build, all six DSP suites
-scripts/build.sh --plugin     # the plugin too: eight suites, and snapshots/
+scripts/build.sh              # Release build, all seven DSP suites
+scripts/build.sh --plugin     # the plugin too: nine suites, and snapshots/
 scripts/build.sh --corpus     # then generate, render and score the corpus
 ```
 
-All three must pass. If the panel changed, look at `snapshots/` in both
-appearances -- the panel test checks every parameter is on it, fit and
-overlap, but not whether it looks right. If the DSP changed, also run
-`build/tools/Release/bmo-tune-latency --range all` (it fails if the rest
-delay ever leaves the Live rest, 0.40 ms) and `bmo-tune-bench --quick`.
+All three must pass. `hardtune_target` shows as "Not Run (Disabled)": it is
+the open hard-tune work, enabled by the change that makes it pass. If the
+panel changed, look at `snapshots/` in both appearances -- the panel test
+checks every parameter is on it, fit and overlap, but not whether it looks
+right. If the DSP changed, also run
+`build/tools/Release/bmo-tune-latency --range all` (it fails if any rest
+delay passes the Waves ceiling, and notes if the floor moved off 0.40 ms),
+`bmo-tune-ref bmo` (the true latency and correction lag against the
+references) and `bmo-tune-bench --quick`.
 
 **Measure, never judge a render by eye or ear alone** -- the rack's session
 handoff of 2026-09-09 is the reason, and every fault found in this tree so
