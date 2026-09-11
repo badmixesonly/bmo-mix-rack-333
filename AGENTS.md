@@ -46,9 +46,20 @@ rack's: parameter ids, their order in `specs()`, ranges, steps, defaults.
 `tests/dsp/SchemaTests.cpp` writes the table out in full; a change is argued
 for there, and a new parameter goes at the **end** of `specs()`.
 
-Not yet allocated, and to be allocated in the rack's `products/AGENTS.md`
-identity table when a plugin is built: plugin code, bundle id
-(`com.lt3audio.bmotunert` is the obvious one), preset extension, accent.
+## Identity and colour
+
+A standalone product, so its identity lives here rather than in the rack's
+`products/AGENTS.md` table, and its colours are chosen fresh rather than from
+the rack's reserved list (Frosty, 2026-09-10). The suite's colour *rules* still
+apply unchanged: `faceOf`, `accentInk`, `accentTextOn`, `onAccentOf`, the
+switch-colour table, and both appearances checked every time.
+
+| | |
+|---|---|
+| Accent | lime `#b6e35d`, derived by the suite's rules on both plates |
+| Selectors | lit in the accent (Scale, Range, Latency, Formant, the mode banner) |
+| Keyboard | its own colour, a complement of lime -- violet `#8f7cf8`, or the split-complements periwinkle `#6f8ef5` / orchid `#b56cf0`; being chosen in the panel studies |
+| Plugin code, bundle id, preset extension | not yet allocated; `com.lt3audio.bmotunert` is the obvious bundle id |
 
 ## Before you say it is done
 
