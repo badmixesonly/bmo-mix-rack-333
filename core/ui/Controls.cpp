@@ -26,9 +26,9 @@ juce::String compactFrequency (const juce::String& text)
 }
 
 //==============================================================================
-PlainKnob::PlainKnob (juce::RangedAudioParameter& parameter, const juce::String& captionText,
+PlainKnob::PlainKnob (juce::RangedAudioParameter& param, const juce::String& captionText,
                       Knob::Style style, float faceScale, juce::Colour accent, juce::Colour captionColourIn)
-    : caption (captionText), captionColour (captionColourIn), accentColour (accent)
+    : caption (captionText), captionColour (captionColourIn), accentColour (accent), parameter (param)
 {
     // A component name, so a layout test can find this knob by the caption a
     // reader sees. JUCE hands it to the accessibility layer as well.
@@ -40,17 +40,58 @@ PlainKnob::PlainKnob (juce::RangedAudioParameter& parameter, const juce::String&
     addAndMakeVisible (knob);
 
     attachment = std::make_unique<juce::SliderParameterAttachment> (parameter, knob);
+
+    // Only a knob that prints its value needs to hear it move; the attachment
+    // keeps its own listener, so this does not take anything from it.
+    knob.onValueChange = [this] { if (showsValue) repaint (valueBox()); };
 }
 
 juce::Rectangle<int> PlainKnob::captionBox() const
 {
-    return { 0, knob.getBottom(), getWidth(), captionRow() - 4 };
+    return { 0, knob.getBottom(), getWidth(), captionRow() - 4 - (showsValue ? valueRow() : 0) };
+}
+
+juce::Rectangle<int> PlainKnob::valueBox() const
+{
+    if (! showsValue)
+        return {};
+
+    const auto name = captionBox();
+    return { 0, name.getBottom(), getWidth(), valueRow() };
 }
 
 float PlainKnob::captionOverflow() const
 {
-    return juce::GlyphArrangement::getStringWidth (captionFont (captionSize), caption)
-             - (float) captionBox().getWidth();
+    auto overflow = juce::GlyphArrangement::getStringWidth (captionFont (captionSize), caption)
+                      - (float) captionBox().getWidth();
+
+    // The value too, at the widest it can be rather than at whatever it
+    // happens to read now: both ends of the range and the default, which
+    // between them are the long strings ("20.0 kHz", "-24.0 dB").
+    if (showsValue)
+        for (const auto n : { 0.0f, 1.0f, parameter.getDefaultValue() })
+            overflow = juce::jmax (overflow, juce::GlyphArrangement::getStringWidth (captionFont (kValueSize), valueText (parameter.getText (n, 0)))
+                                               - (float) valueBox().getWidth());
+
+    return overflow;
+}
+
+void PlainKnob::setShowsValue (bool shouldShow)
+{
+    showsValue = shouldShow;
+    resized();
+    repaint();
+}
+
+void PlainKnob::setValueFormat (std::function<juce::String (const juce::String&)> format)
+{
+    valueFormat = std::move (format);
+    repaint();
+}
+
+juce::String PlainKnob::valueText (const juce::String& hostText) const
+{
+    return valueFormat ? valueFormat (hostText) : hostText;
 }
 
 void PlainKnob::paint (juce::Graphics& g)
@@ -95,6 +136,13 @@ void PlainKnob::paint (juce::Graphics& g)
     drawLabel (g, caption, box.toFloat(),
                juce::Justification::centred, captionFont (captionSize),
                knob.isEnabled() ? ink : ink.withAlpha (0.4f));
+
+    // The value in the caption face, a step down and in the secondary ink: it
+    // is read after the name, and it should not compete with it.
+    if (showsValue)
+        drawLabel (g, valueText (parameter.getCurrentValueAsText()), valueBox().toFloat(),
+                   juce::Justification::centredTop, captionFont (kValueSize),
+                   knob.isEnabled() ? tokens().text2 : tokens().text2.withAlpha (0.4f));
 }
 
 void PlainKnob::resized()
@@ -262,6 +310,29 @@ void ConcentricBand::setRingEnabled (bool shouldBeEnabled)
     ringEnabled = shouldBeEnabled;
     ring.setEnabled (shouldBeEnabled);
     repaint();
+}
+
+void ConcentricBand::setLegend (const juce::StringArray& labels)
+{
+    jassert (labels.size() == legend.size());   // one label a position
+    legend = labels;
+
+    // A filter's dial is nudged by its legend's ink (geometry()), so new
+    // words can move it.
+    resized();
+    repaint();
+}
+
+float ConcentricBand::legendOverflow() const
+{
+    auto overflow = -kLegendBoxWidth;
+
+    for (const auto& label : legend)
+        overflow = juce::jmax (overflow, juce::GlyphArrangement::getStringWidth (
+                                             kPointUsesCaption ? captionFont (kPointSize) : labelFont (kPointSize, true), label)
+                                           - kLegendBoxWidth);
+
+    return overflow;
 }
 
 float ConcentricBand::filterLabelRadius (float angle, const juce::String& text,

@@ -70,13 +70,44 @@ public:
         stranding it at the foot of the cell. */
     void setCaptionSize (float points);
 
+    /** Prints the parameter's value under its name -- "2.10 kHz", "-2.0 dB".
+
+        Off by default, and every module but BMO DEQ leaves it off: the suite's
+        knobs say less and more, not how much (the class comment). DEQ is a
+        parametric EQ with thirteen continuous controls a band, and Frosty's
+        call (2026-09-11) is that they need numbers. The text is the host's own
+        -- getCurrentValueAsText -- so it reads the same standalone and in a
+        rack slot, and cannot disagree with the automation lane. */
+    void setShowsValue (bool shouldShow);
+    bool isShowingValue() const noexcept { return showsValue; }
+
+    /** The cap's share of the knob's side, as the constructor's faceScale. The
+        dotted track sits a fixed Tokens::trackGap outside the cap, so a small
+        knob at a large scale runs its track off its own edge and is clipped;
+        a panel that sizes knobs at layout time sets this with the side. */
+    void setFaceScale (float scale)  { knob.setFaceScale (scale); knob.repaint(); }
+
+    /** Rewrites the host's text before it is drawn -- a narrow panel's
+        "2.10k" for "2.10 kHz". Paint only; the host, the automation lane and
+        typed entry keep the full text. Measured by captionOverflow like the
+        rest, so a format cannot hide an overflow. Empty restores the host's. */
+    void setValueFormat (std::function<juce::String (const juce::String&)> format);
+
 private:
-    /** Room under the knob for its name, at the current caption size.
+    juce::String valueText (const juce::String& hostText) const;
+    /** Room under the knob for its name, at the current caption size, and for
+        the value under that when one is shown.
 
         1.2 x the point size plus four, which is the 22 px row a 15 pt caption
         had when the number was fixed -- so a knob that never sets a size lays
         out exactly as it did. */
-    int captionRow() const { return juce::roundToInt (captionSize * 1.2f) + 4; }
+    int captionRow() const { return juce::roundToInt (captionSize * 1.2f) + 4 + (showsValue ? valueRow() : 0); }
+    int valueRow() const   { return juce::roundToInt (kValueSize * 1.2f) + 1; }
+
+    /** The box the value is drawn in; empty when none is shown. */
+    juce::Rectangle<int> valueBox() const;
+
+    static constexpr float kValueSize = 11.0f;
 
     /** The box the caption is drawn in. One definition, read by `paint` and by
         `captionOverflow`, so the drawing and the assertion cannot disagree. */
@@ -87,6 +118,9 @@ private:
     juce::Colour accentColour;
     int knobSide = std::numeric_limits<int>::max();
     float captionSize = 15.0f;
+    bool showsValue = false;
+    std::function<juce::String (const juce::String&)> valueFormat;
+    juce::RangedAudioParameter& parameter;
     Knob knob;
     std::unique_ptr<juce::SliderParameterAttachment> attachment;
 
@@ -118,6 +152,18 @@ public:
     void resized() override;
 
     void setRingEnabled (bool);
+
+    /** Replaces the legend read off the selector's spec, one label a position.
+
+        For a selector whose choices are not frequencies: BMO DEQ's band shape
+        is "Bell", "Low Shelf" and so on, which the host shows in full and a
+        38 px legend box cannot, so its panel hands in BELL, LS, HS, LC, HC.
+        The host's names are untouched; this is paint only. */
+    void setLegend (const juce::StringArray& labels);
+
+    /** How far the widest legend label runs past its box, in px; <= 0 fits.
+        For layout tests, like PlainKnob::captionOverflow. */
+    float legendOverflow() const;
 
 private:
     /** How far a band's fan stops short of 12 and 6 o'clock -- or runs past
