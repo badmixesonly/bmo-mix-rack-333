@@ -1,5 +1,6 @@
 #pragma once
 
+#include "modules/tune/dsp/LatencyContract.h"
 #include "modules/tune/dsp/SincTable.h"
 #include <array>
 #include <vector>
@@ -45,7 +46,7 @@ public:
     using Sinc = SincTable<32>;
 
     /** Delay below which a read would need samples not yet written. */
-    static constexpr int kFloor = Sinc::kLookahead + 1;
+    static constexpr int kFloor = contract::kFloor;
 
     /** Where Live rests: two samples above the floor. Resting on the floor
         itself meant any upward correction at all -- including the few
@@ -54,13 +55,13 @@ public:
         samples absorb a 0.001-cent drift for over a minute, and a real
         +30-cent correction spends them in about a hundred samples, which
         is what the splice is there for. */
-    static constexpr int kLiveRest = kFloor + 2;
+    static constexpr int kLiveRest = contract::kLiveRest;
 
     /** The correction the Studio window is sized for; past it, the old
         read of a splice's crossfade can reach the floor and is clamped
         there (audible only as a slightly shorter fade). Spec §6.1 documents
         the engines as accurate to +/-400 cents. */
-    static constexpr double kDesignCents = 400.0;
+    static constexpr double kDesignCents = contract::kDesignCents;
 
     /** Allocates. `longestPeriod` is the largest period any pitch range can
         report, in samples. */
@@ -84,6 +85,19 @@ public:
         input is unvoiced, which is when homing is allowed. */
     float process (float input, double correctionCents, double period, bool settled) noexcept;
 
+    /** While the other engine is the one playing: keep the history current
+        and sit at rest, so a switch to this engine starts from real audio
+        at its rest delay rather than from silence. */
+    void feed (float input) noexcept
+    {
+        ring[(size_t) write] = std::isfinite (input) ? input : 0.0f;
+        write = (write + 1) & mask;
+        lag = restLag;
+        ratio = 1.0;
+        fading = false;
+        spliced = false;
+    }
+
     //== For the analysis dump and the tests ===================================
     double currentLag() const noexcept { return lag; }
     double currentRatio() const noexcept { return ratio; }
@@ -91,7 +105,6 @@ public:
     long long spliceCount() const noexcept { return splices; }
 
 private:
-    const Sinc& tableFor (double rho) const noexcept;
     double read (const Sinc&, double lagBehindNewest) const noexcept;
     void startFade (double newLag, int length, bool equalPower) noexcept;
 
@@ -99,10 +112,7 @@ private:
     std::vector<float> ring;
     int mask = 0, write = 0;
 
-    // Table bank: [0] full band, used while every alias would land above
-    // 20 kHz; [b] for corrections up to b x 100 cents, cut to 0.9 / rho.
-    std::array<Sinc, 13> tables;
-    double fullBandRatio = 1.0;
+    SincBank kernels;   // full band while aliases stay above 20 kHz; see SincBank
 
     bool studio = false;
     int restLag = kLiveRest;

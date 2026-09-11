@@ -5,6 +5,7 @@ add_library(bmo_tune_dsp STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/tune/dsp/Detector.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tune/dsp/CorrectionLaw.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tune/dsp/ClassicEngine.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tune/dsp/HybridEngine.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tune/dsp/TuneCore.cpp)
 
 target_include_directories(bmo_tune_dsp PUBLIC ${BMO_INCLUDE_ROOTS})

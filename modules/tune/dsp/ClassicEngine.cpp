@@ -5,26 +5,11 @@
 namespace bmo::tune
 {
 
-namespace
-{
-    /** The splice guard: how far below its window's floor the outgoing read
-        of a crossfade can drift while raising pitch, as a fraction of the
-        period (half a period of fade at the design ratio). */
-    double guardFraction()
-    {
-        return 0.5 * (std::exp2 (ClassicEngine::kDesignCents / 1200.0) - 1.0);
-    }
-}
-
 int ClassicEngine::latencyFor (bool studioMode, double rangePeriod) noexcept
 {
-    if (! studioMode)
-        return 0;
-
-    // Centre the window half a period plus the splice guard above the floor,
-    // so the lowest note of the range can swing a full period and still
-    // never read a sample that has not arrived.
-    return kFloor + (int) std::ceil (rangePeriod * (0.5 + guardFraction()));
+    // Shared with HYBRID, so switching engines never moves the PDC the host
+    // was told: see LatencyContract.h.
+    return studioMode ? contract::studio (rangePeriod) : 0;
 }
 
 void ClassicEngine::prepare (double sampleRate, double longestPeriod)
@@ -41,19 +26,7 @@ void ClassicEngine::prepare (double sampleRate, double longestPeriod)
     ring.assign ((size_t) size, 0.0f);
     mask = size - 1;
 
-    // A read at rate rho folds content at f to fs - rho f. Below this ratio
-    // the fold cannot reach 20 kHz, so the full-band kernel -- the one that
-    // is a pure delay at rest -- is kept. 1.167 (+267 cents) at 48 kHz,
-    // 1.093 (+154) at 44.1; at 88.2 and up every correction the engine is
-    // specified for stays full band.
-    fullBandRatio = std::max (1.0, 2.0 * (1.0 - 20000.0 / fs));
-
-    tables[0].build (1.0, 8.0);
-    for (int b = 1; b < (int) tables.size(); ++b)
-    {
-        const auto upper = std::exp2 (b * 100.0 / 1200.0);
-        tables[(size_t) b].build (upper <= fullBandRatio ? 1.0 : 0.90 / upper, 8.0);
-    }
+    kernels.build (fs);
 
     reset();
 }
@@ -83,16 +56,6 @@ void ClassicEngine::setLatencyMode (bool studioMode, double rangePeriod) noexcep
     // A contract change is a discontinuity by definition; fade to the new
     // rest position rather than jump.
     startFade (restLag, std::max (16, (int) (0.005 * fs)), true);
-}
-
-const ClassicEngine::Sinc& ClassicEngine::tableFor (double rho) const noexcept
-{
-    if (rho <= 1.0)
-        return tables[0];
-
-    const auto cents = 1200.0 * std::log2 (rho);
-    const auto b = std::clamp ((int) std::ceil (cents / 100.0), 1, (int) tables.size() - 1);
-    return tables[(size_t) b];
 }
 
 double ClassicEngine::read (const Sinc& t, double lagBehindNewest) const noexcept
@@ -172,7 +135,7 @@ float ClassicEngine::process (float input, double cents, double period, bool set
 
     lag = std::max ((double) kFloor, lag);
 
-    const auto& table = tableFor (ratio);
+    const auto& table = kernels.forRatio (ratio);
     auto y = read (table, lag);
 
     if (fading)

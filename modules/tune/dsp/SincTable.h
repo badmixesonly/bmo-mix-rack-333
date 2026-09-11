@@ -1,6 +1,8 @@
 #pragma once
 
 #include "modules/tune/dsp/Pitch.h"
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <vector>
 
@@ -103,7 +105,6 @@ public:
         return accA + mix * (accB - accA);
     }
 
-private:
     static double besselI0 (double x)
     {
         // Power series; converges fast for the betas a window uses.
@@ -121,7 +122,48 @@ private:
         return sum;
     }
 
+private:
     std::vector<float> table;
+};
+
+/** A bank of 32-tap kernels for reads at rate rho, shared by both engines
+    (spec §5.4). A read at rate rho folds content at f to fs - rho f, which
+    cannot land below 20 kHz until rho passes 2 (1 - 20 kHz / fs): +267 cents
+    at 48 kHz, +154 at 44.1, and never within +/-1200 cents at 88.2 and up.
+    Below that ratio the full-band kernel -- the one that is a pure delay at a
+    whole-sample position -- is kept; above it, one kernel per 100 cents, cut
+    to 0.90 / rho (measured: -68 dB of alias on a full-band sawtooth at
+    +100 cents, -0.29 dB at 18 kHz; see tests/dsp/InterpolatorTests.cpp). */
+class SincBank
+{
+public:
+    using Table = SincTable<32>;
+
+    void build (double sampleRate)
+    {
+        fullBandRatio = std::max (1.0, 2.0 * (1.0 - 20000.0 / sampleRate));
+        tables[0].build (1.0, 8.0);
+
+        for (int b = 1; b < (int) tables.size(); ++b)
+        {
+            const auto upper = std::exp2 (b * 100.0 / 1200.0);
+            tables[(size_t) b].build (upper <= fullBandRatio ? 1.0 : 0.90 / upper, 8.0);
+        }
+    }
+
+    const Table& forRatio (double rho) const noexcept
+    {
+        if (rho <= 1.0)
+            return tables[0];
+
+        const auto cents = 1200.0 * std::log2 (rho);
+        const auto b = std::clamp ((int) std::ceil (cents / 100.0), 1, (int) tables.size() - 1);
+        return tables[(size_t) b];
+    }
+
+private:
+    std::array<Table, 13> tables;
+    double fullBandRatio = 1.0;
 };
 
 } // namespace bmo::tune

@@ -3,6 +3,7 @@
 #include "modules/tune/dsp/ClassicEngine.h"
 #include "modules/tune/dsp/CorrectionLaw.h"
 #include "modules/tune/dsp/Detector.h"
+#include "modules/tune/dsp/HybridEngine.h"
 #include "modules/tune/dsp/MidiTarget.h"
 #include "modules/tune/params.h"
 
@@ -81,9 +82,12 @@ public:
     const Detector& detector() const noexcept { return det; }
     const CorrectionLaw& correction() const noexcept { return law; }
     const ClassicEngine& classic() const noexcept { return engine; }
+    const HybridEngine& hybrid() const noexcept { return hybridEngine; }
+    Engine activeEngine() const noexcept { return active; }
 
 private:
     void applyParams() noexcept;
+    float runEngines (float x, double cents, double period, bool voiced, bool settled) noexcept;
 
     double fs = 48000.0;
     TuneParams params;
@@ -93,6 +97,14 @@ private:
     CorrectionLaw law;
     MidiTarget midi;
     ClassicEngine engine;
+    HybridEngine hybridEngine;
+
+    // Engine switching: the idle engine is fed so its history is warm, and a
+    // switch crossfades the two over kSwitchMs rather than cutting.
+    static constexpr double kSwitchMs = 20.0;
+    Engine active = Engine::classic, fadingFrom = Engine::classic;
+    int switchLength = 960, switchPosition = 0;
+    bool switching = false;
 
     long long samplePosition = 0;
     AnalysisTap analysisTap = nullptr;
