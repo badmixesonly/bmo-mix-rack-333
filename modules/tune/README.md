@@ -15,8 +15,8 @@ and silence are left alone.
 
 It pulls the voice to the nearest allowed note -- chromatic by default, or a
 key with a major or minor scale, with any note switched out -- as fast as
-Retune Speed says. At 0, the default, the snap is immediate: that is the sound this plugin
-is built for.
+Retune Speed says. At 0, the default, the snap is immediate: that is the
+sound this plugin is built for.
 
 - **Vibrato** 0 % flattens the singer's vibrato onto the note; 100 % keeps it
   and only corrects the note it is centred on; 150 % exaggerates it.

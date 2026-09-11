@@ -14,8 +14,8 @@ Two engines share one detector:
 
 | Engine | Method | Sound | Latency |
 |---|---|---|---|
-| **CLASSIC** | cycle-repeat/delete rate converter | bright, formants move with pitch | lowest |
-| **HYBRID** | pitch-synchronous overlap-add + LPC formant preservation | natural, formants stay put | about a period more |
+| **CLASSIC** | cycle-repeat/delete rate converter | bright, formants move with pitch | 0.4 ms floor |
+| **HYBRID** | pitch-synchronous overlap-add | natural, formants stay put | the same |
 
 No FFT anywhere in the correction path. The design document is
 `bmo-tune-rt-implementation-and-test-spec.md` (v0.1, 2026-09-10); where this
