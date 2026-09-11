@@ -69,8 +69,17 @@ public:
         double onsetGraceMs     = 30.0;///< continuity is off this long after an onset
     };
 
+    /** The widest range any Settings may ask for; prepare() allocates for it. */
+    static constexpr double kCapacityMinHz = 40.0;
+    static constexpr double kCapacityMaxHz = 2000.0;
+
     /** Allocates everything; nothing afterwards does. */
     void prepare (double sampleRate, const Settings&);
+
+    /** Real-time safe. A change of range re-targets the kernel and drops
+        the held estimate; anything else just takes effect. */
+    void setSettings (const Settings&) noexcept;
+
     void reset();
 
     /** Push one sample; the estimate is updated in place. */
@@ -110,6 +119,7 @@ private:
     double cumSqAt (int d) const noexcept  { return cumSq [(size_t) ((fullWrite - 1 - d) & fullMask)]; }
 
     Settings settings;
+    bool configured = false;
     double sampleRate = 48000.0;
     int decimation = 4;
     double coarseRate = 12000.0;

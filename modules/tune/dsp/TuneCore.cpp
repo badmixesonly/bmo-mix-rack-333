@@ -1,0 +1,171 @@
+#include "modules/tune/dsp/TuneCore.h"
+#include "modules/tune/dsp/Denormals.h"
+#include <algorithm>
+#include <cmath>
+
+namespace bmo::tune
+{
+
+TuneParams TuneParams::fromValues (const float* v, int count) noexcept
+{
+    TuneParams p;
+    if (count < Index::count)
+        return p;
+
+    const auto choice = [v] (int i, int n) { return std::clamp ((int) std::lround (v[i]), 0, n - 1); };
+    const auto on = [v] (int i) { return v[i] >= 0.5f; };
+
+    p.retune = v[Index::retune];
+    p.key = choice (Index::key, 12);
+    p.scale = (ScaleType) choice (Index::scale, (int) ScaleType::count);
+    p.engine = (Engine) choice (Index::engine, 2);
+    p.range = (Range) choice (Index::range, 5);
+    p.vibratoPercent = v[Index::vibrato];
+    p.flexPercent = v[Index::flex];
+    p.glideMs = v[Index::glide];
+    p.formant = on (Index::formant);
+    p.formantShiftCents = v[Index::formantShift];
+    p.midiMode = (MidiTarget::Mode) choice (Index::midiMode, 3);
+    p.midiLatch = on (Index::midiLatch);
+    p.midiRequired = on (Index::midiRequired);
+    p.latency = (LatencyMode) choice (Index::latency, 2);
+    p.refA = v[Index::refA];
+
+    p.allowed = 0;
+    for (int n = 0; n < 12; ++n)
+        if (on (Index::noteC + n))
+            p.allowed = (NoteMask) (p.allowed | (1u << n));
+
+    return p;
+}
+
+int TuneCore::latencyFor (const TuneParams& p, double sampleRate) noexcept
+{
+    const auto limits = limitsOf (p.range);
+    return ClassicEngine::latencyFor (p.latency == LatencyMode::studio, sampleRate / limits.minHz);
+}
+
+void TuneCore::prepare (double sampleRate, int)
+{
+    fs = sampleRate;
+
+    Detector::Settings ds;
+    const auto limits = limitsOf (params.range);
+    ds.minHz = limits.minHz;
+    ds.maxHz = limits.maxHz;
+    det.prepare (fs, ds);
+
+    law.prepare (fs);
+    engine.prepare (fs, fs / Detector::kCapacityMinHz);
+
+    paramsDirty = true;
+    applyParams();
+    reset();
+}
+
+void TuneCore::reset()
+{
+    det.reset();
+    law.reset();
+    midi.reset();
+    engine.reset();
+    samplePosition = 0;
+}
+
+void TuneCore::setParams (const TuneParams& p) noexcept
+{
+    params = p;
+    paramsDirty = true;
+}
+
+void TuneCore::applyParams() noexcept
+{
+    if (! paramsDirty)
+        return;
+
+    paramsDirty = false;
+
+    const auto limits = limitsOf (params.range);
+    Detector::Settings ds;
+    ds.minHz = limits.minHz;
+    ds.maxHz = limits.maxHz;
+    det.setSettings (ds);
+
+    CorrectionSettings cs;
+    cs.refA = params.refA;
+    cs.key = params.key;
+    cs.scale = params.scale;
+    cs.allowed = params.allowed;
+    cs.retuneMs = CorrectionLaw::retuneMsFromKnob (params.retune);
+    cs.vibratoAmount = params.vibratoPercent / 100.0;
+    cs.flex = params.flexPercent / 100.0;
+    cs.glideMs = params.glideMs;
+    cs.glideAllowed = params.engine == Engine::hybrid;
+    cs.clarityLo = ds.clarityLo;
+    cs.clarityHi = ds.clarityHi;
+    cs.midiMode = params.midiMode;
+    cs.midiLatch = params.midiLatch;
+    cs.midiRequired = params.midiRequired;
+    law.setSettings (cs);
+
+    engine.setLatencyMode (params.latency == LatencyMode::studio, fs / limits.minHz);
+}
+
+void TuneCore::process (float* samples, int numSamples, const NoteEvent* events, int numEvents) noexcept
+{
+    ScopedNoDenormals noDenormals;
+    applyParams();
+
+    int nextEvent = 0;
+
+    for (int i = 0; i < numSamples; ++i)
+    {
+        // Notes land on their own sample, so a MIDI-driven target changes
+        // where the host put the note rather than at the next block.
+        while (nextEvent < numEvents && events[nextEvent].offset <= i)
+        {
+            const auto& e = events[nextEvent++];
+            if (e.on)
+                midi.noteOn (e.note);
+            else if (e.note < 0)
+                midi.allNotesOff();
+            else
+                midi.noteOff (e.note);
+        }
+
+        const auto x = samples[i];
+        det.push (x);
+
+        const auto& est = det.estimate();
+        const auto evaluated = det.evaluatedThisSample();
+        const auto cents = law.tick (est, evaluated, midi);
+
+        // Homing is allowed once the correction has faded all the way out on
+        // an unvoiced stretch -- then the engine is carrying nothing worth
+        // keeping in its delay.
+        const auto settled = ! est.voiced && cents == 0.0;
+        samples[i] = engine.process (x, cents, est.period, settled);
+
+        if (analysisTap != nullptr)
+        {
+            AnalysisFrame f;
+            f.sample = samplePosition;
+            f.f0 = est.hz;
+            f.clarity = est.clarity;
+            f.voiced = est.voiced;
+            f.evaluated = evaluated;
+            f.pitchIn = law.state().pitchIn;
+            f.target = law.state().target;
+            f.note = law.state().note;
+            f.appliedCents = cents;
+            f.ratio = engine.currentRatio();
+            f.lag = engine.currentLag();
+            f.splice = engine.splicedThisSample();
+            analysisTap (analysisContext, f);
+        }
+
+        ++samplePosition;
+    }
+}
+
+} // namespace bmo::tune

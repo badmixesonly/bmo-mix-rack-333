@@ -36,9 +36,6 @@ double Detector::parabolicOffset (double left, double centre, double right) noex
 
 void Detector::prepare (double rate, const Settings& s)
 {
-    settings = s;
-    settings.minHz = std::max (20.0, std::min (s.minHz, s.maxHz * 0.5));
-    settings.maxHz = std::max (settings.minHz * 2.0, s.maxHz);
     sampleRate = rate;
 
     // About 12 kHz for the coarse pass at every supported rate: 4 at 44.1
@@ -46,29 +43,21 @@ void Detector::prepare (double rate, const Settings& s)
     // is plenty to bracket a period, at a sixteenth of the full-rate cost.
     decimation = std::max (1, (int) std::lround (rate / 12000.0));
     coarseRate = rate / decimation;
-
-    // Below the range floor, never at it: 0.6 of the lowest note keeps the
-    // fundamental within a dB or so while taking out DC (which reads as
-    // "periodic at every lag") and the rumble and kick bleed that would
-    // otherwise sit under a period and fail the whole-cycle mean test.
-    highpass.makeHighpass (rate, 0.6 * settings.minHz, 0.70710678);
     antiAlias.prepare (rate, std::min (3000.0, 0.3 * coarseRate));
 
-    // One lag of slack at the top of the range and two at the bottom, so the
-    // extreme notes still have a neighbour on each side to interpolate with.
-    const auto minCoarse = std::max (2, (int) std::floor (coarseRate / settings.maxHz) - 1);
-    const auto maxCoarse = (int) std::ceil (coarseRate / settings.minHz) + 2;
+    // Allocate for the widest range any setting can ask for, so a
+    // pitch-range change on the audio thread only moves the active window.
+    const auto capMinCoarse = std::max (2, (int) std::floor (coarseRate / kCapacityMaxHz) - 1);
+    const auto capMaxCoarse = (int) std::ceil (coarseRate / kCapacityMinHz) + 2;
 
     // Every lag is recomputed from scratch at least every quarter second.
-    kernel.prepare (minCoarse, maxCoarse, (int) std::lround (coarseRate * 0.25));
-    coarseNsdf.assign ((size_t) maxCoarse + 2, 0.0);
-
-    minFullLag = std::max (2, (int) std::floor (rate / settings.maxHz) - decimation - 2);
-    maxFullLag = (int) std::ceil (rate / settings.minHz) + decimation + 2;
+    kernel.prepare (capMinCoarse, capMaxCoarse, (int) std::lround (coarseRate * 0.25));
+    coarseNsdf.assign ((size_t) capMaxCoarse + 2, 0.0);
 
     // The fine pass reads a one-period window at a lag of up to a period and
-    // a bit: 2 x maxFullLag plus the refinement bracket, with room to spare.
-    fullRing.assign ((size_t) nextPowerOfTwo (2 * maxFullLag + 4 * decimation + 16), 0.0f);
+    // a bit: 2 x the longest lag plus the refinement bracket, with room.
+    const auto capMaxFull = (int) std::ceil (rate / kCapacityMinHz) + decimation + 2;
+    fullRing.assign ((size_t) nextPowerOfTwo (2 * capMaxFull + 4 * decimation + 16), 0.0f);
     fullMask = (int) fullRing.size() - 1;
     cumSum.assign (fullRing.size(), 0.0);
     cumSq.assign (fullRing.size(), 0.0);
@@ -76,7 +65,44 @@ void Detector::prepare (double rate, const Settings& s)
     baseHop = std::max (1, (int) std::lround (rate * 0.0005));
     zcrCoeff = std::exp (-1.0 / (rate * 0.010));
 
+    configured = false;
+    setSettings (s);
     reset();
+}
+
+void Detector::setSettings (const Settings& s) noexcept
+{
+    const auto minHz = std::clamp (std::min (s.minHz, s.maxHz * 0.5), kCapacityMinHz, kCapacityMaxHz * 0.5);
+    const auto maxHz = std::clamp (std::max (s.maxHz, minHz * 2.0), minHz * 2.0, kCapacityMaxHz);
+    const auto rangeChanged = ! configured || minHz != settings.minHz || maxHz != settings.maxHz;
+
+    settings = s;
+    settings.minHz = minHz;
+    settings.maxHz = maxHz;
+
+    if (! rangeChanged)
+        return;
+
+    configured = true;
+
+    // Below the range floor, never at it: 0.6 of the lowest note keeps the
+    // fundamental within a dB or so while taking out DC (which reads as
+    // "periodic at every lag") and the rumble and kick bleed that would
+    // otherwise sit under a period and fail the whole-cycle mean test.
+    highpass.makeHighpass (sampleRate, 0.6 * minHz, 0.70710678);
+
+    // One lag of slack at the top of the range and two at the bottom, so the
+    // extreme notes still have a neighbour on each side to interpolate with.
+    kernel.setLagRange (std::max (2, (int) std::floor (coarseRate / maxHz) - 1),
+                        (int) std::ceil (coarseRate / minHz) + 2);
+
+    minFullLag = std::max (2, (int) std::floor (sampleRate / maxHz) - decimation - 2);
+    maxFullLag = (int) std::ceil (sampleRate / minHz) + decimation + 2;
+
+    // A new range is a new question; nothing held from the old one applies.
+    current = {};
+    heldPeriod = candidatePeriod = 0.0;
+    voicedRun = unvoicedRun = 0;
 }
 
 void Detector::reset()

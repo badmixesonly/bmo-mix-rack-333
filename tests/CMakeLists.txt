@@ -11,3 +11,6 @@ bmo_tune_test(detector DetectorTests.cpp)
 
 bmo_add_dsp_tool(probe ${CMAKE_CURRENT_SOURCE_DIR}/dsp/Probe.cpp)
 target_link_libraries(probe PRIVATE bmo_tune_dsp)
+
+bmo_tune_test(interpolator InterpolatorTests.cpp)
+bmo_tune_test(core CoreTests.cpp)

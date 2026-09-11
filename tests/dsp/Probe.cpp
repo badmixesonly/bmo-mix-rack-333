@@ -1,46 +1,46 @@
-// Scratch diagnostic, not a test: prints the frames a signal gets wrong.
-#include "modules/tune/dsp/Detector.h"
-#include "modules/tune/dsp/Pitch.h"
+// Scratch diagnostic, not a test: where does a core render deviate from the
+// delayed input, and what was the engine doing there.
+#include "modules/tune/dsp/TuneCore.h"
 #include "tools/common/Signals.h"
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
+#include <vector>
 
 using namespace bmo::tune;
 namespace sig = bmo::tune::signals;
 
+struct Ctx { std::vector<AnalysisFrame> frames; };
+
 int main (int argc, char** argv)
 {
-    const double hz = argc > 1 ? std::atof (argv[1]) : 146.83;
-    const char* kind = argc > 2 ? argv[2] : "sine";
-    const double fs = argc > 3 ? std::atof (argv[3]) : 48000.0;
-    const double secs = 0.6;
+    const double fs = 48000.0;
+    const double hz = argc > 1 ? std::atof (argv[1]) : 440.0;
+    const bool required = argc > 2 && std::atoi (argv[2]) != 0;
 
-    auto c = sig::steady (hz, secs, fs);
-    if (! std::strcmp (kind, "glide")) c = sig::glide (110.0, 880.0, 3.0, fs);
-    if (! std::strcmp (kind, "vib")) c = sig::vibrato (330.0, 100.0, 5.5, 2.0, fs);
-    if (! std::strncmp (kind, "onset", 5)) c = sig::concat ({ sig::silence (0.1, fs), sig::steady (hz, 0.4, fs) });
+    TuneParams p;
+    if (required) { p.midiMode = MidiTarget::Mode::target; p.midiRequired = true; }
 
-    std::vector<float> x;
-    if (! std::strcmp (kind, "sine") || ! std::strcmp (kind, "onsetsine")) x = sig::sine (c, fs).samples;
-    else if (! std::strcmp (kind, "saw")) x = sig::sawtooth (c, fs).samples;
-    else x = sig::voice (c, fs).samples;
+    TuneCore core;
+    core.setParams (p);
+    core.prepare (fs, 4096);
+    Ctx ctx;
+    core.setAnalysisTap ([] (void* c, const AnalysisFrame& f) { ((Ctx*) c)->frames.push_back (f); }, &ctx);
 
-    Detector d;
-    d.prepare (fs, {});
+    const auto x = sig::sine (sig::steady (hz, 0.5, fs), fs, 0.8).samples;
+    auto y = x;
+    for (size_t at = 0; at < y.size(); at += 128)
+        core.process (y.data() + at, (int) std::min<size_t> (128, y.size() - at));
+
+    const int d = ClassicEngine::kLiveRest;
     int printed = 0;
-
-    for (size_t i = 0; i < x.size(); ++i)
+    for (size_t i = (size_t) d; i < x.size() && printed < 25; ++i)
     {
-        d.push (x[i]);
-        if (! d.evaluatedThisSample() || c[i] <= 0.0) continue;
-        const auto& e = d.estimate();
-        const auto cents = e.hz > 0 ? pitch::centsBetween (e.hz, c[i]) : 9999.0;
-        if ((std::abs (cents) > 50.0 || ! e.voiced) && printed < 60)
+        const auto dev = std::abs (y[i] - x[i - (size_t) d]);
+        if (dev > 1.0e-6f)
         {
-            std::printf ("t=%8.2f ms truth=%8.2f est=%8.2f cents=%9.1f clar=%.3f voiced=%d rms=%.4f cand=%8.2f Hz\n",
-                         1000.0 * i / fs, c[i], e.hz, cents, e.clarity, (int) e.voiced, e.rms,
-                         e.candidate > 0 ? fs / e.candidate : 0.0);
+            const auto& f = ctx.frames[i];
+            std::printf ("n=%6zu dev=%.3g y=%.6f x=%.6f lag=%.6f rho=%.9f cents=%.6f voiced=%d splice=%d\n",
+                         i, dev, y[i], x[i - (size_t) d], f.lag, f.ratio, f.appliedCents, (int) f.voiced, (int) f.splice);
             ++printed;
         }
     }

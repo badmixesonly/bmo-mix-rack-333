@@ -44,12 +44,12 @@ class DifferenceKernel
 public:
     /** Allocates. `refreshPeriod` is the number of pushes within which every
         lag is recomputed from scratch at least once. */
-    void prepare (int minLagIn, int maxLagIn, int refreshPeriod)
+    void prepare (int minLagIn, int maxLagIn, int refreshPeriodIn)
     {
-        minLag = std::max (1, minLagIn);
-        maxLag = std::max (minLag, maxLagIn);
+        capacityMin = std::max (1, minLagIn);
+        capacityMax = std::max (capacityMin, maxLagIn);
 
-        const auto numLags = maxLag - minLag + 1;
+        const auto numLags = capacityMax - capacityMin + 1;
         energy.assign ((size_t) numLags, 0.0);
         cross.assign ((size_t) numLags, 0.0);
 
@@ -57,18 +57,35 @@ public:
         // sample the recursion touches; one spare keeps "i - 2L" in the ring
         // while sample i is being written.
         int size = 1;
-        while (size < 2 * maxLag + 2)
+        while (size < 2 * capacityMax + 2)
             size <<= 1;
 
         history.assign ((size_t) size, 0.0);
         mask = size - 1;
+        refreshPeriod = refreshPeriodIn;
+        writeIndex = 0;
+
+        setLagRange (capacityMin, capacityMax);
+        reset();
+    }
+
+    /** Narrows the active lags to a sub-range of what prepare() allocated,
+        without allocating -- a pitch-range change arrives on the audio
+        thread. Resets the sums; the history is kept, so a recomputeAll()
+        afterwards picks up where the signal is. */
+    void setLagRange (int minLagIn, int maxLagIn) noexcept
+    {
+        minLag = std::clamp (minLagIn, capacityMin, capacityMax);
+        maxLag = std::clamp (maxLagIn, minLag, capacityMax);
 
         // Spread the lags evenly across the period: one lag every
         // `refreshStride` pushes. With more lags than pushes in a period the
         // stride floors at one, which is still at most one lag per push -- the
         // period stretches instead of the per-push cost growing.
-        refreshStride = std::max (1, refreshPeriod / numLags);
-        reset();
+        refreshStride = std::max (1, refreshPeriod / (maxLag - minLag + 1));
+        refreshCountdown = refreshStride;
+        refreshLag = minLag;
+        recomputeAll();
     }
 
     void reset() noexcept
@@ -95,7 +112,7 @@ public:
         history[(size_t) writeIndex] = x;
         const auto xx = x * x;
 
-        for (int L = minLag, k = 0; L <= maxLag; ++L, ++k)
+        for (int L = minLag, k = minLag - capacityMin; L <= maxLag; ++L, ++k)
         {
             const auto xL  = at (L);
             const auto x2L = at (2 * L);
@@ -141,8 +158,8 @@ public:
     int getMinLag() const noexcept { return minLag; }
     int getMaxLag() const noexcept { return maxLag; }
 
-    double energyAt (int L) const noexcept { return energy[(size_t) (L - minLag)]; }
-    double crossAt  (int L) const noexcept { return cross [(size_t) (L - minLag)]; }
+    double energyAt (int L) const noexcept { return energy[(size_t) (L - capacityMin)]; }
+    double crossAt  (int L) const noexcept { return cross [(size_t) (L - capacityMin)]; }
 
     /** YIN / patent difference, E - 2H: the squared difference over window L. */
     double differenceAt (int L) const noexcept
@@ -203,10 +220,11 @@ private:
         for (int j = 0; j < L; ++j)
             h += x (j) * x (j + L);
 
-        energy[(size_t) (L - minLag)] = e;
-        cross[(size_t) (L - minLag)] = h;
+        energy[(size_t) (L - capacityMin)] = e;
+        cross[(size_t) (L - capacityMin)] = h;
     }
 
+    int capacityMin = 1, capacityMax = 1, refreshPeriod = 1;
     int minLag = 1, maxLag = 1;
     std::vector<double> energy, cross, history;
     int mask = 0, writeIndex = 0;
