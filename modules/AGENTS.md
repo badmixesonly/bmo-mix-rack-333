@@ -25,6 +25,11 @@ own tests could not see. What belongs *here* is anything every module shares.
 - [`dim/AGENTS.md`](dim/AGENTS.md) -- BMO Dimension. Side-only topology,
   Gerzon's asymmetry shear and its named fallback, and the width throb that
   is still open.
+- [`tune/AGENTS.md`](tune/AGENTS.md) -- BMO Tune RT. **A product of this
+  repository, not a rack module**: nothing of it is in the rack's registry or
+  on its link line, and `-DBMO_BUILD_TUNE=OFF` / `-DBMO_BUILD_RACK=OFF` keep
+  the two sides independent. Also the latency rule, the frozen schema, and
+  what Tune owns outside this folder.
 
 The four older modules predate the rule and have none. That is a gap rather
 than a decision, and worth closing per module when one is next opened up
@@ -229,6 +234,13 @@ only caught because a review went looking. Work down this list:
 | `tests/plugin/RackTests.cpp` | `registry.size()`, `kBanks` | **fails, loud** |
 | `tests/ui/LayoutTests.cpp` | caption fit + overlap | unchecked, silent |
 | `tools/snapshot/main.cpp` | `snapshot <id>` | no render, loud on use |
+
+**A product that is not a rack module skips four of these rows**, and skipping
+them is the whole of what makes it one: the two `products/rack/` files, and
+the two test files that walk the rack's registry. BMO Tune RT is the one that
+does today -- it keeps its own panel test and its own snapshot instead. Every
+other row still applies, `products/AGENTS.md` included: an id and a plugin
+code are allocated whether or not the rack ever hosts it.
 
 `tools/packager/package.sh` is deliberately **not** on this list any more:
 it discovers products by globbing the build tree, so it cannot drift. Prefer

@@ -1,5 +1,64 @@
 # modules/tune/
 
+## In this repository, not in the rack
+
+BMO Tune RT is a low-latency monophonic pitch corrector, and a product of this
+repository like every other: it builds on `core/`, follows the root
+`AGENTS.md`, and ships as its own plugin. It is **not a rack module**. Nothing
+of it is in `products/rack/Registry.cpp` or on the rack's link line, and
+`tests/plugin/RackTests.cpp` asserts a registry size that adding it would
+break. Frosty's call, 2026-09-11. Joining the rack later is a hope rather than
+a plan, so the things that would make it possible are kept: the DSP is
+JUCE-free behind `ModuleDsp`, and the schema stays within a slot's 32
+parameters.
+
+Either side builds without the other, which is what keeps that true:
+
+```
+cmake -S . -B build -DBMO_BUILD_RACK=OFF     # Tune alone
+cmake -S . -B build -DBMO_BUILD_TUNE=OFF     # the rack alone
+```
+
+Its files: `modules/tune/` here, `products/tune/` for the plugin,
+`tools/tune/` for the eleven offline harnesses and its own snapshot,
+`tests/dsp/tune/` and `tests/plugin/tune/` for the suites (`ctest` names them
+`tune_*`), `testing-notes/tune-*.md` and the shoot-out notes, and
+`design/tune/` for the panel studies.
+
+It was written in its own repository, against Kevin's main as a submodule, and
+merged here with that history on 2026-09-11. Handoffs written before that date
+name paths from the old tree: `tools/common/` is now `tools/tune/common/`, and
+`tests/TestUtil.h` is `tests/dsp/tune/TestUtil.h`.
+
+## What must not change
+
+**Frozen from the first plugin build (Frosty, 2026-09-10)** -- the same list as
+the rest of the suite: parameter ids, their order in `specs()`, kinds, ranges,
+steps, defaults, and every choice's names and order. `tests/dsp/tune/
+SchemaTests.cpp` writes the table out in full; a change is argued for there,
+and a new parameter goes at the **end** of `specs()`. A parameter that must
+mean something new gets a new id and the old one is retired (`kRetiredIds`) --
+never new meaning under an old id: `retune` became `retune_ms` that way on
+2026-09-11, because a saved 36 meant 10 ms.
+
+Plugin code `Btun`, bundle id `com.lt3audio.bmotunert` and manufacturer `LT3a`
+are equally permanent: they are what a host finds the plugin by. They are in
+the identity table in `products/AGENTS.md` with everything else the suite has
+allocated, and the lime accent is in the accents table there.
+
+## The latency rule
+
+**A change is safe to take, as far as latency goes, so long as BMO Tune RT's
+true latency does not exceed Waves Tune Real-Time's measured true latency**
+(Frosty, 2026-09-11): **10.62 ms**, measured on AURORA, in
+`tools/tune/common/References.h` with its settings. BMO was 3.82 ms that day.
+`tests/dsp/tune/HardTuneTests.cpp` enforces it in every ctest run, and
+`bmo-tune-latency` checks it per semitone. A change may make BMO later, up to
+the ceiling, without asking -- say the new true latency and the headroom left
+in the commit body. The host is still told 0 either way. Re-measure the ceiling
+when Waves updates; `testing-notes/latency-and-lag-2026-09-11.md` has the
+commands.
+
 BMO Tune RT's parameters (`params.h`) and its DSP (`dsp/`), JUCE-free. The
 signal path, in the order a sample meets it:
 

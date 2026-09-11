@@ -11,9 +11,15 @@ new plugin.
 | **BMO Saturator** | Drive, tone and blend, with auto-gain | 260 |
 | **BMO Util** | Gain, pan, width, polarity, mono | 160 |
 | **BMO Mix Rack** | Up to eight of the above in series, re-orderable, with chain presets | as wide as its modules |
+| **BMO Tune RT** | A low-latency monophonic pitch corrector. In this repository, **not in the rack** | 360 |
 
 Every product ships as VST3 and Standalone on macOS and Windows, and AU on
 macOS. Nothing is signed or notarised yet: this is a tester build.
+
+BMO Tune RT is built here and shares `core/`, but it is in no rack chain.
+Either side builds without the other: `-DBMO_BUILD_TUNE=OFF` for the rack
+alone, `-DBMO_BUILD_RACK=OFF` for Tune alone. See
+[`modules/tune/AGENTS.md`](modules/tune/AGENTS.md).
 
 ## Building
 
@@ -42,7 +48,10 @@ core/       shared code: dsp/ (JUCE-free), state/, ui/, product/, rack/
 modules/    one folder per module: params.h, dsp/, panel/, presets/, Module.cpp
 products/   one thin CMakeLists + Product.h per plugin, and the rack's registry
 tools/      measure/ (offline DSP harnesses), snapshot/ (renders a panel), packager/
+            tune/ (BMO Tune RT's own harnesses and its own snapshot)
 tests/      dsp/ (JUCE-free) and plugin/ (schema, state, presets, rack)
+            dsp/tune/ and plugin/tune/ are BMO Tune RT's, named tune_* in ctest
+design/     tune/ panel studies
 libs/JUCE   submodule, pinned
 ```
 
