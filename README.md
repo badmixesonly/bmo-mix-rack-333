@@ -51,7 +51,7 @@ tools/          the offline harness, one executable each:
                   bmo-tune-score    GPE / FPE / RPA / RCA / VDE / time to lock
                   bmo-tune-latency  the manual's latency table, measured
                   bmo-tune-bench    CPU per block: median, p99, max
-tests/          eight DSP suites, run by CTest
+tests/          nine DSP suites, run by CTest
 scripts/        build.sh, score-corpus.sh
 testing-notes/  handoffs
 ```

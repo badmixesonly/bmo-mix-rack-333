@@ -55,6 +55,22 @@ enum Index
 };
 
 enum class Engine { classic, hybrid };
+
+/** The parameters that only do anything on the HYBRID engine, in one place.
+
+    The panel hides these while CLASSIC is selected -- hidden, not greyed out,
+    Frosty's rule from the 2026-09-10 panel studies -- and draws them again on
+    HYBRID. Their parameters stay in the host either way, so automation written
+    on HYBRID survives a trip through CLASSIC.
+
+    tests/dsp/ModeTests.cpp holds this list to the DSP in both directions: each
+    one must be exactly inert on CLASSIC (or it is being hidden while it still
+    does something) and audible on HYBRID (or it is on the panel for nothing).
+    Add a parameter here only with the test agreeing. */
+inline bool isHybridOnly (int index) noexcept
+{
+    return index == Index::glide || index == Index::formant || index == Index::formantShift;
+}
 enum class Range  { autoRange, soprano, altoTenor, bass, instrument };
 enum class LatencyMode { live, studio };
 

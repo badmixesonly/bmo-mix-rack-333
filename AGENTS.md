@@ -53,7 +53,7 @@ identity table when a plugin is built: plugin code, bundle id
 ## Before you say it is done
 
 ```
-scripts/build.sh              # Release build, all eight test suites
+scripts/build.sh              # Release build, all nine test suites
 scripts/build.sh --corpus     # then generate, render and score the corpus
 ```
 

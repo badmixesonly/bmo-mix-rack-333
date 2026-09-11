@@ -24,6 +24,11 @@ block size (`tests/dsp/CoreTests.cpp`, `HybridTests.cpp` check it).
   host is told the plugin's latency; switching engines must never change it.
 - **The correction and the note always come from the same pitch.** See
   "the octave bug" below; this is the one that produced a +1200-cent glitch.
+- **The panel hides what the chosen engine does not use** -- hidden, not
+  greyed (Frosty, 2026-09-10). `isHybridOnly()` in `params.h` is the one list
+  (Glide, Formant, Formant Shift) and `tests/dsp/ModeTests.cpp` holds it to
+  the DSP both ways: each is bit-exactly inert on CLASSIC and audible on
+  HYBRID. A parameter joins the list only with that test agreeing.
 - **Tests measure with `tools/common/Analysis.h`, never with the plugin's own
   detector.** Measuring the output with the code that decided the correction
   agrees with itself whatever it did.
