@@ -126,7 +126,10 @@ void ResponseView::rebuildPaths()
         const auto y = yFor (juce::jlimit (-(double) kSpanDb * 1.2, (double) kSpanDb * 1.2, 20.0 * std::log10 (std::max (std::abs (h), 1.0e-9))));
         k == 0 ? curve.startNewSubPath (x, y) : curve.lineTo (x, y);
 
-        if (sel >= 0 && sel < kBands)
+        // The selected band's own shape, shaded under the curve -- but only if
+        // it is on. Shading the shape of a band that is off drew a low cut
+        // across the default panel that nothing was doing.
+        if (sel >= 0 && sel < kBands && bands[(size_t) sel].on)
         {
             const auto own = 20.0 * std::log10 (std::max (std::abs (designs[(size_t) sel].responseAt (w)), 1.0e-9));
             const auto yo = yFor (juce::jlimit (-(double) kSpanDb * 1.2, (double) kSpanDb * 1.2, own));
@@ -230,6 +233,18 @@ void ResponseView::paint (juce::Graphics& g)
     for (int i = 0; i < kBands; ++i)
     {
         const auto& b = bands[(size_t) i];
+
+        // Only a band that is on gets a node. Twelve of them over a flat
+        // curve, eleven of which do nothing, read as a control surface rather
+        // than as the EQ's state, and there is no way to tell by eye which one
+        // is live (Frosty, 2026-09-11). A band that is off but selected keeps
+        // its node, dimmed: the lane strip can select one, and a selection
+        // with nothing on screen is worse than a quiet dot. Double-clicking
+        // the plot still switches the first free band on, which is how a band
+        // is added now that there is nothing to drag.
+        if (! b.on && i != sel)
+            continue;
+
         const auto at = nodeFor (b);
         const auto isSel = i == sel;
         const auto radius = compact ? kNodeRadiusCompact : kNodeRadius;
@@ -238,10 +253,22 @@ void ResponseView::paint (juce::Graphics& g)
         if (isSel)
         {
             const auto big = node.expanded (compact ? 1.5f : 2.0f);
-            g.setColour (accent);
-            g.fillEllipse (big);
-            g.setColour (ui::accentInk (accent));
-            g.drawEllipse (big, 1.6f);
+
+            if (b.on)
+            {
+                g.setColour (accent);
+                g.fillEllipse (big);
+                g.setColour (ui::accentInk (accent));
+                g.drawEllipse (big, 1.6f);
+            }
+            else
+            {
+                // Selected and off: there, and obviously inert.
+                g.setColour (t.well);
+                g.fillEllipse (big);
+                g.setColour (accent.withAlpha (0.45f));
+                g.drawEllipse (big, 1.6f);
+            }
         }
         else
         {
@@ -254,7 +281,7 @@ void ResponseView::paint (juce::Graphics& g)
         if (! compact)
             ui::drawLabel (g, juce::String (i + 1), node.expanded (2.0f), juce::Justification::centred,
                            isSel ? ui::labelFont (10.0f, true) : numberFont,
-                           isSel ? ui::onAccentOf (accent) : (b.on ? t.text1 : t.text2));
+                           isSel && b.on ? ui::onAccentOf (accent) : (b.on ? t.text1 : t.text2));
     }
 
     // No readout over the curve: the knobs carry their own numbers now
@@ -273,6 +300,13 @@ int ResponseView::bandAt (juce::Point<float> p) const
 
     for (int i = 0; i < kBands; ++i)
     {
+        // A band with no node cannot be grabbed: reaching one that is off used
+        // to move its frequency and gain with nothing to see and nothing to
+        // hear. The selected band is reachable whether or not it is on,
+        // because it is the one drawn.
+        if (! bands[(size_t) i].on && i != sel)
+            continue;
+
         const auto d = nodeFor (bands[(size_t) i]).getDistanceFrom (p);
         if (i == sel && d <= reach)
             return i;
