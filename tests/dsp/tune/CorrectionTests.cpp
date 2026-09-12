@@ -300,8 +300,29 @@ int main()
         report ("E4 -> F4 step at vibrato 0: time until the output is on F4", stepMs, "ms");
         check (landed > 0 && stepMs < 2.0, "a real step is not held: the output is on the new note within 2 ms");
 
-        // Settling just past the midpoint -- 58 cents over E4, 42 under F4,
-        // a margin of 16 cents -- is a new note only once it has stayed.
+        // A hold is billed margin x time and ends when the bill reaches
+        // noteHoldBudgetCentMs, so the time a settled pitch waits is the
+        // budget over its margin -- never longer than noteDwellMs.
+        //
+        // Why, measured: round three (2026-09-11) heard the flat 40 ms dwell
+        // as pops at retune 20 ms, and on Failure every splice it added fell
+        // while it held the target off the note the singer had reached,
+        // pulling about 91 cents. The pull is not the dwell's doing -- a
+        // singer between two scale notes is pulled either way -- but the
+        // margin is, for as long as it holds, and that is what drags the
+        // engine's read past its window. Billing it took the splices back to
+        // round two's count at 20 ms and below both at 0 ms, for a few more
+        // neighbour flips (33 -> 38 on Failure, against 70 with no dwell).
+        // Frosty chose this over a cautious variant on those numbers (2026-09-11).
+        const auto billed = [] (double pullCents)
+        {
+            const CorrectionSettings d;
+            const auto over = std::max (0.0, pullCents - d.noteHoldFreeCents);
+            return over > 0.0 ? std::min (d.noteDwellMs, d.noteHoldBudgetCentMs / over) : d.noteDwellMs;
+        };
+
+        // Settling just past the midpoint -- 58 cents over E4, 42 under F4, a
+        // pull of 58 cents: inside the allowance, so the hold is free.
         const auto drift = (size_t) (0.3 * fs);
         const auto dr = drive ([drift] (size_t i) { return 329.63 * std::exp2 ((i < drift ? 30.0 : 58.0) / 1200.0); },
                                (size_t) (0.6 * fs), flat);
@@ -310,8 +331,23 @@ int main()
             if (std::abs (100.0 * (dr.out[i] - pitch::semitonesFromHz (349.23))) < 5.0)
                 moved = i;
         const auto driftMs = 1000.0 * (double) (moved - drift) / fs;
-        report ("settling 8 cents past the E/F midpoint: time until the note changes", driftMs, "ms");
-        check (moved > 0 && std::abs (driftMs - 40.0) < 2.0, "a pitch that settles just past the midpoint changes note after the 40 ms dwell");
+        report ("settling 8 cents past the E/F midpoint (58 cents of pull): time to the note change", driftMs, "ms");
+        check (moved > 0 && std::abs (driftMs - billed (58.0)) < 2.0,
+               "a pitch that settles just past the midpoint pulls too little to be billed, and keeps the whole dwell");
+
+        // 25 cents under F4 is 75 cents of pull, and 50 of margin: not clear
+        // enough to switch at once, but 15 cents past the allowance, so billed.
+        const auto nearAt = (size_t) (0.3 * fs);
+        const auto nr = drive ([nearAt] (size_t i) { return 329.63 * std::exp2 ((i < nearAt ? 30.0 : 75.0) / 1200.0); },
+                               (size_t) (0.6 * fs), flat);
+        size_t took = 0;
+        for (size_t i = nearAt; i < nr.out.size() && took == 0; ++i)
+            if (std::abs (100.0 * (nr.out[i] - pitch::semitonesFromHz (349.23))) < 5.0)
+                took = i;
+        const auto nearMs = 1000.0 * (double) (took - nearAt) / fs;
+        report ("settling 25 cents from the new note (75 cents of pull): time to the note change", nearMs, "ms");
+        check (took > 0 && nearMs < driftMs && std::abs (nearMs - billed (75.0)) < 2.0,
+               "a hold that pulls past the allowance is cut sooner, by the bill");
     }
 
     //== Outliers and leaps never become interval-sized corrections ============

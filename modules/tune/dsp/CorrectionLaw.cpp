@@ -54,7 +54,8 @@ void CorrectionLaw::reset()
     note = -1;
     haveNote = false;
     pendingNote = -1;
-    pendingNoteSince = samples = 0;
+    pendingNoteSince = samples = pendingBilledAt = 0;
+    pendingCostCentMs = 0.0;
     target = 0.0;
     errorSlow = applied = confidence = gate = 0.0;
     st = {};
@@ -100,11 +101,21 @@ int CorrectionLaw::holdOrSwitch (double pitch, int candidate) noexcept
     if (candidate != pendingNote)
     {
         pendingNote = candidate;
-        pendingNoteSince = samples;
+        pendingNoteSince = pendingBilledAt = samples;
+        pendingCostCentMs = 0.0;
         return note;
     }
 
-    if (samples - pendingNoteSince >= dwellSamples)
+    // The bill for holding: the pull this hold cannot afford, times how long
+    // it has carried it. The engine's read drifts at the pull, and far enough
+    // drift splices a period -- which is what round three heard as pops at
+    // retune 20 ms (see noteHoldFreeCents and noteHoldBudgetCentMs).
+    const auto pull = 100.0 * std::abs (pitch - note);
+    pendingCostCentMs += std::max (0.0, pull - s.noteHoldFreeCents)
+                         * 1000.0 * (double) (samples - pendingBilledAt) / fs;
+    pendingBilledAt = samples;
+
+    if (samples - pendingNoteSince >= dwellSamples || pendingCostCentMs >= s.noteHoldBudgetCentMs)
     {
         pendingNote = -1;
         return candidate;

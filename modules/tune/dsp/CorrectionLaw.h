@@ -32,6 +32,25 @@ struct CorrectionSettings
     double noteClearCents = 60.0;
     double noteDwellMs = 40.0;
 
+    /** What a hold may cost before it is cut, in cents x milliseconds, and the
+        pull it carries for free.
+
+        Round three (2026-09-11) heard the flat dwell as pops at retune 20 ms,
+        and on Failure every splice it added fell while it held the target off
+        the note the singer had reached, pulling about 91 cents. A held note is
+        shifted by that pull for as long as it is held, and the engine's read
+        drifts at the same rate; far enough, and it splices a whole period
+        (see ClassicEngine). So a hold is billed by the pull it cannot afford
+        -- whatever exceeds noteHoldFreeCents -- times how long it carries it.
+
+        The allowance is what keeps the thing the dwell was built for. A
+        vibrato that only just crosses a boundary sits no more than 60 cents
+        from the held note and drifts too slowly to splice, so it is never
+        billed and keeps its whole dwell. A singer who has properly moved is
+        pulled harder, runs the bill up in a few milliseconds, and switches. */
+    double noteHoldFreeCents = 60.0;
+    double noteHoldBudgetCentMs = 320.0;
+
     double clarityLo = 0.60, clarityHi = 0.85;   ///< confidence ramp (spec §4.4)
     double maxCorrectionCents = 1200.0;          ///< hard clamp (spec §6.1)
 };
@@ -114,10 +133,12 @@ private:
     bool havePendingJump = false;
     double target = 0.0;
 
-    // A note switch waiting out noteDwellMs: which note, since which sample.
+    // A note switch waiting out noteDwellMs: which note, since which sample,
+    // what the hold has cost so far (cents x ms) and when it was last billed.
     int pendingNote = -1;
     long long pendingNoteSince = 0, samples = 0;
-    long long dwellSamples = 0;
+    long long dwellSamples = 0, pendingBilledAt = 0;
+    double pendingCostCentMs = 0.0;
 
     // The law's own state.
     double errorSlow = 0.0, applied = 0.0, confidence = 0.0, gate = 0.0;
