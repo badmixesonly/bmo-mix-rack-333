@@ -46,7 +46,29 @@ These decisions come from the brief and are **locked** — changing one requires
 
 **C3 — The dynamics detector is a causal one-pole envelope follower with no lookahead.** The known cost (Giannoulis/Massberg/Reiss) is transient overshoot before the envelope catches up. That overshoot is accepted, and it is measured, budgeted and regression-tested (§7 T5) rather than hidden. Do not "fix" it with lookahead.
 
-**C4 — Bands sum in parallel; there is no crossover network.** Each band computes its contribution and adds into a running sum. Band count is a throughput budget, never a latency budget.
+**C4 — ~~Bands sum in parallel~~; there is no crossover network.** Each band computes its contribution and adds into a running sum. Band count is a throughput budget, never a latency budget.
+
+> **REVISED 2026-09-12 (Frosty): bands run in series.** The second half of C4
+> stands — there is no crossover network, and band count is still a throughput
+> budget and never a latency one. The first half does not: serial is the only
+> topology whose response is its band curves added in dB, and the only one in
+> which a low cut still cuts under an overlapping boost
+> (`topology-options.md`). It costs the same latency and the same CPU.
+>
+> Settled by ear as well as by measurement, over 57 blind pairs on seven
+> sources: `testing-notes/deq-blind-2026-09-11.md`. Every audible difference
+> ran the way the measurements predicted, nothing was reported as a fault on
+> either side, and where the two were matched for *amount* so that only the
+> shape of the dynamic catch differed, four of six pairs were
+> indistinguishable and the other two were preferred as serial.
+>
+> **No user-facing topology switch** (Frosty, 2026-09-12). Everything parallel
+> was preferred for in round one was a case of it doing less, and that is
+> reachable in serial by asking for less: within 0.76 dB for stacked cuts,
+> 0.63 dB for stacked boosts, and exactly for the amount of dynamic
+> reduction. Nothing serial does is reachable in parallel at all. A switch
+> would double what every preset and test has to mean in exchange for a knob
+> position.
 
 **C5 — Mid-side is a per-band arithmetic matrix, not a filter.** Zero state, zero latency, applied inside the band, not globally.
 

@@ -324,18 +324,18 @@ The 808 said the same thing about this case. This is it on a finished mix.
 Four lines to comment on, once, after the cases above.
 
 - **Does the difference matter on real material?** (no / on a few cases,
-  which / yes, plainly):
+  which / yes, plainly):  Yes, on the cases where a filter is asked to do something a curve implies -- stacked cuts and boosts, and a low cut under a shelf. Inaudible on the rest.
 
-- **Is anything about serial worse?** (nothing / what):
+- **Is anything about serial worse?** (nothing / what):  Nothing. No fault on either topology, and in round two the two audible pairs both went to serial.
 
 - **Does anything argue for exposing a topology switch as a control?**
   Held open until this pass is heard; it is the one thing keeping DEQ's panel
-  out of the UI pass. (no, serial only / yes, and what it would be for):
+  out of the UI pass. (no, serial only / yes, and what it would be for):  No, serial only. Every parallel preference was it doing less, which a knob reaches.
 
 - **So the default is** (serial, as chosen on the measurements / parallel /
-  something else):
+  something else):  Serial, as chosen on the measurements. Frosty, 2026-09-12.
 
-- **Listened on** (machine, monitoring, date):
+- **Listened on** (machine, monitoring, date):  AURORA, 2026-09-11 and 2026-09-12.
 
 ---
 
@@ -453,29 +453,57 @@ settles after.
 
 ### m-vocal — deess-dynamic
 
-- **Different, which you prefer, what you heard:**
+- **Different, which you prefer, what you heard:**  B preferred, i could hear the reduction on A, but it's close
 
 ### m-vocal — tamer-dynamic
 
-- **Different, which you prefer, what you heard:**
+- **Different, which you prefer, what you heard:**  couldnt differentiate
 
 ### m-drums — deess-dynamic
 
-- **Different, which you prefer, what you heard:**
+- **Different, which you prefer, what you heard:**  couldnt differentiate
 
 ### m-drums — tamer-dynamic
 
-- **Different, which you prefer, what you heard:**
+- **Different, which you prefer, what you heard:**  couldnt differentiate
 
 ### m-mix — deess-dynamic
 
-- **Different, which you prefer, what you heard:**
+- **Different, which you prefer, what you heard:**  B preferred, A audibly drastic on full mix
 
 ### m-mix — tamer-dynamic
 
-- **Different, which you prefer, what you heard:**
+- **Different, which you prefer, what you heard:**  cant differentiate
 
 ### After the six
 
 - **Does the way it moves make a case for shipping both topologies?**
-  (no, serial only / yes, and for what):
+  (no, serial only / yes, and for what):  No. Four of six indistinguishable, and both audible ones preferred serial.
+
+### What round two's key says — opened 2026-09-12, after all six were in
+
+Seed 11: `deess-dynamic` was **A = parallel, B = serial** on all three sources;
+`tamer-dynamic` was **A = serial, B = parallel**.
+
+| source | case | what Frosty heard | which was which |
+|---|---|---|---|
+| m-vocal | de-ess | "**B preferred**, i could hear the reduction on A, but it's close" | B was **serial** |
+| m-mix | de-ess | "**B preferred**, A audibly drastic on full mix" | B was **serial** |
+| m-vocal | tamer | couldn't differentiate | A serial, B parallel |
+| m-drums | de-ess | couldn't differentiate | A parallel, B serial |
+| m-drums | tamer | couldn't differentiate | A serial, B parallel |
+| m-mix | tamer | couldn't differentiate | A serial, B parallel |
+
+**Four of six were indistinguishable. In the two that were not, serial was
+preferred both times** — and the thing that gave parallel away was its
+reduction being *more* audible, "audibly drastic on full mix", even though the
+two were matched to within 0.003 dB in that band.
+
+That is the opposite of what the measurement suggested to look for. Parallel's
+catch was expected to have the softer edge, because its static path keeps
+feeding through while the dynamic band clamps. What that actually sounds like,
+on a de-esser, is the sibilance being pulled at while the shelf holds its
+level up — and it reads as heavier handling, not gentler.
+
+So the residual that no knob can reproduce is real, audible on two of six
+pairs, and it favours **serial**.

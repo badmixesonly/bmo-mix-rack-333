@@ -74,13 +74,27 @@ plugin code `Bpar`, bundle id `com.lt3audio.bmodeq`, presets `.bmodeq`.
 module's first 32 parameters take the slot's host lanes, the rest are held off
 the grid.
 
-**Serial band summing, pending a listening test.** It supersedes spec C4
-(parallel). Evidence: `topology-options.md`. Serial is the only option whose
-response is its band curves added in dB, and the only one in which a low cut
-still cuts under an overlapping boost. Latency and CPU are identical. Test:
-`testing-notes/deq-topology-listening.md`. If the test confirms serial,
-`Topology::parallel` is deleted. If serial's stacking is judged too much, the
-hybrid is the measured fallback.
+**Serial band summing. Settled by ear 2026-09-12; it supersedes spec C4
+(parallel).** Evidence: `topology-options.md` for the measurements,
+`testing-notes/deq-blind-2026-09-11.md` for the listening. Serial is the only
+option whose response is its band curves added in dB, and the only one in
+which a low cut still cuts under an overlapping boost. Latency and CPU are
+identical.
+
+57 blind pairs, seven sources, all seven controls indistinguishable. Every
+audible difference ran the way the measurements predicted, and nothing was
+reported as a fault on either topology. Round one's preferences for parallel
+were all cases of it doing less; round two matched the two for *amount* so
+that only the shape of the dynamic catch differed, and four of six pairs were
+then indistinguishable while the other two were preferred as serial.
+
+**No user-facing topology switch** (Frosty, 2026-09-12). What parallel was
+preferred for is reachable in serial by asking for less — 0.76 dB for stacked
+cuts, 0.63 for stacked boosts, exactly for the amount of dynamic reduction —
+and nothing serial does is reachable in parallel at all.
+
+`Topology::parallel` stays in `DspCore` for now, for `measure_deq render`.
+Deleting it is a separate call, and it costs the ability to A/B this again.
 
 ## 2026-09-10 — from the review (`review-v0.1.md`), in the code, not yet ruled on
 
