@@ -5,22 +5,32 @@ parallel, **shuffled per case**, so preferring "A" twice means nothing.
 **Don't open `key.txt` in any source folder until every line here has
 something on it.** Nothing in the session has opened one.
 
-How to answer: put an `x` in a box — `[x]` — and write after the colon where
-there is one. A word is enough. **"Same" is a real answer and a useful one**;
-on most material most of these should be hard to tell apart, and the cases
-where they are not are the interesting ones.
+**How to answer:** comment on the bold line under each case in the Files pane
+— it has no save button, so nothing here is typed into directly. The session
+writes your comments into the file, ticks the source off below, and opens the
+key only when the last one is in. Same as Tune's rounds.
+
+A word is enough. **"Same" is a real answer and a useful one**; on most
+material most of these should be hard to tell apart, and the cases where they
+are not are the interesting ones. If a pair is odd in a way the line doesn't
+ask about, say that instead — a click, a level jump, anything that sounds like
+a fault rather than a topology.
 
 ## Progress
 
-- [ ] 1 — vocal (8 cases)
-- [ ] 2 — 808 (5 cases; 7 and 8 skipped, no dynamics on this source)
-- [ ] 3 — drum loop (8 cases)
-- [ ] 4 — synth (5 cases)
-- [ ] 5 — guitars (8 cases)
-- [ ] 6 — room (7 cases)
-- [ ] 7 — full mix (8 cases) ⚠ monitoring down 6 dB
-- [ ] the verdict at the bottom
-- [ ] key opened, after everything above
+The session ticks these off as your comments come in.
+
+| | source | cases | done |
+|---|---|---|---|
+| 1 | vocal | 8 | |
+| 2 | 808 | 5 (7 and 8 skipped — no dynamics on this source) | |
+| 3 | drum loop | 8 | |
+| 4 | synth | 5 | |
+| 5 | guitars | 8 | |
+| 6 | room | 7 | |
+| 7 | full mix | 8 — ⚠ monitoring down 6 dB | |
+| | the verdict | | |
+| | key opened, last of all | | |
 
 **Each source starts with its control case.** The two renders differ by −32 to
 −41 dB relative to input there, which should be inaudible. If you can hear a
@@ -50,55 +60,35 @@ this source and the drum loop are where cases 7 and 8 mean anything.
 
 ### 6. vocal-control — the validity check (−32.5 dB)
 
-- [ ] heard it
-- Could you tell them apart?  [ ] no, as expected  ·  [ ] YES -- stop, the setup is leaking
-- If yes, what gave it away:
+- **Could you tell them apart?** Should be no. If yes, say what gave it away -- and stop there, the setup is leaking:
 
 ### 2. stacked-cuts-12 — two −12 dB cuts at 1 kHz (−7.3 dB; peaks differ by 4.3 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 3. stacked-cuts-6 — two −6 dB cuts at 1 kHz (−15.6 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 4. stacked-boosts — two +6 dB boosts at 3 kHz (−17.0 dB) ⚠ peaks at −0.0 dBFS
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 1. lowcut-under-shelf — low cut 80 Hz under a +6 shelf at 100 (−26.7 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 8. tamer-dynamic — dynamic −12 at 2.5 k over a static +3 at 2 k (−29.8 dB, 10.1 dB GR)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 7. deess-dynamic — dynamic −10 at 7 k over a static +4 shelf at 8 k (−37.1 dB, 10.0 dB GR)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 5. surgical — −12 at 2.5 k Q 8, −9 at 3.1 k Q 8 (−31.0 dB, expected inaudible)
 
-- [ ] heard it  ·  same or different?  [ ] same  ·  [ ] different
+- **Same or different:**
 
 ---
 
@@ -110,37 +100,29 @@ about dynamics — skip them unless curious.
 
 ### 6. vocal-control — the validity check (−40.6 dB)
 
-- [ ] heard it
-- Could you tell them apart?  [ ] no, as expected  ·  [ ] YES -- stop, the setup is leaking
-- If yes, what gave it away:
+- **Could you tell them apart?** Should be no. If yes, say what gave it away -- and stop there, the setup is leaking:
 
 ### 1. lowcut-under-shelf (+1.3 dB — the largest difference in the whole run; peaks differ by 4.1 dB)
 
 This is the case the whole argument is about, on the source that shows it.
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 2. stacked-cuts-12 (−29.7 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 4. stacked-boosts (−35.0 dB, expected inaudible)
 
-- [ ] heard it  ·  same or different?  [ ] same  ·  [ ] different
+- **Same or different:**
 
 ### 3. stacked-cuts-6 (−38.6 dB, expected inaudible)
 
-- [ ] heard it  ·  same or different?  [ ] same  ·  [ ] different
+- **Same or different:**
 
 ### 5. surgical (−48.5 dB, expected inaudible)
 
-- [ ] heard it  ·  same or different?  [ ] same  ·  [ ] different
+- **Same or different:**
 
 ---
 
@@ -152,58 +134,35 @@ difference would show as pumping or smearing rather than as tone.
 
 ### 6. vocal-control — the validity check (−33.9 dB)
 
-- [ ] heard it
-- Could you tell them apart?  [ ] no, as expected  ·  [ ] YES -- stop, the setup is leaking
-- If yes, what gave it away:
+- **Could you tell them apart?** Should be no. If yes, say what gave it away -- and stop there, the setup is leaking:
 
 ### 1. lowcut-under-shelf (−2.0 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 4. stacked-boosts (−10.4 dB) ⚠ peaks at −4.4 dBFS
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 2. stacked-cuts-12 (−12.8 dB; peaks differ by 2.0 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 3. stacked-cuts-6 (−21.2 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 5. surgical (−23.7 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 8. tamer-dynamic (−26.1 dB, 8.7 dB GR)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 7. deess-dynamic (−33.0 dB, 7.5 dB GR)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ---
 
@@ -214,41 +173,27 @@ tone. The dynamic cases barely engaged (0.9 / 1.9 dB) — skip unless curious.
 
 ### 6. vocal-control — the validity check (−32.6 dB)
 
-- [ ] heard it
-- Could you tell them apart?  [ ] no, as expected  ·  [ ] YES -- stop, the setup is leaking
-- If yes, what gave it away:
+- **Could you tell them apart?** Should be no. If yes, say what gave it away -- and stop there, the setup is leaking:
 
 ### 1. lowcut-under-shelf (−6.8 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 2. stacked-cuts-12 (−10.3 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 4. stacked-boosts (−12.0 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 3. stacked-cuts-6 (−18.5 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 5. surgical (−25.4 dB)
 
-- [ ] heard it  ·  same or different?  [ ] same  ·  [ ] different
+- **Same or different:**
 
 ---
 
@@ -259,58 +204,35 @@ Both dynamic cases engaged (5.9 / 7.2 dB).
 
 ### 6. vocal-control — the validity check (−32.3 dB)
 
-- [ ] heard it
-- Could you tell them apart?  [ ] no, as expected  ·  [ ] YES -- stop, the setup is leaking
-- If yes, what gave it away:
+- **Could you tell them apart?** Should be no. If yes, say what gave it away -- and stop there, the setup is leaking:
 
 ### 1. lowcut-under-shelf (−7.6 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 4. stacked-boosts (−8.5 dB; peaks differ by 1.5 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 2. stacked-cuts-12 (−13.2 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 3. stacked-cuts-6 (−21.8 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 5. surgical (−22.1 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 8. tamer-dynamic (−28.2 dB, 7.2 dB GR)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 7. deess-dynamic (−33.8 dB, 5.9 dB GR)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ---
 
@@ -322,45 +244,31 @@ the front of each sound. The dynamic cases only half-engaged (3.8 / 4.7 dB).
 
 ### 6. vocal-control — the validity check (−31.4 dB)
 
-- [ ] heard it
-- Could you tell them apart?  [ ] no, as expected  ·  [ ] YES -- stop, the setup is leaking
-- If yes, what gave it away:
+- **Could you tell them apart?** Should be no. If yes, say what gave it away -- and stop there, the setup is leaking:
 
 ### 1. lowcut-under-shelf (−10.2 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 2. stacked-cuts-12 (−14.9 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 4. stacked-boosts (−16.7 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 3. stacked-cuts-6 (−23.9 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 5. surgical (−30.8 dB)
 
-- [ ] heard it  ·  same or different?  [ ] same  ·  [ ] different
+- **Same or different:**
 
 ### 7 and 8, the dynamic pair (−40.8 / −43.4 dB, 3.8 / 4.7 dB GR)
 
-- [ ] heard it  ·  anything at all?  [ ] no  ·  [ ] yes
+- **Anything at all:**
 
 ---
 
@@ -377,86 +285,54 @@ the thing anyone would actually reach for DEQ with.
 
 ### 6. vocal-control — the validity check (−36.9 dB)
 
-- [ ] heard it
-- Could you tell them apart?  [ ] no, as expected  ·  [ ] YES -- stop, the setup is leaking
-- If yes, what gave it away:
+- **Could you tell them apart?** Should be no. If yes, say what gave it away -- and stop there, the setup is leaking:
 
 ### 1. lowcut-under-shelf (+0.1 dB — as loud as the input; peaks 3 dB apart)
 
 The 808 said the same thing about this case. This is it on a finished mix.
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 2. stacked-cuts-12 (−16.6 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 4. stacked-boosts (−23.6 dB; renders to +5.0 dBFS)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 3. stacked-cuts-6 (−25.1 dB)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 8. tamer-dynamic (−35.1 dB, 12.0 dB GR)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 7. deess-dynamic (−34.6 dB, 10.0 dB GR)
 
-- [ ] heard it
-- Same or different?  [ ] same  ·  [ ] different
-- Prefer:  [ ] A  ·  [ ] B  ·  [ ] neither
-- What you heard:
+- **Same or different, which you prefer, what you heard:**
 
 ### 5. surgical (−37.3 dB, expected inaudible)
 
-- [ ] heard it  ·  same or different?  [ ] same  ·  [ ] different
+- **Same or different:**
 
 ---
 
 ## The verdict
 
-Answer these once, after the cases above.
+Four lines to comment on, once, after the cases above.
 
-**Does the difference matter on real material?**
+- **Does the difference matter on real material?** (no / on a few cases,
+  which / yes, plainly):
 
-- [ ] no — inaudible or trivial on everything that mattered
-- [ ] on a few cases only:
-- [ ] yes, plainly:
+- **Is anything about serial worse?** (nothing / what):
 
-**Is anything about serial worse?**
+- **Does anything argue for exposing a topology switch as a control?**
+  Held open until this pass is heard; it is the one thing keeping DEQ's panel
+  out of the UI pass. (no, serial only / yes, and what it would be for):
 
-- [ ] nothing
-- [ ] yes:
+- **So the default is** (serial, as chosen on the measurements / parallel /
+  something else):
 
-**Does anything here argue for exposing a topology switch as a control?**
-Held open until this pass is heard; it is the one thing keeping DEQ's panel
-out of the UI pass.
-
-- [ ] no — serial only, and DEQ's panel is settled
-- [ ] yes, and here is what it would be for:
-
-**So the default is:**
-
-- [ ] serial, as chosen on the measurements
-- [ ] parallel
-- [ ] something else:
-
-Listened on (machine, monitoring, date):
+- **Listened on** (machine, monitoring, date):
