@@ -24,7 +24,18 @@
                   (the detector).
       dropouts    gaps under 80 ms between voiced stretches: the correction
                   letting go mid-phrase.
-      splices     the engine's whole-period jumps.
+      splices     the engine's whole-period jumps, and how badly each one LANDS:
+                  the two reads either side of a jump are meant to be one
+                  cycle apart on the same waveform, so what they differ by
+                  across the crossfade is the step a listener hears. Split by
+                  whether the ruler calls the material periodic there, since
+                  on noise two unrelated reads differ a lot and sound the
+                  same. --splices lists every one with its level.
+
+                  Count and landing error are different questions: on Failure
+                  the median jump lands at 0.10 and is inaudible, which is why
+                  driving the count from 120 to 38 did not drive the pops down
+                  (testing-notes/tune-blind-2026-09-12.md).
 
     The ruler must be kept to the voice's range: a voice whose fundamental
     sits under its second harmonic fools an unbounded ruler as it fooled the
@@ -38,6 +49,7 @@
 #include "tools/tune/common/Wav.h"
 
 #include <algorithm>
+#include <utility>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -78,6 +90,7 @@ int main (int argc, char** argv)
     const std::string inPath = argv[1];
     std::string outPath, csvPath;
     double rulerMin = 60.0, rulerMax = 400.0;
+    bool listSplices = false;
     auto values = tools::defaultValues();
 
     for (int i = 2; i < argc; ++i)
@@ -91,6 +104,7 @@ int main (int argc, char** argv)
         else if (a == "--ruler-max") rulerMax = std::atof (next().c_str());
         else if (a == "--out")       outPath = next();
         else if (a == "--csv")       csvPath = next();
+        else if (a == "--splices")   listSplices = true;
         else                         return usage();
     }
 
@@ -124,13 +138,13 @@ int main (int argc, char** argv)
     std::vector<Row> ev;
     std::vector<int> evSplices;   // splices since the previous evaluation
     std::vector<double> evMismatch;   // and the worst one's landing error
-    std::vector<double> mismatches;   // every splice's, for the distribution
+    std::vector<std::pair<long long, double>> mismatches;   // every splice: where, and how badly
     int splices = 0, spliceRun = 0;
     double mismatchRun = 0.0;
     for (const auto& r : col.rows)
     {
         if (r.splice) { ++splices; ++spliceRun; }
-        if (r.mismatch > 0.0) { mismatches.push_back (r.mismatch); mismatchRun = std::max (mismatchRun, r.mismatch); }
+        if (r.mismatch > 0.0) { mismatches.emplace_back (r.n, r.mismatch); mismatchRun = std::max (mismatchRun, r.mismatch); }
         if (r.evaluated)
         {
             ev.push_back (r);
@@ -159,6 +173,15 @@ int main (int argc, char** argv)
     int frames = 0, right = 0, up8 = 0, up12 = 0, down8 = 0, other = 0, unvoiced = 0;
     size_t k = 0;
 
+    // Where the RULER finds the dry periodic, independent of anything the
+    // plugin thinks. A splice's landing error only means something on
+    // periodic material: it is normalised by the reads' own RMS, so two
+    // unrelated noisy reads score high and sound the same. Frosty's
+    // timestamps caught this -- five high-error splices at 16.1-16.8 s went
+    // unreported, and that is where the detector reads 580 to 1837 Hz on a
+    // 60-400 Hz singer (testing-notes/tune-blind-2026-09-12.md).
+    std::vector<std::pair<long long, bool>> periodic;
+
     for (size_t a = 0; a + len < dry.size(); a += hop)
     {
         double e = 0.0;
@@ -167,6 +190,7 @@ int main (int argc, char** argv)
             continue;
 
         const auto truth = analysis::measureHz (dry, a, len, fs, rulerMin, rulerMax);
+        periodic.emplace_back ((long long) (a + len / 2), truth > 0.0);
         if (truth <= 0.0)
             continue;
 
@@ -246,14 +270,74 @@ int main (int argc, char** argv)
     // it, from one that lands anywhere, which steps the waveform.
     if (! mismatches.empty())
     {
-        auto m = mismatches;
-        std::sort (m.begin(), m.end());
-        double sum = 0.0;
-        int bad = 0;
-        for (auto v : m) { sum += v; if (v > 0.5) ++bad; }
-        std::printf ("  splice landing error: median %.2f | p90 %.2f | worst %.2f | mean %.2f | over 0.5: %d of %zu\n",
-                     m[m.size() / 2], m[(size_t) (0.9 * (double) (m.size() - 1))], m.back(),
-                     sum / (double) m.size(), bad, m.size());
+        // Split by whether the RULER calls the material periodic there. On
+        // aperiodic material -- a consonant, a breath, the stretch where the
+        // detector loses the voice entirely -- a high landing error is not a
+        // pop: two unrelated noisy reads differ a lot and sound the same.
+        // Only the periodic column is a prediction about what is heard.
+        std::vector<double> onPitch, onNoise;
+
+        for (const auto& [at, err] : mismatches)
+        {
+            bool isPeriodic = false;
+            long long best = -1;
+
+            for (const auto& [centre, p] : periodic)
+            {
+                const auto d = centre > at ? centre - at : at - centre;
+                if (best < 0 || d < best) { best = d; isPeriodic = p; }
+            }
+
+            (isPeriodic ? onPitch : onNoise).push_back (err);
+        }
+
+        const auto line = [] (const char* what, std::vector<double> m)
+        {
+            if (m.empty())
+            {
+                std::printf ("  splice landing error, %-16s none\n", what);
+                return;
+            }
+
+            std::sort (m.begin(), m.end());
+            double sum = 0.0;
+            int bad = 0;
+            for (auto v : m) { sum += v; if (v > 0.5) ++bad; }
+            std::printf ("  splice landing error, %-16s median %.2f | p90 %.2f | worst %.2f | mean %.2f | over 0.5: %d of %zu\n",
+                         what, m[m.size() / 2], m[(size_t) (0.9 * (double) (m.size() - 1))], m.back(),
+                         sum / (double) m.size(), bad, m.size());
+        };
+
+        line ("ON PITCH:", onPitch);
+        line ("on noise:", onNoise);
+
+        if (listSplices)
+        {
+            std::printf ("\n  every splice: when, how badly it landed, how loud the take is there,\n"
+                         "  and whether the ruler calls the material periodic\n");
+
+            for (const auto& [at, err] : mismatches)
+            {
+                bool isPeriodic = false;
+                long long best = -1;
+                for (const auto& [centre, p] : periodic)
+                {
+                    const auto d = centre > at ? centre - at : at - centre;
+                    if (best < 0 || d < best) { best = d; isPeriodic = p; }
+                }
+
+                // Level over 50 ms around it, against the take's own peak.
+                const auto half = (size_t) std::lround (0.025 * fs);
+                const auto from = (size_t) std::max<long long> (0, at - (long long) half);
+                const auto to = std::min (dry.size(), (size_t) at + half);
+                double e = 0.0;
+                for (size_t i = from; i < to; ++i) e += (double) dry[i] * dry[i];
+                const auto db = 10.0 * std::log10 (e / (double) std::max<size_t> (1, to - from) + 1.0e-20);
+
+                std::printf ("    %7.3f s   landing %.2f   %6.1f dB   %s\n",
+                             (double) at / fs, err, db, isPeriodic ? "on pitch" : "ON NOISE");
+            }
+        }
     }
 
     return 0;
