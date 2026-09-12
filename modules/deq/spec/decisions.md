@@ -47,7 +47,12 @@ not the accent by default-only. Measured against the well, `#1b1b1f`:
 | Orange | `#ef8b4a` | 23.6° | 6.92:1 | 8° from BMO Saturator |
 | Gold | `#e8c95a` | 46.9° | 10.57:1 | 5° from Opto's amber state |
 | Pink | `#e6949f` | 352.0° | 7.44:1 | 16° from BMO EQ |
-| Neutral | `#aeb4c0` | 220.0° | 8.25:1 | claims nothing |
+| **Neutral (default)** | `#aeb4c0` | 220.0° | 8.25:1 | claims nothing |
+
+**Neutral is the default** (Frosty, 2026-09-12): it collides with nothing, it
+never competes with the teal curve in front of it, and a panel that ships in
+someone else's colour is a panel that has made a claim on their behalf. The
+other four are there for people who want one.
 
 Pink is the true complement of the teal — 352.0° against 172.0° — lifted from
 the `#cf5e6d` the complement gives at the teal's own saturation and lightness,

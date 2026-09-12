@@ -3,7 +3,10 @@
 #include "modules/deq/dsp/Design.h"
 #include "modules/deq/dsp/Dynamics.h"
 #include "modules/deq/dsp/Svf.h"
+#include "core/dsp/AnalyserTap.h"
 #include <array>
+#include <atomic>
+#include <memory>
 #include <complex>
 
 namespace bmo::deq
@@ -30,8 +33,8 @@ inline constexpr double kSmoothingMs = 10.0;
     redesigning every interval over a thousandth of a dB of detector ripple. */
 inline constexpr double kOffsetHysteresisDb = 0.001;
 
-/** How bands combine. **Serial**, decided 2026-09-10 and pending a listening
-    test; the measurements behind it are in modules/deq/spec/topology-options.md.
+/** How bands combine. **Serial**, decided 2026-09-10 on the measurements in
+    modules/deq/spec/topology-options.md, and confirmed by ear on 2026-09-12.
 
     - `serial`: each band's output feeds the next, as in a conventional
       parametric EQ. The total is the band curves added in dB, a low cut
@@ -40,10 +43,14 @@ inline constexpr double kOffsetHysteresisDb = 0.001;
       coincident -24 dB cuts give -1.17 dB, polarity inverted, because
       1 + 2(G - 1) goes negative once G < 0.5.
 
-    Parallel stays in the engine only so the listening test can A/B the two
-    (`measure_deq render`). It is not meant to become a user control: a preset
-    made in one would sound different in the other. Once the test confirms
-    serial, delete it along with its tests.
+    **Serial was confirmed by ear on 2026-09-12 and there is no user-facing
+    switch** (Frosty): 57 blind pairs over seven sources, then six more with
+    the two matched for amount so only the shape of the dynamic catch differed.
+    See testing-notes/deq-blind-2026-09-11.md and spec/decisions.md.
+
+    Parallel stays in the engine so `measure_deq render` can still A/B the two,
+    which is what `--match` is built on. It is not a user control: a preset
+    made in one would sound different in the other.
 
     Both are zero latency -- a chain of IIR filters has no crossover and no
     delay line -- and cost the same. */
@@ -123,6 +130,31 @@ public:
 
     static constexpr int latencySamples() noexcept { return 0; }
 
+    /** Hear one band alone, or -1 for the whole EQ. Momentary and never a
+        parameter: the panel sets it while the control is held (ModuleDsp).
+
+        **What you hear is the band's contribution** -- what it adds or takes
+        away, `H(x) - x`, which is the quantity the parallel topology sums and
+        the serial one accumulates. On a dynamic band that contribution moves
+        with the detector, so soloing a de-esser is the sibilance being caught,
+        which is the thing worth listening to. Its filtered *output* would be
+        the whole signal with a dip in it, which is not.
+
+        A band that is off contributes nothing, so soloing one is silence
+        rather than the untouched signal: "this band, alone" has to mean the
+        same thing whatever the band is doing.
+
+        Read once per block, so it cannot break block-size invariance. */
+    void setSolo (int band) noexcept { shared->solo.store (band, std::memory_order_relaxed); }
+    int soloedBand() const noexcept  { return shared->solo.load (std::memory_order_relaxed); }
+
+    /** The post-EQ window a panel's analyser draws. There is room in the
+        engine for a pre tap as well -- `preTap()` is written on the same terms
+        -- so adding a second curve later is a change to a panel and not to the
+        audio path. Only the post one is wired to anything today. */
+    AnalyserTap& postTap() noexcept { return shared->post; }
+    AnalyserTap& preTap() noexcept  { return shared->pre; }
+
     /** Deepest cut any dynamic band is applying right now, dB, >= 0. */
     double currentGainReductionDb() const noexcept;
 
@@ -191,9 +223,20 @@ private:
     void controlTick() noexcept;
     void resetBand (Band& b) noexcept;
 
+    /** What the panel and the audio thread share. Held behind a pointer for
+        one reason: an atomic is neither copyable nor movable, and an engine is
+        built and handed back by value all over the tests and the tools. The
+        allocation happens once, at construction, never on the audio thread. */
+    struct Shared
+    {
+        AnalyserTap pre, post;
+        std::atomic<int> solo { -1 };
+    };
+
     std::array<Band, kMaxBands> bands {};
     Settings current;
     DesignGrid grid;
+    std::unique_ptr<Shared> shared = std::make_unique<Shared>();
     double rate = 48000.0, tickAlpha = 0.0;
     int tickPhase = 0;
     bool primed = false;
