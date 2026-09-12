@@ -84,6 +84,19 @@ public:
     bool splicedThisSample() const noexcept { return spliced; }
     long long spliceCount() const noexcept { return splices; }
 
+    /** How badly the splice that just finished crossfading landed: the RMS
+        difference between its two reads across the fade, against their own
+        RMS. Non-zero only on the sample a splice's fade completes.
+
+        Near 0 means the jump landed in phase and the crossfade hid it;
+        of order 1.4 means it landed somewhere unrelated and stepped the
+        waveform. This is what the splice COUNT was standing in for: on
+        Failure only 7 of 38 splices were audible to Frosty, so a count
+        cannot separate a bad one from a silent one
+        (testing-notes/tune-blind-2026-09-12.md). */
+    double spliceMismatch() const noexcept { return mismatch; }
+    double worstSpliceMismatch() const noexcept { return worstMismatch; }
+
 private:
     double read (const Sinc&, double lagBehindNewest) const noexcept;
     void startFade (double newLag, int length, bool equalPower) noexcept;
@@ -102,8 +115,9 @@ private:
     double fadeLag = 0.0;
     int fadeLength = 0, fadePosition = 0;
 
-    bool spliced = false;
+    bool spliced = false, fadeWasSplice = false;
     long long splices = 0;
+    double fadeDiffAcc = 0.0, fadeRefAcc = 0.0, mismatch = 0.0, worstMismatch = 0.0;
 };
 
 } // namespace bmo::tune

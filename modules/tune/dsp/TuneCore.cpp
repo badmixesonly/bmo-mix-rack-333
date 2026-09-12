@@ -129,6 +129,7 @@ void TuneCore::process (float* samples, int numSamples) noexcept
             f.ratio = engine.currentRatio();
             f.lag = engine.currentLag();
             f.splice = engine.splicedThisSample();
+            f.spliceMismatch = engine.spliceMismatch();
             analysisTap (analysisContext, f);
         }
 

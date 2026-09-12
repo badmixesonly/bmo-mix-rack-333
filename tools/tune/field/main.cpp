@@ -48,7 +48,7 @@ using namespace bmo::tune;
 
 namespace
 {
-    struct Row { long long n; double f0, pitchIn; bool voiced; int note; bool splice, evaluated; };
+    struct Row { long long n; double f0, pitchIn; bool voiced; int note; bool splice, evaluated; double mismatch; };
 
     struct Collector
     {
@@ -56,9 +56,9 @@ namespace
 
         static void tap (void* context, const AnalysisFrame& f)
         {
-            if (f.evaluated || f.splice)
+            if (f.evaluated || f.splice || f.spliceMismatch > 0.0)
                 static_cast<Collector*> (context)->rows.push_back (
-                    { f.sample, f.f0, f.pitchIn, f.voiced, f.note, f.splice, f.evaluated });
+                    { f.sample, f.f0, f.pitchIn, f.voiced, f.note, f.splice, f.evaluated, f.spliceMismatch });
         }
     };
 
@@ -123,22 +123,33 @@ int main (int argc, char** argv)
 
     std::vector<Row> ev;
     std::vector<int> evSplices;   // splices since the previous evaluation
+    std::vector<double> evMismatch;   // and the worst one's landing error
+    std::vector<double> mismatches;   // every splice's, for the distribution
     int splices = 0, spliceRun = 0;
+    double mismatchRun = 0.0;
     for (const auto& r : col.rows)
     {
         if (r.splice) { ++splices; ++spliceRun; }
-        if (r.evaluated) { ev.push_back (r); evSplices.push_back (spliceRun); spliceRun = 0; }
+        if (r.mismatch > 0.0) { mismatches.push_back (r.mismatch); mismatchRun = std::max (mismatchRun, r.mismatch); }
+        if (r.evaluated)
+        {
+            ev.push_back (r);
+            evSplices.push_back (spliceRun);
+            evMismatch.push_back (mismatchRun);
+            spliceRun = 0;
+            mismatchRun = 0.0;
+        }
     }
 
     if (! csvPath.empty())
         if (auto* f = std::fopen (csvPath.c_str(), "w"))
         {
-            std::fprintf (f, "seconds,f0,pitch_in,voiced,note,splices\n");
+            std::fprintf (f, "seconds,f0,pitch_in,voiced,note,splices,mismatch\n");
             for (size_t i = 0; i < ev.size(); ++i)
             {
                 const auto& r = ev[i];
-                std::fprintf (f, "%.5f,%.3f,%.4f,%d,%d,%d\n", (double) r.n / fs, r.f0, r.pitchIn,
-                              r.voiced ? 1 : 0, r.note, evSplices[i]);
+                std::fprintf (f, "%.5f,%.3f,%.4f,%d,%d,%d,%.4f\n", (double) r.n / fs, r.f0, r.pitchIn,
+                              r.voiced ? 1 : 0, r.note, evSplices[i], evMismatch[i]);
             }
             std::fclose (f);
         }
@@ -228,5 +239,22 @@ int main (int argc, char** argv)
     std::printf ("  note-name changes %zu; flips back within 80 ms %d (neighbours %d, jumps %d)\n",
                  changes.size(), flips, neighbour, jump);
     std::printf ("  dropouts under 80 ms %d | splices %d (%.1f/s)\n", dropouts, splices, splices / seconds);
+
+    // How badly the splices land, which is not the same question as how many
+    // there are: on this take Frosty heard 7 of 38 (2026-09-12). A count
+    // cannot separate a jump that lands in phase, where the crossfade hides
+    // it, from one that lands anywhere, which steps the waveform.
+    if (! mismatches.empty())
+    {
+        auto m = mismatches;
+        std::sort (m.begin(), m.end());
+        double sum = 0.0;
+        int bad = 0;
+        for (auto v : m) { sum += v; if (v > 0.5) ++bad; }
+        std::printf ("  splice landing error: median %.2f | p90 %.2f | worst %.2f | mean %.2f | over 0.5: %d of %zu\n",
+                     m[m.size() / 2], m[(size_t) (0.9 * (double) (m.size() - 1))], m.back(),
+                     sum / (double) m.size(), bad, m.size());
+    }
+
     return 0;
 }

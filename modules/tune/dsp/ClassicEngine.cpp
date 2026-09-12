@@ -54,6 +54,7 @@ void ClassicEngine::startFade (double newLag, int length, bool equalPower) noexc
     fadeEqualPower = equalPower;
     fadeLength = std::max (1, length);
     fadePosition = 0;
+    fadeDiffAcc = fadeRefAcc = 0.0;
 }
 
 float ClassicEngine::process (float input, double cents, double period, bool settled) noexcept
@@ -89,6 +90,7 @@ float ClassicEngine::process (float input, double cents, double period, bool set
             // shrank the window underneath the pointer.
             const auto k = lag < lo ? std::ceil ((lo - lag) / T) : -std::ceil ((lag - hi) / T);
             startFade (lag + k * T, fade, false);
+            fadeWasSplice = true;
             spliced = true;
             ++splices;
         }
@@ -108,10 +110,29 @@ float ClassicEngine::process (float input, double cents, double period, bool set
     const auto& table = kernels.forRatio (ratio);
     auto y = read (table, lag);
 
+    mismatch = 0.0;
+
     if (fading)
     {
         const auto outgoing = read (table, fadeLag);
+        const auto incoming = y;
         const auto t = (double) (fadePosition + 1) / (double) (fadeLength + 1);
+
+        // How badly this splice lands. The two reads are meant to be one
+        // cycle apart on the same waveform, so across the fade they should
+        // very nearly agree; whatever they do not agree by is the step the
+        // listener hears. Accumulated over the fade and reported once, as an
+        // RMS difference against the material's own RMS: about 0 for a jump
+        // that lands in phase, and of order 1.4 for one that lands anywhere.
+        //
+        // This is the measurement the splice COUNT was standing in for and
+        // should not have been. Frosty timestamped the pops he hears on
+        // Failure (2026-09-12): seven of seven were splices, but only seven
+        // of thirty-eight splices were audible at all, so a count cannot
+        // tell a bad one from a silent one and driving it down did not drive
+        // the pops down. testing-notes/tune-blind-2026-09-12.md.
+        fadeDiffAcc += (incoming - outgoing) * (incoming - outgoing);
+        fadeRefAcc += outgoing * outgoing + incoming * incoming;
 
         if (fadeEqualPower)
         {
@@ -124,7 +145,16 @@ float ClassicEngine::process (float input, double cents, double period, bool set
         }
 
         if (++fadePosition >= fadeLength)
+        {
             fading = false;
+
+            if (fadeWasSplice)
+            {
+                mismatch = fadeRefAcc > 1.0e-20 ? std::sqrt (2.0 * fadeDiffAcc / fadeRefAcc) : 0.0;
+                worstMismatch = std::max (worstMismatch, mismatch);
+                fadeWasSplice = false;
+            }
+        }
     }
 
     return std::isfinite (y) ? (float) y : 0.0f;

@@ -35,6 +35,7 @@ struct AnalysisFrame
     int note = -1;
     double appliedCents = 0.0, ratio = 1.0, lag = 0.0;
     bool splice = false;
+    double spliceMismatch = 0.0;   ///< non-zero on the sample a splice fade ends
 };
 
 /** BMO Tune RT's DSP, whole: float in, float out, and a parameter struct. No framework, no host, no allocation after prepare(), and no
