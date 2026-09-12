@@ -47,6 +47,18 @@ to switch on the next free band. Selecting a band (tab or node) rebinds the
 controls under the curve; which band is selected is panel state, reached by
 `snapshot ... ui.band=N`.
 
+**Only a band that is on gets a node** (Frosty, 2026-09-11): "12 dots when
+none are active is distracting and confusing". Twelve nodes over a flat curve
+read as a control surface rather than as the EQ's state, and nothing told the
+eye which of them was live. A band that is off but *selected* keeps its node,
+dimmed, because the tab strip can select one and a selection with nothing on
+screen is worse than a quiet dot; its shape is not shaded under the curve
+either, which used to draw a low cut across the default panel that nothing
+was doing. A band with no node cannot be grabbed: reaching one that was off
+used to move its frequency and gain with nothing to see and nothing to hear.
+Double-clicking the plot is how a band is added, and now the only way -- so
+that gesture is load-bearing, not a shortcut.
+
 Things a build got wrong that a green suite would not have shown, and what now
 holds them:
 
