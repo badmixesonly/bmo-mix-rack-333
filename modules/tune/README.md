@@ -53,7 +53,7 @@ the lowest note in the test, which is where a period-proportional delay costs
 the most and BMO's flat 4 ms costs the least. The other two tuners' delays
 track the note; BMO's does not. So BMO is the least late of the three on a
 bass note and the latest of the three on a high one -- 4.6 ms at A5 where
-Waves is 0.7. It is over Waves from about D#3 upward, which is most of the
+Waves is 0.7. It is over Waves from about C3 upward, which is most of the
 range, and `tests/dsp/tune/HardTuneTests.cpp` fails on it today. See
 `testing-notes/tune-latency-review-2026-09-11.md`.
 

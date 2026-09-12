@@ -30,7 +30,7 @@ namespace bmo::tune
     KNOWN BROKEN (2026-09-11 review): a flat rest plus `hi = rest + T` is an
     absolute delay that does not track the note, where Waves Tune Real-Time's
     is nearly proportional to it (1.68 ms per ms of period, and only 0.71 ms
-    at A5). So the two cross at about D#3 and BMO is later than Waves above
+    at A5). So the two cross at about C3 and BMO is later than Waves above
     it -- by 3.90 ms at A5 -- which the latency rule forbids.
     HardTuneTests' per-note check fails on it. The upper bound wants to be an
     excursion about a rest that tracks the period, not a whole period on top

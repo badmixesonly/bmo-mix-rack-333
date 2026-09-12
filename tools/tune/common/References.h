@@ -71,13 +71,27 @@ inline constexpr Reference kWaves {
 
     Interpolated in the PERIOD, which is what it is nearly linear in: 19.215
     ms at E2 down to 0.709 at A5 is 1.68 ms per ms of period, with an
-    intercept of -1.2. Below E2 the two lowest points are extrapolated on --
-    holding flat would invent a violation under the bottom of the Auto range.
-    Above A5 it is held flat, since extrapolating goes negative.
+    intercept of -1.2. Held flat outside that span at both ends -- above A5
+    because extrapolating goes negative, below E2 because **E2 is the bottom
+    of what this is a tuner for** (Frosty, 2026-09-11: "it's a vocal tuner so
+    no need to drop below E2"), so nothing below it is measured and nothing
+    below it is judged.
+
+    Two things that leaves open, neither of them this file's to settle:
+
+      - Bass and Instrument declare a 55 Hz floor (params.h, Frosty's
+        2026-09-10 call), which is two and a half tones below E2. Cells down
+        there are held to E2's ceiling, which is generous rather than
+        measured. Either the ranges come up to E2 or the curve goes down to
+        A1; until then those cells are not really judged.
+      - bmo-tune-latency's own figures go soft below E2 anyway. It holds a
+        note 35 cents sharp for 0.6 s, and at A1 the read needs about 0.9 s
+        to drift a whole period, so the sweep reports ~15 ms where the window
+        actually allows rest + T = 22.2 ms. The low cells understate.
 
     Waves being almost purely proportional to the period, and BMO's rest being
     a constant, is the whole of the latency disagreement between them: BMO is
-    under Waves below D#3 and over it above, by 3.9 ms at A5. */
+    under Waves below C3 and over it above, by 3.9 ms at A5. */
 inline double ceilingMsAt (double hz) noexcept
 {
     const auto& c = kWaves.correcting;
@@ -87,14 +101,14 @@ inline double ceilingMsAt (double hz) noexcept
     if (hz >= c.back().hz)
         return c.back().ms;
 
+    if (hz <= c.front().hz)
+        return c.front().ms;       // below E2: out of scope, not extrapolated
+
     const auto at = [&] (size_t lo, size_t hi)
     {
         const auto t0 = periodOf (c[lo].hz), t1 = periodOf (c[hi].hz);
         return c[lo].ms + (t - t0) / (t1 - t0) * (c[hi].ms - c[lo].ms);
     };
-
-    if (hz <= c.front().hz)
-        return at (0, 1);          // extrapolate down the two lowest points
 
     for (size_t i = 1; i < c.size(); ++i)
         if (hz <= c[i].hz)

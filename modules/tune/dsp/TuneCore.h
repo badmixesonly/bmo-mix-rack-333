@@ -59,7 +59,7 @@ public:
 
         A flat rest against competitors whose delay tracks the note: BMO is
         the least late of the three on a bass note and the latest on a high
-        one, over Waves from about D#3 upward -- 4.6 ms at A5 where Waves is
+        one, over Waves from about C3 upward -- 4.6 ms at A5 where Waves is
         0.7. testing-notes/tune-latency-review-2026-09-11.md. */
     static constexpr int kReportedLatency = 0;
 

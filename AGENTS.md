@@ -76,19 +76,37 @@ asking; say the new figure and the headroom left in the commit body.
 Re-measure when Waves updates; `testing-notes/latency-and-lag-2026-09-11.md`
 has the commands.
 
-**The ceiling is a curve, not a number.** Waves' delay while correcting is
-nearly proportional to the period -- 19.2 ms at E2, 0.7 ms at A5, 1.68 ms per
-ms of period -- so a single figure is only that tuner's delay at one note and
-says nothing about any other. `references::ceilingMsAt (hz)` reads it off the
-measured curve in `tools/tune/common/References.h`; hold changes to that.
-Before 2026-09-11 the rule was the scalar 10.62 ms, which is Waves at A2, and
-it got the answer wrong in both directions.
+**The ceiling is a curve, not a number, and the comparison is per note**
+(Frosty, 2026-09-11). Waves' delay while correcting is nearly proportional to
+the period -- 19.2 ms at E2, 0.7 ms at A5, 1.68 ms per ms of period -- so a
+single figure is only that tuner's delay at one note and says nothing about
+any other. `references::ceilingMsAt (hz)` reads it off the measured curve in
+`tools/tune/common/References.h`; hold changes to that. Before 2026-09-11 the
+rule was the scalar 10.62 ms, which is Waves at A2, and it got the answer
+wrong in both directions.
+
+**The curve stops at E2, because the product does** (Frosty, 2026-09-11:
+"it's a vocal tuner so no need to drop below E2"). Nothing below E2 is
+measured and nothing below it is judged -- but note that Bass and Instrument
+still declare a 55 Hz floor in `params.h`, so either those ranges come up or
+the curve goes down; until one of those happens, their bottom two and a half
+tones are unjudged.
+
+**What the rule is really protecting is live monitoring**, and Waves is the
+proxy for it, not the point (Frosty, 2026-09-11: per note is preferred, "so
+long as it remains fast enough for live monitor we can adjust"). So a change
+that is later than Waves at some note, but still comfortably inside what a
+singer monitoring through the plugin can work with, is arguable rather than
+forbidden -- argue it with a figure and Frosty's ear, and write the budget
+down here when there is one. No budget is encoded today, deliberately: the
+only thing a number would do right now is turn a red test green without
+changing the plugin.
 
 `modules/tune/AGENTS.md` and `modules/tune/README.md` cite this rule to this
 file, and until 2026-09-11 it was not written down anywhere but in the notes.
 
 **It is broken today**, at the top of the range. BMO's rest is a constant
-4 ms where Waves' delay tracks the note, so the two cross at about D#3: BMO is
+4 ms where Waves' delay tracks the note, so the two cross at about C3: BMO is
 under Waves below it and over it above, by 3.90 ms at A5.
 `tests/dsp/tune/HardTuneTests.cpp` fails on it per note; the worst-against-
 worst form still passes and is kept as necessary but not sufficient. See

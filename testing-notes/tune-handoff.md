@@ -23,7 +23,7 @@ until the whole suite is finished and heard. The commits here are
 >   thing it was really doing. A constant pays that debt at about 290 Hz and
 >   nowhere else, which is why the lag tracks the period, and why Fuji cleared
 >   while Failure did not.
-> - **The latency rule is a curve and BMO is over it above D#3.** Waves' delay
+> - **The latency rule is a curve and BMO is over it above C3.** Waves' delay
 >   is proportional to the note; BMO's rest is a constant. "6.53 ms against
 >   Waves' 10.62 ms ceiling, level with Antares' 6.49" below is a comparison
 >   of three numbers all taken at one note, and it flatters BMO: read per

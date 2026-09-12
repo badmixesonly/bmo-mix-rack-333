@@ -136,10 +136,11 @@ tuners through the same stimulus, same code, delay while correcting:
 
 **Waves' delay is 1.68 ms per ms of period**, intercept −1.2 — almost purely
 proportional, with essentially no fixed floor (0.71 ms at A5). BMO's is a
-constant 4 ms plus its excursion. So the two cross, at about **D#3**: BMO is
+constant 4 ms plus its excursion. So the two cross, at about **C3**: BMO is
 comfortably under Waves below it, and over it above, by **3.90 ms at A5**.
-178 cells of the sweep, all at the top of the range — the exact inverse of
-what the scalar said.
+186 cells of the sweep, all at the top of the range — the exact inverse of
+what the scalar said. The crossover is soft: the lowest failing cell, C3,
+misses by 0.04 ms. It is hard by A3, which misses by 1.1 ms.
 
 Against Antares the same shape: BMO is under at E2, A2 and D3, over at A3,
 A4 and A5.
@@ -189,15 +190,33 @@ of the range and for the window: it is what Waves does, and `hi = rest + T`
 has to go whatever else happens.
 
 **The rule is now a curve** (`references::ceilingMsAt`), read off Waves'
-measured delay at each note and interpolated in the period. Two judgements in
-it are Frosty's, not a session's:
+measured delay at each note and interpolated in the period. Both judgements
+that were open here are Frosty's and were answered on 2026-09-11:
 
-- **Is "no later than Waves" meant per note, or worst against worst?** Both
-  are now checked. Per note is the one that catches anything; worst against
-  worst passes today with 10 ms to spare.
-- **Outside the measured span**, the curve extrapolates downward on the two
-  lowest points and is held flat above A5. Held flat downward instead, it
-  would invent violations below E2; extrapolated upward it goes negative.
+- **Per note**, not worst against worst. Both are checked; worst against
+  worst passes today with 10 ms to spare and catches nothing.
+- **The curve stops at E2** -- "it's a vocal tuner so no need to drop below
+  E2" -- so it is held flat below rather than extrapolated, and nothing below
+  E2 is judged.
+- **Waves is the proxy, live monitoring is the point**: per note is preferred
+  "so long as it remains fast enough for live monitor we can adjust". No
+  budget figure is encoded, deliberately -- the only thing a number would do
+  today is turn a red test green without changing the plugin. It is written
+  into the root `AGENTS.md` as available when a change actually needs it.
+  Worth noting that the route recommended below, prediction, costs no latency
+  at all and so never needs to invoke it.
+
+Two things the E2 floor leaves hanging, neither settled:
+
+- **Bass and Instrument declare 55 Hz** (`params.h`, Frosty's 2026-09-10
+  call), two and a half tones below E2. Those cells are held to E2's ceiling,
+  which is generous rather than measured. Either the ranges come up or the
+  curve goes down.
+- **`bmo-tune-latency` understates below E2 anyway.** It holds a note 35
+  cents sharp for 0.6 s, and at A1 the read needs ~0.9 s to drift a whole
+  period, so the sweep plateaus at ~15 ms where the window actually allows
+  rest + T = 22.2 ms. The low cells are transient-limited, not steady state.
+  It also shows lock time growing to 40 ms at A1, which is its own question.
 
 ## What this commit changes, and what it does not
 
@@ -236,8 +255,10 @@ takes are, `liveRestSamples` gives 176 samples = 3.991 ms.
 2. **Bound the window.** `hi = rest + T` is an absolute delay of rest plus a
    period; Waves' correcting delay barely exceeds its own in-tune delay. This
    is separable from the alignment work and can go first.
-3. **Two calls for Frosty on the rule**, per "The rule is now a curve": per
-   note or worst against worst, and what happens outside the measured span.
+3. **Bass and Instrument against the E2 floor** -- they declare 55 Hz and the
+   rule now stops at E2. One of the two has to move; and the sweep's figures
+   down there are transient-limited, so they need a longer held note before
+   they mean anything.
 4. **The 4 ms rest has still never been felt.** Unchanged from the handoff:
    the blind sets align it away and the installed VST3 on AURORA is 0.1.
 5. **Waves across block sizes** is still open from the handoff — measured at
