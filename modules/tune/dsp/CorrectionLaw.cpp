@@ -64,7 +64,7 @@ void CorrectionLaw::reset()
     pendingNote = -1;
     pendingNoteSince = samples = pendingBilledAt = 0;
     pendingCostCentMs = 0.0;
-    target = 0.0;
+    target = targetGoal = 0.0;
     errorSlow = applied = confidence = gate = 0.0;
     st = {};
 }
@@ -78,6 +78,7 @@ void CorrectionLaw::setSettings (const CorrectionSettings& settings) noexcept
     // Exactly zero, not "very fast": at tau = 0 the pole is bypassed.
     retuneAlpha = s.retuneMs > 0.0 ? std::exp (-1.0 / (fs * s.retuneMs * 0.001)) : 0.0;
     dwellSamples = (long long) std::lround (std::max (0.0, s.noteDwellMs) * 0.001 * fs);
+    transitionAlpha = s.noteTransitionMs > 0.0 ? std::exp (-1.0 / (fs * s.noteTransitionMs * 0.001)) : 0.0;
 }
 
 int CorrectionLaw::holdOrSwitch (double pitch, int candidate) noexcept
@@ -201,16 +202,19 @@ void CorrectionLaw::setNote (int newNote) noexcept
         errorSlow += 100.0 * (newNote - note);
         ++st.noteChanges;
 
-        // CLASSIC steps straight to the new note: it has no glide (spec
-        // §4.5), and HYBRID, which had, is on branch archive/hybrid-studio.
-        target = newNote;
+        // Where the target is headed. It steps straight there when
+        // noteTransitionMs is 0, which is what CLASSIC has always done (spec
+        // §4.5; HYBRID's glide is on branch archive/hybrid-studio).
+        targetGoal = newNote;
+        if (transitionAlpha <= 0.0)
+            target = newNote;
     }
     else
     {
         // The first note of a phrase: the split's slow state starts at this
         // note's own error rather than the last phrase's. From the predicted
         // pitch, like every other reader of it.
-        target = newNote;
+        target = targetGoal = newNote;
         errorSlow = 100.0 * (newNote - predicted);
     }
 
@@ -411,6 +415,12 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
 
     const auto active = havePitch && haveNote && voiced;
     double desired = 0.0;
+
+    // The target slews toward the note it was told, instead of stepping. At
+    // noteTransitionMs = 0 -- the default and what CLASSIC has always done --
+    // it is already there and this does nothing.
+    if (transitionAlpha > 0.0 && haveNote)
+        target = transitionAlpha * target + (1.0 - transitionAlpha) * targetGoal;
 
     if (havePitch && haveNote)
     {

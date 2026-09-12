@@ -88,6 +88,19 @@ struct CorrectionSettings
         flips and dropouts identical. The median is doing the denoising and
         this was adding lag on top of it. Kept as a knob in case some material
         ever needs it, with the numbers here so nobody turns it up blind. */
+    /** How long the target takes to reach a new note, as a one-pole time
+        constant. 0 -- the default, and what CLASSIC has always done -- steps
+        straight there. Waves has this as a knob of its own, separate from
+        Speed, and its minimum is 0.1 ms: it will not do an instantaneous note
+        transition at all. BMO does, 341 times in 19 seconds on Failure, each
+        one an instant step in the resampling ratio and so an instant step in
+        the formants, which is a candidate for the "audible formant shift" and
+        the "transition steps on faster words" Frosty has reported.
+
+        Under measurement, not shipped: there is no parameter for it, the
+        schema is frozen, and adding one is Frosty's call. */
+    double noteTransitionMs = 0.0;
+
     double readDelaySamples = 0.0;
     double predictMaxCents = 50.0;
     double predictSlopeMs = 0.0;
@@ -194,7 +207,7 @@ private:
     bool haveNote = false;
     double pendingJump = 0.0;
     bool havePendingJump = false, jumpTaken = false;
-    double target = 0.0;
+    double target = 0.0, targetGoal = 0.0, transitionAlpha = 0.0;
 
     // A note switch waiting out noteDwellMs: which note, since which sample,
     // what the hold has cost so far (cents x ms) and when it was last billed.
