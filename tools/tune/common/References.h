@@ -15,8 +15,21 @@
     The renders and tables: testing-notes/latency-and-lag-2026-09-11.md.
 */
 
+#include <array>
+
 namespace bmo::tune::references
 {
+
+/** One tuner's delay while correcting, at one note. The latency rule compares
+    BMO with Waves, and what it compares is pitch-dependent for both of them:
+    Waves' delay tracks the period (about 1.73 x T, with almost no fixed
+    floor), BMO's rest does not. So a single worst-case scalar taken at one
+    note says nothing about any other, and comparing across notes gets the
+    answer wrong in both directions -- it hid BMO being later than Waves at
+    A4 and A5, and it invented a violation at the bottom of the range where
+    BMO is comfortably under. Hold the rule to this curve, not to a number.
+    testing-notes/tune-latency-review-2026-09-11.md. */
+struct CorrectingDelay { double hz, ms; };
 
 struct Reference
 {
@@ -25,10 +38,13 @@ struct Reference
     const char* settings;
     const char* measured;          ///< where and when
     double reportedLatencyMs;      ///< what it tells the host
-    double trueLatencyMs;          ///< Stimulus score: worst delay, in tune or correcting
+    double trueLatencyMs;          ///< Stimulus score: worst delay over the whole stimulus
     double meanLagMs;              ///< Stimulus score: correction lag, mean over the vibratos
     double worstLagMs;             ///< and the worst of them
     double meanRmsCents;           ///< Stimulus score: RMS of out - target over the vibratos, mean
+
+    /** Delay while correcting, per marked segment, lowest note first. */
+    std::array<CorrectingDelay, 6> correcting;
 };
 
 inline constexpr Reference kAntares {
@@ -36,7 +52,9 @@ inline constexpr Reference kAntares {
     "Input Type Low Male, Key C, Scale Chromatic, Retune Speed 0, Humanize 0, Natural Vibrato 0, "
     "Flex-Tune 0, Tracking 50 (default)",
     "AURORA, 2026-09-11",
-    2.33, 6.49, -0.24, 1.66, 1.30 };
+    2.33, 10.74, -0.24, 1.66, 1.30,
+    { { { 82.41, 10.736 }, { 110.0, 8.058 }, { 146.83, 5.920 },
+        { 220.0, 5.487 }, { 440.0, 3.587 }, { 880.0, 2.956 } } } };
 
 // Speed and Note Transition bottom out at 0.1 ms: set to 0, they read 0.1.
 inline constexpr Reference kWaves {
@@ -44,6 +62,45 @@ inline constexpr Reference kWaves {
     "Speed 0.1 ms, Note Transition 0.1 ms (their minimum), Correction 100 %, Scale Chromatic, "
     "Vibrato off, everything else default",
     "AURORA, 2026-09-11",
-    0.0, 10.62, 1.32, 2.13, 1.73 };
+    0.0, 19.21, 1.32, 2.13, 1.73,
+    { { { 82.41, 19.215 }, { 110.0, 13.804 }, { 146.83, 10.090 },
+        { 220.0, 7.048 }, { 440.0, 3.821 }, { 880.0, 0.709 } } } };
+
+/** The latency rule's ceiling at `hz`: Waves' measured delay while
+    correcting, read off its curve.
+
+    Interpolated in the PERIOD, which is what it is nearly linear in: 19.215
+    ms at E2 down to 0.709 at A5 is 1.68 ms per ms of period, with an
+    intercept of -1.2. Below E2 the two lowest points are extrapolated on --
+    holding flat would invent a violation under the bottom of the Auto range.
+    Above A5 it is held flat, since extrapolating goes negative.
+
+    Waves being almost purely proportional to the period, and BMO's rest being
+    a constant, is the whole of the latency disagreement between them: BMO is
+    under Waves below D#3 and over it above, by 3.9 ms at A5. */
+inline double ceilingMsAt (double hz) noexcept
+{
+    const auto& c = kWaves.correcting;
+    const auto t = 1000.0 / hz;
+    const auto periodOf = [] (double f) { return 1000.0 / f; };
+
+    if (hz >= c.back().hz)
+        return c.back().ms;
+
+    const auto at = [&] (size_t lo, size_t hi)
+    {
+        const auto t0 = periodOf (c[lo].hz), t1 = periodOf (c[hi].hz);
+        return c[lo].ms + (t - t0) / (t1 - t0) * (c[hi].ms - c[lo].ms);
+    };
+
+    if (hz <= c.front().hz)
+        return at (0, 1);          // extrapolate down the two lowest points
+
+    for (size_t i = 1; i < c.size(); ++i)
+        if (hz <= c[i].hz)
+            return at (i - 1, i);
+
+    return c.back().ms;
+}
 
 } // namespace bmo::tune::references

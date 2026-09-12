@@ -22,15 +22,25 @@
 
     The check at the end is the latency rule (Frosty, 2026-09-11; AGENTS.md):
     no cell's true latency -- the WORST of its rest delay and its correcting
-    delay -- may exceed Waves Tune Real-Time's measured true latency
-    (tools/tune/common/References.h). It still reports separately whether the
-    rest is the documented one, so the manual's number is never quietly wrong.
+    delay -- may exceed what Waves Tune Real-Time does AT THE SAME NOTE
+    (references::ceilingMsAt). It still reports separately whether the rest is
+    the documented one, so the manual's number is never quietly wrong.
 
-    Until 2026-09-11 this tested the REST delay against that ceiling, which
-    compares a floor with a worst: References.h records the ceiling as "worst
-    delay, in tune or correcting". It passed whatever the engine did, and it
-    did -- it reported every cell clear while 54 were over, worst 15.33 ms at
-    E2. testing-notes/tune-latency-review-2026-09-11.md.
+    Two things it got wrong before 2026-09-11, both recorded so nobody undoes
+    them:
+
+      - It tested the REST delay against the ceiling, which compares a floor
+        with a worst: References.h records the ceiling as "worst delay, in
+        tune or correcting". It passed whatever the engine did.
+      - The ceiling was a scalar. Waves' delay is about 1.73 x the period with
+        almost no fixed floor, so one number taken at one note is wrong
+        everywhere else -- and wrong in both directions. Held to the 10.62 ms
+        figure (Waves at A2), this reported 54 cells over at the bottom of the
+        range, where BMO is in fact comfortably under Waves, and reported
+        nothing at the top, where BMO really is later: 4.64 ms against Waves'
+        0.71 at A5.
+
+    testing-notes/tune-latency-review-2026-09-11.md.
 
     This tool is not run by ctest or CI; it is the per-semitone sweep you run
     by hand. The whole-plugin form of the rule, on the reference stimulus, is
@@ -233,15 +243,15 @@ int main (int argc, char** argv)
             // delay is under the ceiling", and exited 0 while 54 cells were
             // over. See testing-notes/tune-latency-review-2026-09-11.md.
             const auto worstHere = std::max (row.restMs, row.worstMs);
+            const auto ceilingHere = references::ceilingMsAt (hz);
 
-            if (worstHere > references::kWaves.trueLatencyMs)
+            if (worstHere > ceilingHere)
             {
                 std::fprintf (stderr, "FAIL: %s at %.1f Hz: true latency %.3f ms (rest %.3f, correcting worst "
-                              "%.3f) is over the ceiling, Waves Tune Real-Time's %.2f ms\n",
-                              rangeSpec.choices[(size_t) r], hz, worstHere, row.restMs, row.worstMs,
-                              references::kWaves.trueLatencyMs);
+                              "%.3f) is over Waves Tune Real-Time's %.3f ms at the same note\n",
+                              rangeSpec.choices[(size_t) r], hz, worstHere, row.restMs, row.worstMs, ceilingHere);
                 ++failures;
-                worstOverall = std::max (worstOverall, worstHere);
+                worstOverall = std::max (worstOverall, worstHere - ceilingHere);
             }
 
             if (std::abs (row.restMs - expectedRestMs) > 1000.0 / fs + 1e-9)
@@ -264,11 +274,11 @@ int main (int argc, char** argv)
         if (auto* f = std::fopen (csvPath.c_str(), "w")) { std::fputs (csv.c_str(), f); std::fclose (f); }
 
     if (failures)
-        std::fprintf (stderr, "bmo-tune-latency: %d cell(s) over Waves Tune Real-Time's %.2f ms true latency "
-                              "(the latency rule); worst %.3f ms\n",
-                      failures, references::kWaves.trueLatencyMs, worstOverall);
+        std::fprintf (stderr, "bmo-tune-latency: %d cell(s) later than Waves Tune Real-Time at the same note "
+                              "(the latency rule); worst by %.3f ms\n", failures, worstOverall);
     else
-        std::fprintf (stderr, "bmo-tune-latency: every cell's true latency is under the ceiling (the latency rule)\n");
+        std::fprintf (stderr, "bmo-tune-latency: every cell is under Waves Tune Real-Time at its own note "
+                              "(the latency rule)\n");
 
     return failures ? 1 : 0;
 }

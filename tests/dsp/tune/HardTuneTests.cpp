@@ -10,15 +10,27 @@
 
       hardtune           (runs by default)
         - the ruler reads a known delay and a known correction lag
-        - THE LATENCY RULE: BMO's true latency is no more than Waves Tune
-          Real-Time's, measured the same way (Frosty, 2026-09-11; AGENTS.md)
-        - BMO's correction lag is no worse than on 2026-09-11, while the fix
-          is worked on
+        - THE LATENCY RULE, worst against worst: BMO's true latency is no more
+          than Waves Tune Real-Time's, measured the same way (Frosty,
+          2026-09-11; AGENTS.md). Necessary, and nowhere near sufficient --
+          both figures come from the lowest note in the stimulus.
+        - THE LATENCY RULE, PER NOTE: BMO is no later than Waves at EVERY
+          marked note. **Open: it fails today**, at A4 and A5, by up to
+          3.90 ms. Waves' delay tracks the period and BMO's rest is a
+          constant, so which of them is later depends on the note, and the
+          worst-against-worst form cannot see it.
+        - BMO's correction lag is no worse than the current baseline, while
+          the fix is worked on
 
       hardtune_target    (hardtune_tests --target; disabled in ctest until
                           it passes -- see tests/CMakeLists.txt)
         - BMO flattens a vibrato as closely as Antares does, and its worst
           correction lag is no worse than Antares' worst. Open: it fails today.
+
+    The two open checks have one root cause, found 2026-09-11: the engine's
+    read delay is a flat 4 ms where both the detector's analysis lag and
+    Waves' delay are a period.
+    testing-notes/tune-latency-review-2026-09-11.md.
 */
 
 #include "modules/tune/dsp/TuneCore.h"
@@ -40,10 +52,16 @@ namespace
 {
     constexpr double fs = 48000.0;
 
-    /** BMO Tune RT's measured numbers on 2026-09-11, before any fix: the
-        regression guard's baseline. */
-    constexpr double kBaselineMeanLagMs = 6.22;
-    constexpr double kBaselineRmsCents = 6.61;
+    /** BMO Tune RT's measured numbers, as the regression guard's baseline.
+
+        6.22 ms and 6.61 c until 2026-09-11, which were the figures from
+        BEFORE the 4 ms rest landed in 31b30ef. Nobody re-ratcheted it, so the
+        guard sat a factor of two slack and would not have noticed the rest
+        being reverted -- exactly the regression it exists to catch. These are
+        the figures at the 4 ms rest, on the stimulus as it now stands. Move
+        them down with any change that improves them, and say so. */
+    constexpr double kBaselineMeanLagMs = 3.19;
+    constexpr double kBaselineRmsCents = 3.35;
 
     std::vector<float> renderBmo (const std::vector<float>& in)
     {
@@ -147,20 +165,59 @@ int main (int argc, char** argv)
 
     for (const auto& [lag, delay] : { std::pair { 0.0, 0.0 }, std::pair { 5.0, 0.0 }, std::pair { 2.0, 3.0 } })
     {
+        // The delay tolerance scales with the period, and is not a flat
+        // 0.25 ms as it was until 2026-09-11.
+        //
+        // On a marked segment the ideal corrector is a DIFFERENT voice at the
+        // target pitch sharing only the marker pattern, so what limits the
+        // envelope correlation is how much of the two voices' own amplitude
+        // variation survives the smoothing -- and that is a number of periods,
+        // not a number of milliseconds. A flat tolerance is therefore the
+        // wrong shape: it was slack at A5 by a factor of seven and just tight
+        // enough at E2 to fail (0.334 ms) a ruler that is working correctly.
+        // 3 % of the period, floored at the old 0.25 ms so nothing above
+        // ~250 Hz is loosened. testing-notes/tune-latency-review-2026-09-11.md.
+        const auto toleranceFor = [] (double hz) { return std::max (0.25, 0.03 * 1000.0 / hz); };
+
         const auto sc = st::score (s, idealCorrector (s, lag, delay));
-        double worstLagErr = 0.0, worstDelayErr = 0.0;
-        for (const auto& r : sc.rows)
+        double worstLagErr = 0.0, worstDelayRatio = 0.0, worstDelayErr = 0.0;
+        std::string worstDelayAt;
+        for (size_t k = 0; k < sc.rows.size(); ++k)
         {
-            if (r.kind == st::Kind::vibrato) worstLagErr = std::max (worstLagErr, std::abs (r.lagMs - lag));
-            else                             worstDelayErr = std::max (worstDelayErr, std::abs (r.delayMs - delay));
+            const auto& r = sc.rows[k];
+            if (r.kind == st::Kind::vibrato)
+            {
+                worstLagErr = std::max (worstLagErr, std::abs (r.lagMs - lag));
+                continue;
+            }
+
+            double hz = 0.0;
+            for (const auto& seg : s.segments)
+                if (r.name == seg.name)
+                    hz = seg.hz;
+
+            const auto err = std::abs (r.delayMs - delay);
+            const auto ratio = err / toleranceFor (hz);
+
+            if (ratio > worstDelayRatio)
+            {
+                // Named, so a ruler failure says which segment rather than
+                // only how far out: the segment is the diagnosis.
+                worstDelayRatio = ratio;
+                worstDelayErr = err;
+                worstDelayAt = r.name;
+            }
         }
 
         char what[160];
         std::snprintf (what, sizeof what, "an ideal corrector %.0f ms late with its audio %.0f ms late", lag, delay);
         report (std::string (what) + ": worst lag error", worstLagErr, "ms");
-        report (std::string (what) + ": worst delay error", worstDelayErr, "ms");
+        report (std::string (what) + ": worst delay error, on " + worstDelayAt, worstDelayErr, "ms");
+        report (std::string (what) + ": ...as a share of that segment's tolerance", worstDelayRatio, "x");
         check (worstLagErr < 0.3, std::string (what) + " reads its lag within 0.3 ms on every vibrato");
-        check (worstDelayErr < 0.25, std::string (what) + " reads its delay within 0.25 ms, on pitch-moved segments too");
+        check (worstDelayRatio < 1.0,
+               std::string (what) + " reads its delay within 3 % of a period (min 0.25 ms) on every "
+                                    "in-tune and marked segment");
     }
 
     //== BMO Tune RT ===========================================================
@@ -171,13 +228,63 @@ int main (int argc, char** argv)
     // as latency goes, while BMO's true latency stays no more than Waves Tune
     // Real-Time's, measured the same way on the same stimulus. Not what the
     // host is told -- both say 0 -- but how late the audio really is.
+    //
+    // Worst against worst, which is what the rule says and is necessary but
+    // nowhere near sufficient: both figures are dominated by the lowest note
+    // in the stimulus, where Waves is 19.2 ms and BMO 9.2, so this passes with
+    // 10 ms to spare while BMO is later than Waves over most of the range.
+    // The per-note check below is the one that means anything.
     report ("Waves Tune Real-Time: true latency (the ceiling)", ref::kWaves.trueLatencyMs, "ms");
     report ("headroom under the ceiling", ref::kWaves.trueLatencyMs - bmo.trueLatencyMs, "ms");
     check (bmo.trueLatencyMs <= ref::kWaves.trueLatencyMs,
-           "BMO's true latency is no more than Waves Tune Real-Time's (the latency rule)");
+           "BMO's true latency is no more than Waves Tune Real-Time's, worst against worst (the latency rule)");
+
+    // THE LATENCY RULE, PER NOTE. Waves' delay while correcting is nearly
+    // proportional to the period (1.68 ms per ms of it) and BMO's rest is a
+    // constant 4 ms, so which of the two is later depends entirely on the
+    // note, and a single worst-case comparison cannot see it. Measured
+    // 2026-09-11: BMO is under Waves at E2, A2, D3 and A3, and over it at A4
+    // (5.01 against 3.82) and A5 (4.61 against 0.71).
+    //
+    // THIS FAILS TODAY, by design -- it is the rule stated honestly against an
+    // engine that does not yet keep it, and it is the test the fix has to turn
+    // green. The cause is `hi = rest + T` in ClassicEngine plus a rest that
+    // does not track the period; the same root cause as the correction lag.
+    // testing-notes/tune-latency-review-2026-09-11.md.
+    {
+        int over = 0;
+        double worstBy = 0.0;
+
+        for (const auto& r : bmo.rows)
+        {
+            if (r.kind != st::Kind::marked || ! std::isfinite (r.delayMs))
+                continue;
+
+            double hz = 0.0;
+            for (const auto& seg : s.segments)
+                if (r.name == seg.name)
+                    hz = seg.hz;
+
+            const auto ceiling = ref::ceilingMsAt (hz);
+            report ("BMO vs Waves at " + r.name + ": BMO " + std::to_string (r.delayMs).substr (0, 5)
+                        + " ms, Waves (the ceiling here)", ceiling, "ms");
+
+            if (r.delayMs > ceiling)
+            {
+                ++over;
+                worstBy = std::max (worstBy, r.delayMs - ceiling);
+            }
+        }
+
+        report ("segments where BMO is later than Waves at the same note", (double) over, "");
+        report ("...worst by", worstBy, "ms");
+        check (over == 0,
+               "BMO is no later than Waves Tune Real-Time AT EVERY NOTE, not only at the worst one "
+               "(the latency rule, per note -- open, fails today)");
+    }
 
     check (bmo.meanLagMs <= kBaselineMeanLagMs * 1.05 && bmo.meanRmsCents <= kBaselineRmsCents * 1.05,
-           "BMO's correction lag and vibrato residue are no worse than on 2026-09-11 (6.22 ms, 6.61 c)");
+           "BMO's correction lag and vibrato residue are no worse than the 2026-09-11 baseline");
 
     //== The target: as close as Antares =======================================
     report ("Antares Auto-Tune Artist: RMS off the note, mean", ref::kAntares.meanRmsCents, "c");

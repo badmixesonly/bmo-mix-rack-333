@@ -62,6 +62,7 @@ struct Segment
 inline std::vector<Segment> layout()
 {
     const double A2 = 110.0, D3 = 146.8324, E3 = 164.8138, A3 = 220.0;
+    const double E2 = 82.4069, A4 = 440.0, A5 = 880.0;
     return {
         { Kind::inTune,  "in tune A2",        A2,   0.0,  0.0, 0.0, 1.0 },
         { Kind::inTune,  "in tune D3",        D3,   0.0,  0.0, 0.0, 1.0 },
@@ -73,6 +74,36 @@ inline std::vector<Segment> layout()
         { Kind::vibrato, "vibrato A3 40c 5.5Hz", A3, 0.0, 40.0, 5.5, 2.0 },
         { Kind::marked,  "held +30c A3",      A3,  30.0,  0.0, 0.0, 1.5 },
         { Kind::marked,  "held -35c D3",      D3, -35.0,  0.0, 0.0, 1.5 },
+        // Appended 2026-09-11, never inserted: make() seeds each segment from
+        // a running counter, so anything added ahead of these would re-voice
+        // every segment after it and move figures that are already recorded.
+        //
+        // Until this, the stimulus held a correction only on A3 and D3, so
+        // the whole-plugin latency gate saw a 2.3-octave range through a
+        // 5-semitone window and read 6.53 ms where the engine reaches 15.33
+        // at the bottom and is later than Waves at the top. A2 is the lowest
+        // note the rest of the stimulus already holds, so it adds the
+        // coverage without widening the range the ruler and the references
+        // were measured over.
+        // testing-notes/tune-latency-review-2026-09-11.md.
+        { Kind::marked,  "held +30c A2",      A2,  30.0,  0.0, 0.0, 1.5 },
+
+        // And the rest of the range, for the same reason. The latency rule
+        // compares BMO with Waves, but what it compares is pitch-dependent
+        // for both -- Waves' delay tracks the period, BMO's rest does not --
+        // so a ceiling taken at one note says nothing about any other. These
+        // four give each tuner's delay a curve to be read off instead of a
+        // scalar: E2 is the bottom of the Auto range, A4 and A5 the octaves
+        // where BMO's flat rest is the larger term and where it turns out to
+        // be later than Waves.
+        //
+        // These are also what forced the ruler's envelope wider: a marked A2
+        // under the old 10 ms envelope read an ideal corrector 0.31 ms out
+        // against its own 0.25 ms tolerance, because 10 ms barely spans A2's
+        // 9.09 ms period. See markers().
+        { Kind::marked,  "held +30c E2",      E2,  30.0,  0.0, 0.0, 1.5 },
+        { Kind::marked,  "held +30c A4",      A4,  30.0,  0.0, 0.0, 1.5 },
+        { Kind::marked,  "held +30c A5",      A5,  30.0,  0.0, 0.0, 1.5 },
     };
 }
 
@@ -83,16 +114,25 @@ struct Stimulus
     std::vector<Segment> segments;
 };
 
-/** Level dips, 20 ms wide and 85 % deep, at uneven spacing: features an
+/** Level dips, 40 ms wide and 85 % deep, at uneven spacing: features an
     envelope cross-correlation cannot mistake for one another. Wide enough to
     survive an envelope smoothed over more than a period -- which it has to
     be, or the pitch-rate ripple a pitch shift moves dominates it (the first
-    version, 8 ms dips under a 1 ms envelope, read 0.15 correlation). */
+    version, 8 ms dips under a 1 ms envelope, read 0.15 correlation).
+
+    20 ms under a 10 ms envelope until 2026-09-11, which was enough only while
+    the lowest marked note was D3. "More than a period" has to mean
+    comfortably more: at A2, whose 9.09 ms period a 10 ms window barely spans,
+    the ruler read an ideal corrector 0.31 ms out against its own 0.25 ms
+    tolerance -- and the marked A2 and E2 added that day are exactly the low
+    notes the latency rule needed measuring at. 40 ms dips under a 25 ms
+    envelope clear E2's 12.13 ms period by two to one.
+    testing-notes/tune-latency-review-2026-09-11.md. */
 inline std::vector<float> markers (size_t n, double fs, std::uint64_t seed)
 {
     std::vector<float> g (n, 1.0f);
     signals::Random rng (seed);
-    const auto width = 0.020 * fs;
+    const auto width = 0.040 * fs;
     double at = 0.15 * fs;
 
     while (at + width < (double) n)
@@ -223,11 +263,13 @@ namespace detail
         return (double) lo + (double) best + frac;
     }
 
-    /** RMS over a sliding 10 ms: longer than any period in the stimulus, so
-        the pitch-rate ripple is gone and only the level dips remain. */
+    /** RMS over a sliding 25 ms: comfortably longer than any period in the
+        stimulus (E2's is 12.13 ms), so the pitch-rate ripple is gone and only
+        the level dips remain. 10 ms until 2026-09-11 -- see markers() for
+        what that cost at the bottom of the range. */
     inline std::vector<float> envelope (const std::vector<float>& x, double fs)
     {
-        const auto w = (size_t) std::lround (0.010 * fs);
+        const auto w = (size_t) std::lround (0.025 * fs);
         std::vector<float> e (x.size(), 0.0f);
         double acc = 0.0;
         for (size_t i = 0; i < x.size(); ++i)
