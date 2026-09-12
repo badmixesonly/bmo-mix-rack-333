@@ -111,3 +111,74 @@ measured. They stand until the spec is revised to match or overrules them:
 - T7 denormals checked deterministically, not by timing.
 - The time-constant convention is tau (§12 Q2), matching BMO Opto.
 - The SVF structure with matched-Z coefficients (§12 Q1).
+
+## 2026-09-12 — band solo, and the analyser
+
+Both are new since the spec. Both were asked for before the UI pass rather than
+after it, which is the right order: solo may move the parameter layout, and the
+analyser changes what the panel *is*, so neither can be laid out around after
+the fact.
+
+**Band solo: the band's output, momentary** (Frosty, 2026-09-12). Soloing a
+dynamic band's output gives the moving version — the band's filtered
+contribution with its gain reduction applied live — so on a de-esser you hear
+the sibilance actually being grabbed. That covers most of what a sidechain
+listen is for.
+
+**Sidechain listen: worth having, not required.** It costs nothing in latency:
+the detector's sidechain is its own zero-latency filter on the dry input and
+does not tap the band's filter, and nothing in the path can delay
+(`latencySamples()` is a `constexpr 0`, protected by block-size invariance).
+Its real cost is a second momentary state and a control on a busy panel. Build
+solo so listen is a variant of it; decide whether it gets a control in the UI
+pass, when the space is visible.
+
+**Both momentary, neither a parameter.** A solo left on in a saved session is a
+support ticket, and twelve solo parameters would move the lane allocation for
+no automation anyone wants. This makes solo the suite's **first non-parameter
+path from editor to engine** — worth building carefully, because Opto and
+Dimension will want it.
+
+**Analyser: post-EQ, one drawn tap, two taps in the plumbing.** Post reads as
+pre when the bands are off, which covers "what am I working on" at the cost of
+having to stop processing to see it — a toggle-and-look, not a comparison.
+Building the data path with two taps and wiring one means a pre curve later is
+a UI change rather than a DSP change. The tap is a read-only copy into a
+lock-free FIFO: no latency, no DSP state touched, and its cost belongs in the
+throughput budget. It must not run with the editor closed.
+
+**Analyser colour: a preference with five options** (Frosty, 2026-09-12), and
+not the accent by default-only. Measured against the well, `#1b1b1f`:
+
+| option | hex | hue | on well | nearest claimed hue |
+|---|---|---|---|---|
+| Accent (DEQ's teal) | `#5ecfc0` | 172.0° | 9.13:1 | it *is* the accent — no separation from the curve |
+| Orange | `#ef8b4a` | 23.6° | 6.92:1 | 8° from BMO Saturator |
+| Gold | `#e8c95a` | 46.9° | 10.57:1 | 5° from Opto's amber state |
+| Pink | `#e6949f` | 352.0° | 7.44:1 | 16° from BMO EQ |
+| Neutral | `#aeb4c0` | 220.0° | 8.25:1 | claims nothing |
+
+Pink is the true complement of the teal — 352.0° against 172.0° — lifted from
+the `#cf5e6d` the complement gives at the teal's own saturation and lightness,
+which measures only 4.48:1 and is the faintest thing on the panel. The hue is
+the complement's; the lightness is the suite's legibility.
+
+**None of these is an accent**, and the table belongs beside Opto's red and
+amber in `products/AGENTS.md` for the same reason: a colour that means
+something inside one panel, that never touches a cap, a caption or a header
+bar, and that claims no hue for the module. Say so where it is recorded, or a
+later module will read DEQ as owning 23.6°.
+
+**How the preference is stored: the `view` pattern.** An expandable module's
+view is an attribute on the saved session's PARAMS element, written by
+`getStateInformation` and never by the `captureState` a preset is made from
+(`core/product/ModuleDef.h`). The analyser's colour and its on/off follow it
+exactly: saved with the session, absent from presets, not automatable. The
+five are named tokens in `core/ui/Tokens.h` so a theme file can still override
+them, which is what every other colour in the suite allows.
+
+**Open, for the UI pass:** where the chooser lives. Five options do not want
+five buttons on a panel this busy; a right-click on the analyser's own toggle
+is the cheap answer, and "Accent" rather than "Teal" is the right name for the
+first option so the whole thing generalises when Dimension or Opto wants an
+analyser.
