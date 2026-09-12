@@ -185,3 +185,59 @@ Of the 38 splices on Failure at 20 ms:
 
 Two different faults needing two different fixes, and the larger half is the
 one the notes have not been chasing.
+
+---
+
+## The pops, timestamped by ear (2026-09-12, AURORA)
+
+Frosty in Ableton, on `field-audio/pop-hunt-2026-09-12/`: the pops "most
+audible that I catch every pass", read cold without the session's list.
+
+| heard | round four | BMO now |
+|---:|---|---|
+| 1.560 | splice 1.50 s (61 ms) | splice 1.50 s (58 ms) |
+| 2.850 | splice 2.89 s (42 ms) | splice 2.89 s (42 ms) |
+| 6.080 | splice 6.13 s (55 ms) | splice 6.13 s (55 ms) |
+| 7.002 | splice 7.02 s (16 ms) | splice 7.02 s (16 ms) |
+| **14.012** | **splice 14.02 s (6 ms)** | **none -- nearest 443 ms** |
+| 14.438 | splice 14.47 s (35 ms) | splice 14.45 s (17 ms) |
+| 17.360 | splice 17.41 s (49 ms) | splice 17.41 s (49 ms) |
+
+**Every audible pop is a splice.** Seven of seven, six within 61 ms. There is
+no second mechanism to go looking for, and the splice counter is measuring
+the right event.
+
+**But only seven of thirty-eight splices are audible.** That is the number
+that matters, and it was not being measured: the count has been the target
+all along, and four splices in five make no sound. Driving the count down is
+not the same work as driving the pops down, and round four is the proof --
+120 splices to 38, and Frosty still said "still too many audible pops".
+
+**The prediction removed one of the seven.** 14.012 is a splice in round four
+and is simply not there now. That is a real win the blind test did not
+surface, because at 14.4 there is another one right behind it.
+
+Small caveat to settle: Frosty recalls 2.850 and 6.080 as round-four-only,
+but both builds splice at 2.89 and 6.13. Either the splices survive and only
+their audibility changed, or the recollection slipped. Worth one check.
+
+### Which splices are the audible ones
+
+Within +/- 70 ms of a heard pop:
+
+| | splices | heard | hit rate |
+|---|---:|---:|---:|
+| wrong-period (a 7+ semitone note change within 50 ms) | 15 | 5 | 33 % |
+| sustained-correction drift | 23 | 3 | 13 % |
+
+The wrong-period ones are about two and a half times likelier to be heard,
+which is the mechanism one would predict: a jump by the singer's true period
+lands in phase and the half-period crossfade hides it, while a jump by an
+octave-wrong period lands out of phase and steps the waveform. On five
+against three this is a direction, not a proof, and it should not be leaned
+on harder than that.
+
+**It does reverse the steer given earlier in this file.** The larger
+population -- the 23 drift splices -- is the quieter one. The 15 the notes
+already suspected are where the noise is, and they are the detector's octave
+and twelfth errors on scoops.
