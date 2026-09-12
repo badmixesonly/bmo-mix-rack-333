@@ -348,7 +348,15 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
 
     if (havePitch && voiced && haveAnchor && period > 1.0)
     {
-        const auto ahead = Detector::kAnalysisLagPeriods * period - s.readDelaySamples;
+        // Where the engine actually reads. Taken from the contract, not copied
+        // from the engine: when the rest began tracking the note (2026-09-12)
+        // a copy taken once at applyParams went stale, the law predicted for a
+        // 4 ms read that was no longer there, and the correction lag went from
+        // 0.71 ms to 3.19 -- which read as the rest change failing when it was
+        // the bookkeeping.
+        const auto readDelay = s.readDelaySamples >= 0.0 ? s.readDelaySamples
+                                                        : contract::liveRest (fs, period);
+        const auto ahead = Detector::kAnalysisLagPeriods * period - readDelay;
 
         if (ahead > 0.0)
         {

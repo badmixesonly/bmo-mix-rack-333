@@ -88,6 +88,34 @@ namespace contract
         const auto n = (int) (kLiveRestMs * 0.001 * fs + 0.5);
         return n > kLiveFloorRest ? n : kLiveFloorRest;
     }
+
+    /** The rest as a multiple of the note's period, instead of a constant.
+
+        0 keeps the constant kLiveRestMs and is what shipped until now. Any
+        other value makes the rest track the note, which is what Waves does
+        (its delay is about 1.68 x the period, with essentially no floor) and
+        is the only shape that can be under Waves at both ends of the range.
+
+        This only became possible on 2026-09-12. Until the correction was
+        predicted forward (CorrectionLaw, b4bfc73) the rest was also what
+        aligned the engine's read with the detector's estimate, so lowering it
+        raised the correction lag one for one -- the whole finding of
+        testing-notes/tune-latency-review-2026-09-11.md. The prediction now
+        absorbs whatever the rest is, so the rest is free to be chosen for
+        latency and window room alone. */
+    inline constexpr double kRestPeriods = 0.0;
+
+    /** Where Live rests, in samples, for a note of this period. */
+    inline double liveRest (double fs, double periodSamples) noexcept
+    {
+        const auto floorRest = (double) liveRestSamples (fs);
+
+        if (kRestPeriods <= 0.0 || periodSamples <= 1.0)
+            return floorRest;
+
+        const auto wanted = kRestPeriods * periodSamples;
+        return wanted > (double) kLiveFloorRest ? wanted : (double) kLiveFloorRest;
+    }
 }
 
 } // namespace bmo::tune

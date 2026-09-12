@@ -87,10 +87,11 @@ void TuneCore::applyParams() noexcept
     cs.clarityLo = ds.clarityLo;
     cs.clarityHi = ds.clarityHi;
 
-    // Where the law predicts the pitch forward to: where the engine reads.
-    // Its rest, not its instantaneous lag -- see CorrectionSettings.
-    cs.readDelaySamples = (double) engine.liveRest();
-
+    // readDelaySamples is deliberately left at its default, which means "ask
+    // the contract". Copying the engine's rest here was right only while that
+    // rest was a constant; once it tracked the note (2026-09-12) the copy
+    // went stale the moment the singer moved. Both sides read
+    // contract::liveRest now, so they cannot disagree.
     law.setSettings (cs);
 }
 

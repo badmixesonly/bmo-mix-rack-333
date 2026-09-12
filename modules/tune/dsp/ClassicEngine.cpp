@@ -13,7 +13,10 @@ void ClassicEngine::prepare (double sampleRate, double longestPeriod)
 
     // The deepest read: the rest lag, a period of swing above it and one more
     // of margin for a splice in flight, plus a fade's drift and the kernel.
-    const auto deepest = rest + 2.0 * longestPeriod + 2 * Sinc::kTaps + 64;
+    // Deep enough for the widest rest any note can ask for, plus a period of
+    // swing above it, one more for a splice in flight, a fade and the kernel.
+    const auto widestRest = std::max ((double) rest, contract::liveRest (fs, longestPeriod));
+    const auto deepest = widestRest + 2.0 * longestPeriod + 2 * Sinc::kTaps + 64;
     int size = 1;
     while (size < (int) deepest)
         size <<= 1;
@@ -203,6 +206,8 @@ float ClassicEngine::process (float input, double cents, double period, bool set
     if (fading)
         fadeLag = std::max ((double) kFloor, fadeLag + step);
 
+    const auto restNow = contract::liveRest (fs, lastPeriod);
+
     if (lastPeriod > 1.0 && ! fading)
     {
         const auto T = lastPeriod;
@@ -212,7 +217,7 @@ float ClassicEngine::process (float input, double cents, double period, bool set
         // will drift during a fade at the ratio in force, so a splice never
         // asks the kernel for a sample that has not arrived.
         const auto lo = kFloor + fade * std::max (0.0, ratio - 1.0);
-        const auto hi = (double) rest + T;
+        const auto hi = restNow + T;
 
         if (lag < lo || lag > hi)
         {
@@ -225,15 +230,15 @@ float ClassicEngine::process (float input, double cents, double period, bool set
             spliced = true;
             ++splices;
         }
-        else if (settled && std::abs (lag - rest) > 0.5)
+        else if (settled && std::abs (lag - restNow) > 0.5)
         {
             // Home, over 5 ms of uncorrelated material.
-            startFade (rest, std::max (16, (int) (0.005 * fs)), true);
+            startFade (restNow, std::max (16, (int) (0.005 * fs)), true);
         }
     }
-    else if (lastPeriod <= 1.0 && settled && ! fading && std::abs (lag - rest) > 0.5)
+    else if (lastPeriod <= 1.0 && settled && ! fading && std::abs (lag - restNow) > 0.5)
     {
-        startFade (rest, std::max (16, (int) (0.005 * fs)), true);
+        startFade (restNow, std::max (16, (int) (0.005 * fs)), true);
     }
 
     lag = std::max ((double) kFloor, lag);

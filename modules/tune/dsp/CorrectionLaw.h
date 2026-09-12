@@ -1,6 +1,7 @@
 #pragma once
 
 #include "modules/tune/dsp/Detector.h"
+#include "modules/tune/dsp/LatencyContract.h"
 #include "modules/tune/dsp/Scale.h"
 #include <array>
 
@@ -101,7 +102,10 @@ struct CorrectionSettings
         schema is frozen, and adding one is Frosty's call. */
     double noteTransitionMs = 0.0;
 
-    double readDelaySamples = 0.0;
+    /// Negative means "ask the contract", which is what TuneCore leaves it at
+    /// so the law and the engine cannot disagree. The tests set it to state
+    /// the prediction law at chosen distances.
+    double readDelaySamples = -1.0;
     double predictMaxCents = 50.0;
     double predictSlopeMs = 0.0;
 
