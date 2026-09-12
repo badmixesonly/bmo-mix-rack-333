@@ -69,6 +69,45 @@ no UI and can start at stage 2. Ears want the finished panel.
 
 ---
 
+## What the control audit settled, 2026-09-11
+
+The UI pass waits on *answers*, not on finished branches: the only thing that
+forces a panel to be laid out twice is a change to **which controls exist**.
+Three such questions were open. None of them needed ears, and Frosty settled
+two.
+
+| question | answer | effect on the UI pass |
+|---|---|---|
+| **Opto: hard-patch LINK always-on?** | **No — LINK stays a control** (Frosty, 2026-09-11) | none. Opto's panel is final as it stands |
+| **Opto: are TELE / ELD / COLOR the names?** | **Yes, locked** (Frosty, 2026-09-11) | none. Caption widths can be measured as final |
+| **DEQ: ship a serial/parallel switch?** | **Held for the blind test** (Frosty, 2026-09-11) | **DEQ's control layout waits.** Everything else in the pass proceeds |
+
+Both Opto answers are in `testing-notes/opto-0.2.1-handoff.md` §7, which is
+where they were open questions.
+
+**What the audit also found, by inspection rather than by decision:**
+
+- **The three DSP workflows change no control by themselves.** Opto's
+  release-at-high-reduction work, DEQ's topology work and CEQ's latency work
+  are all interior: `modules/<id>/dsp` and that module's own test file.
+- **CEQ's latency work cannot touch a control without a schema event.**
+  `Oversampling` is a frozen choice list with a frozen default of 2x -- BMO
+  EQ is the one module in the suite whose default is not zero-latency. Adding
+  a rate, dropping one, or changing the default all mean retiring an id, which
+  is a deliberate act and not something that happens quietly mid-pass. So it
+  does not gate the pass.
+- **A panel's button labels are not its schema.** Opto's TELE and ELD are UI
+  strings over a `Mode` parameter whose choices are `Tele` and `Stressed`.
+  Renaming a button is free; renaming a choice is not.
+
+### So the UI pass is cleared to start, for everything but DEQ's panel
+
+Six panels are settled: BMO CEQ, Saturator, Util, Opto, Dimension and Tune,
+plus the shared work -- `core/ui` tokens, the `utilGain` recolour, derived
+tokens, the contrast and text-fit assertions, and the CEQ rename. DEQ takes
+the shared token and colour work with everything else; only its control layout
+waits, because a topology switch would add a control to that panel.
+
 ## Dependency audit
 
 What each workflow touches, and what that means. Confirm the "can it change
@@ -79,9 +118,9 @@ order, and it is answered from the notes, not from the code.
 |---|---|---|---|
 | `add-bmo-tune` | `modules/tune`, `products/tune`, `tools/tune`, `tests/*/tune`, the four CMakeLists, `products/AGENTS.md` | DEQ, in the CMakeLists and the identity tables | no |
 | `add-bmo-deq` | `modules/deq`, `products/deq`, the rack's registry, `RackTests.cpp`, the same CMakeLists | Tune, as above | no — the macOS fix is a test fault |
-| `deq-topology` | `modules/deq/dsp`, `tests/dsp/DeqDspTests.cpp`, `testing-notes/deq-topology-listening.md` | nothing else | **yes** — a topology choice can add a control |
-| `ceq-latency` | `modules/eq/dsp`, `tests/dsp/EqDspTests.cpp` | nothing else | **yes** — oversampling is a control, and it sets the latency |
-| `opto-high-gr` | `modules/opto/dsp`, `tests/dsp/OptoDspTests.cpp` | nothing else | probably not — confirm from `opto-0.2.1-handoff.md` |
+| `deq-topology` | `modules/deq/dsp`, `tests/dsp/DeqDspTests.cpp`, `testing-notes/deq-topology-listening.md` | nothing else | **yes, and unanswered** — a switch would add a control; held for the blind test, 2026-09-11 |
+| `ceq-latency` | `modules/eq/dsp`, `tests/dsp/EqDspTests.cpp` | nothing else | no — `Oversampling` is frozen schema, so a change is a retirement, not a side effect |
+| `opto-high-gr` | `modules/opto/dsp`, `tests/dsp/OptoDspTests.cpp` | nothing else | no — confirmed by inspection, 2026-09-11 |
 | `sat-voicing` | ears, then maybe `modules/sat/dsp/Filters.h` | nothing else | no — it is a retest of Kevin's change |
 | `ui-pass` | `core/ui/*`, every `modules/*/panel`, `tests/ui/LayoutTests.cpp`, `tools/snapshot` | **every module at once** | it *is* the control work |
 | `dim-controls` | Dimension's panel | the UI pass, heavily | yes — fold it into the pass |
@@ -227,7 +266,8 @@ build that ships.
 
 ### `ui-pass` — everything a listener sees
 
-The big one, and the one that has to be alone. Read
+The big one, and the one that has to be alone. **Cleared to start for every
+panel but DEQ's**, whose control layout waits on the topology answer. Read
 `docs/ui-workflow-brief.md` and `testing-notes/ui-editor-handoff.md` first —
 45 commits of prior art, what was tried and thrown away, and the loop that
 makes this cheap. In scope: layout, colour and controls across every rack

@@ -268,8 +268,16 @@ the tree and nothing of the maintainer's has been reverted.
 - **`Crushed <3` depth** — affordable now, undecided.
 - **The Saturator bell** — see the PR discussion. Two independent fixes for
   the same reported symptom currently coexist.
-- **Naming** — TELE / ELD / COLOR are working names, not locked.
-- **Stereo Link** — whether to hard-patch it always-on is unresolved.
+- **~~Naming~~ — settled 2026-09-11 (Frosty).** TELE, ELD and COLOR are the
+  names. They were working names; they are not any more. The panel's button
+  labels are UI strings, so this costs nothing in the schema — the `Mode`
+  parameter's choices stay `Tele` / `Stressed`, which is what a saved session
+  references.
+- **~~Stereo Link~~ — settled 2026-09-11 (Frosty): LINK stays a control.**
+  Not hard-patched always-on. Hard-patching it would have taken a parameter
+  off the panel and out of the schema, and any session that had set it off
+  would open sounding different. It can be re-opened later as a deliberate
+  retirement rather than a leftover question.
 - **The 2–2.4 kHz LA-2A lift** is deliberately still not modelled. It was
   asked for, measured, found absent, and the release fix resolved the
   perception instead.
