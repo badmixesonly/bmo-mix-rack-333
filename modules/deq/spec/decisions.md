@@ -73,6 +73,7 @@ five buttons on a panel this busy; a right-click on the analyser's own toggle
 is the cheap answer, and "Accent" rather than "Teal" is the right name for the
 first option so the whole thing generalises when Dimension or Opto wants an
 analyser.
+
 ## 2026-09-11 (later) — Frosty, on the first build's renders
 
 **The panel is mockups A and C, not a reading of them.** The first build had
