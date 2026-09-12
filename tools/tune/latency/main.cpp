@@ -21,13 +21,21 @@
     archive/hybrid-studio).
 
     The check at the end is the latency rule (Frosty, 2026-09-11; AGENTS.md):
-    no cell's rest delay may exceed Waves Tune Real-Time's measured true
-    latency (tools/common/References.h). Until then the rule was that the rest
-    delay must equal contract::liveRestSamples(); a change that moves the floor
-    -- a lookahead, say -- is now allowed as long as it stays under the
-    ceiling, and this still reports whether the floor is the documented one,
-    so the manual's number is never quietly wrong. The whole-plugin form of
-    the rule, on the reference stimulus, is tests/dsp/HardTuneTests.cpp.
+    no cell's true latency -- the WORST of its rest delay and its correcting
+    delay -- may exceed Waves Tune Real-Time's measured true latency
+    (tools/tune/common/References.h). It still reports separately whether the
+    rest is the documented one, so the manual's number is never quietly wrong.
+
+    Until 2026-09-11 this tested the REST delay against that ceiling, which
+    compares a floor with a worst: References.h records the ceiling as "worst
+    delay, in tune or correcting". It passed whatever the engine did, and it
+    did -- it reported every cell clear while 54 were over, worst 15.33 ms at
+    E2. testing-notes/tune-latency-review-2026-09-11.md.
+
+    This tool is not run by ctest or CI; it is the per-semitone sweep you run
+    by hand. The whole-plugin form of the rule, on the reference stimulus, is
+    tests/dsp/tune/HardTuneTests.cpp -- and note that the stimulus reads a
+    correlation peak over a held note, so this sweep is the stricter of the two.
 */
 
 #include "modules/tune/dsp/TuneCore.h"
@@ -132,6 +140,7 @@ int main (int argc, char** argv)
 
     std::string md, csv = "range,note,hz,rest_ms,lock_ms,correcting_mean_ms,correcting_worst_ms,correcting_least_ms,reported_ms\n";
     int failures = 0, offFloor = 0;
+    double worstOverall = 0.0;
     char line[512];
 
     const auto reported = TuneCore::kReportedLatency;
@@ -215,12 +224,24 @@ int main (int argc, char** argv)
                            hz, row.restMs, row.lockMs, row.meanMs, row.worstMs, row.leastMs, row.reportedMs);
             csv += line;
 
-            if (row.restMs > references::kWaves.trueLatencyMs)
+            // THE LATENCY RULE, per cell. The figure it is held to is the
+            // WORST delay the read reaches while correcting, not the rest:
+            // References.h records the ceiling as "worst delay, in tune or
+            // correcting", so testing the rest against it compares a floor
+            // with a worst and passes whatever the engine does. It did: until
+            // 2026-09-11 this tested row.restMs, printed "every cell's rest
+            // delay is under the ceiling", and exited 0 while 54 cells were
+            // over. See testing-notes/tune-latency-review-2026-09-11.md.
+            const auto worstHere = std::max (row.restMs, row.worstMs);
+
+            if (worstHere > references::kWaves.trueLatencyMs)
             {
-                std::fprintf (stderr, "FAIL: %s at %.1f Hz: rest delay %.3f ms is over the ceiling, "
-                              "Waves Tune Real-Time's %.2f ms\n",
-                              rangeSpec.choices[(size_t) r], hz, row.restMs, references::kWaves.trueLatencyMs);
+                std::fprintf (stderr, "FAIL: %s at %.1f Hz: true latency %.3f ms (rest %.3f, correcting worst "
+                              "%.3f) is over the ceiling, Waves Tune Real-Time's %.2f ms\n",
+                              rangeSpec.choices[(size_t) r], hz, worstHere, row.restMs, row.worstMs,
+                              references::kWaves.trueLatencyMs);
                 ++failures;
+                worstOverall = std::max (worstOverall, worstHere);
             }
 
             if (std::abs (row.restMs - expectedRestMs) > 1000.0 / fs + 1e-9)
@@ -242,8 +263,12 @@ int main (int argc, char** argv)
     if (! csvPath.empty())
         if (auto* f = std::fopen (csvPath.c_str(), "w")) { std::fputs (csv.c_str(), f); std::fclose (f); }
 
-    std::fprintf (stderr, failures ? "bmo-tune-latency: %d cell(s) over Waves Tune Real-Time's true latency\n"
-                                   : "bmo-tune-latency: every cell's rest delay is under the ceiling (the latency rule)\n",
-                  failures);
+    if (failures)
+        std::fprintf (stderr, "bmo-tune-latency: %d cell(s) over Waves Tune Real-Time's %.2f ms true latency "
+                              "(the latency rule); worst %.3f ms\n",
+                      failures, references::kWaves.trueLatencyMs, worstOverall);
+    else
+        std::fprintf (stderr, "bmo-tune-latency: every cell's true latency is under the ceiling (the latency rule)\n");
+
     return failures ? 1 : 0;
 }
