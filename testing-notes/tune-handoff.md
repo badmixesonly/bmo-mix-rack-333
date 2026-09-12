@@ -15,10 +15,10 @@ rounds), `testing-notes/latency-and-lag-2026-09-11.md` (what was measured).
 
 | | |
 |---|---|
-| Code | this repository. Fork `badmixesonly/bmo-mix-rack-333`, branch **`bmo-tune-rt`**, pushed through `f2b0f8a` (steadier note, guard 4's later checks), the commit that adds this file and `bmo-tune-field`, and the one that corrects this row. They were pushed on 2026-09-11, before round three was heard, so the fork and AURORA could be synced. The suites passed on AURORA first. Never push to Kevin's repository. |
-| Field audio | gitignored, on AURORA only: `field-audio/shootout-2026-09-11/` -- the drys and Antares/Waves exports (`failure/`, `fuji/`, the redo folders), and BMO renders by generation: `bmo-renders/` (0.1's detector), `bmo-renders-guard4/` (`989a5ef`), `bmo-renders-hold/` (`f2b0f8a`). The blind manifests are beside them. |
-| Blind sets | `field-audio/blind-2026-09-11/` round one (answered), `-guard4/` round two (answered), **`-round3/` not yet heard.** |
-| Reference stimulus | `field-audio/reference/stimulus-48k.wav` (regenerate with `bmo-tune-ref stimulus`). Frosty's Ableton bounces of it: `C:\Users\thesp\OneDrive\Desktop\BMO TUNE refs\`. |
+| Code | this repository, on branch **`bmo-tune-work`** off `integration` (worktree `../bmo-mix-rack-333-tunework` on AURORA). Tune moved into the rack fork on 2026-09-11: DSP at `modules/tune/`, tools at `tools/tune/`, tests at `tests/dsp/tune/`, ctest suites named `tune_*`. The standalone `bmo-tune-rt` repository is where it started and is no longer where it is worked on; its `bmo-tune-rt` branch on the fork ends at `783fa9b`. Read `WORKFLOWS.md` on `integration` before starting. Never push to Kevin's repository. |
+| Field audio | gitignored, on AURORA only, and still beside the old standalone repository (the merged tree has no `field-audio/`): `../bmo-tune-rt/field-audio/shootout-2026-09-11/` -- the drys and Antares/Waves exports (`failure/`, `fuji/`, the redo folders), and BMO renders by generation: `bmo-renders/` (0.1's detector), `bmo-renders-guard4/` (`989a5ef`), `bmo-renders-hold/` (`f2b0f8a`). The blind manifests are beside them. |
+| Blind sets | `../bmo-tune-rt/field-audio/blind-2026-09-11/` round one (answered), `-guard4/` round two (answered), **`-round3/` not yet heard.** |
+| Reference stimulus | `../bmo-tune-rt/field-audio/reference/stimulus-48k.wav` (regenerate with `bmo-tune-ref stimulus`). Frosty's Ableton bounces of it: `C:\Users\thesp\OneDrive\Desktop\BMO TUNE refs\`. |
 | Checklist | the artifact "Tune RT Reference Run", https://claude.ai/code/artifact/beb2a260-931d-43a7-b431-ebbd563a267b -- pinned in Frosty's sidebar; rounds one and two ticked, round three added. It saves itself (the `artifact` capability): read it with the Artifact tool to see Frosty's ticks and calls. |
 | Installed VST3 | AURORA still has 0.1 in `C:\Program Files\Common Files\VST3`. Frosty has not heard any of today's changes in Ableton, only in blind renders. |
 
@@ -97,13 +97,13 @@ the scratchpad is wiped between sessions, so tools belong in the repository.
 ## Numbers to hold -- the baseline at `f2b0f8a`, on AURORA
 
 ```
-build/tools/Release/bmo-tune-field "field-audio/shootout-2026-09-11/failure/Antares Failure DRY.wav" --set key=D --set scale=Major --set retune_ms=0
+build-dsp/tools/tune/Release/bmo-tune-field "../bmo-tune-rt/field-audio/shootout-2026-09-11/failure/Antares Failure DRY.wav" --set key=D --set scale=Major --set retune_ms=0
   on the note 90.2 % | octave up 0.7 % | twelfth up 0.5 % | octave down 1.4 % | other 5.8 % | unvoiced 1.4 %
   note-name changes 322; flips back within 80 ms 99 (neighbours 33, jumps 66); dropouts 15; splices 155
-build/tools/Release/bmo-tune-field "field-audio/shootout-2026-09-11/fuji/Waves Tune Fuji no tune.wav" --set key=G --set scale=Major --set retune_ms=0
+build-dsp/tools/tune/Release/bmo-tune-field "../bmo-tune-rt/field-audio/shootout-2026-09-11/fuji/Waves Tune Fuji no tune.wav" --set key=G --set scale=Major --set retune_ms=0
   on the note 91.2 % | octave up 0.4 % | twelfth up 0.1 % | octave down 0.0 % | other 4.2 % | unvoiced 4.1 %
   note-name changes 149; flips back within 80 ms 19 (neighbours 16, jumps 3); dropouts 12; splices 96
-build/tools/Release/bmo-tune-ref bmo
+build-dsp/tools/tune/Release/bmo-tune-ref bmo
   true latency 3.66 ms | correction lag 6.21 ms mean, 8.96 worst | RMS 6.61 c   (Waves ceiling 10.62)
 ```
 
@@ -117,7 +117,7 @@ across unvoiced gaps and read a few higher than `bmo-tune-field`.)
 
 ## Pick up here, in order
 
-1. **Round three.** Frosty listens to `field-audio/blind-2026-09-11-round3`
+1. **Round three.** Frosty listens to `../bmo-tune-rt/field-audio/blind-2026-09-11-round3`
    (Failure 0 and 20 ms: round two's BMO against today's; Fuji 0 ms: 0.1
    against today's; Antares in each). Answers arrive as comments on the
    lines of its `ANSWERS.md` -- write them in, then open `KEY.txt`, then
@@ -141,6 +141,30 @@ across unvoiced gaps and read a few higher than `bmo-tune-field`.)
    its output depends on the block size. Sweep 32-2048 with `hostrender`
    and keep the lowest as the ceiling if they differ.
 
+## Parity after the move into the rack -- AURORA, 2026-09-11
+
+Tune's DSP was merged into the fork's rack repository (`add-bmo-tune`, then
+`integration`). Nothing about the move should change a number, so every
+baseline figure above was measured again from `bmo-tune-work` at `a474d1f`,
+built `-DBMO_DSP_ONLY=ON` in `build-dsp/`. All of them match to the digit:
+
+| | standalone, `f2b0f8a` | merged tree |
+|---|---|---|
+| suites | 8 of 8 | 14 of 14 (6 rack, 8 `tune_*`); `tune_hardtune_target` disabled |
+| true latency | 3.66 ms | 3.66 ms |
+| correction lag | 6.21 ms mean, 8.96 worst | 6.21, 8.96 |
+| RMS | 6.61 c | 6.61 c |
+| Failure | 90.2 % on the note, 322 changes, 99 flips (33 / 66), 15 dropouts, 155 splices | identical |
+| Fuji | 91.2 % on the note, 149 changes, 19 flips (16 / 3), 12 dropouts, 96 splices | identical |
+| corpus | 1.9344 % mean gross error, 72 items | 1.9344 %, no item differing |
+
+The corpus was compared row by row (`gpe_50c` per item), not by the mean
+alone, so an offsetting pair could not hide in it.
+
+`scripts/score-corpus.sh` needed a fix to get there: it still looked for the
+tools in `build/tools/Release`, which the move emptied, so it refused to run
+on a built tree. It now looks under `tools/tune` in both build directories.
+
 ## Rules that still hold
 
 - Name the machine in anything that records where something happened:
@@ -149,4 +173,4 @@ across unvoiced gaps and read a few higher than `bmo-tune-field`.)
 - No FFT in the correction path; nothing allocates after `prepare()`; the
   host is told 0; true latency never over Waves' (the latency rule).
 - Field audio, blind sets and the licensed fonts are never committed.
-- Pushes only with Frosty's say, to the fork's `bmo-tune-rt`.
+- Pushes only with Frosty's say, to the fork's `bmo-tune-work`. Ask first, and batch: a CI round trip is about 22 minutes.

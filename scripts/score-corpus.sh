@@ -22,10 +22,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 bin=
-for candidate in build/tools/Release build/tools; do
+for candidate in build/tools/tune/Release build/tools/tune build-dsp/tools/tune/Release build-dsp/tools/tune; do
     [[ -x $candidate/bmo-tune-cli.exe || -x $candidate/bmo-tune-cli ]] && { bin=$candidate; break; }
 done
-[[ -n $bin ]] || { echo "score-corpus: build the tools first (scripts/build.sh)" >&2; exit 1; }
+[[ -n $bin ]] || { echo "score-corpus: build the tools first (see WORKFLOWS.md)" >&2; exit 1; }
 
 exe() { if [[ -x $bin/$1.exe ]]; then echo "$bin/$1.exe"; else echo "$bin/$1"; fi; }
 gen=$(exe bmo-tune-gen); cli=$(exe bmo-tune-cli); score=$(exe bmo-tune-score)
