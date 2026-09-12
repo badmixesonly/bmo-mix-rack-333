@@ -15,8 +15,14 @@ difference in the control, something other than the topology is reaching your
 ears — level, playback order, a click at a file start — and nothing else from
 that source can be trusted until it is sorted out.
 
-**Watch the level.** `stacked-boosts` hits −0.0 dBFS on the vocal and −4.4 on
-the drums. Same gain across A and B of a pair, always.
+**Watch the level.** The full mix (source 7) renders **above 0 dBFS in every
+case**, up to +5.0: drop the monitoring 6 dB before it. `stacked-boosts` also
+hits −0.0 dBFS on the vocal and −4.4 on the drums. Same gain across A and B of
+a pair, always.
+
+**Seven sources, in the order they were rendered.** The first four came from
+the first upload; the guitars, the room and the mix arrived after the first
+GTR and ROOM exports turned out to be silent files.
 
 Within each source the cases are ordered **loudest difference first**, and the
 measured figure is given so you know what to expect. The ones marked "expected
@@ -210,13 +216,162 @@ tone. The dynamic cases barely engaged (0.9 / 1.9 dB) — skip unless curious.
 
 ---
 
-## Sources still to come
+## Source 5 — DEQ ref GTR
 
-- **DEQ ref GTR** and **DEQ ref ROOM** — the exports are silent, every sample
-  zero. Re-bounce and they render in a minute.
-- **A full mix** — not supplied yet.
+Guitars sit where the stacked boosts live, so case 4 is unusually live here.
+Both dynamic cases engaged (5.9 / 7.2 dB).
 
-Each gets a section here, in the same shape, as it is rendered.
+### 6. vocal-control — the validity check (−32.3 dB)
+
+- Different at all (yes / no):
+- If yes, what:
+
+### 1. lowcut-under-shelf (−7.6 dB)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 4. stacked-boosts (−8.5 dB; peaks differ by 1.5 dB)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 2. stacked-cuts-12 (−13.2 dB)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 3. stacked-cuts-6 (−21.8 dB)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 5. surgical (−22.1 dB)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 8. tamer-dynamic (−28.2 dB, 7.2 dB GR)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 7. deess-dynamic (−33.8 dB, 5.9 dB GR)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+---
+
+## Source 6 — DEQ ref ROOM
+
+The one source where a difference could show as **space** rather than tone —
+decay tails and early reflections rather than a steady spectrum. Listen past
+the front of each sound. The dynamic cases only half-engaged (3.8 / 4.7 dB).
+
+### 6. vocal-control — the validity check (−31.4 dB)
+
+- Different at all (yes / no):
+- If yes, what:
+
+### 1. lowcut-under-shelf (−10.2 dB)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 2. stacked-cuts-12 (−14.9 dB)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 4. stacked-boosts (−16.7 dB)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 3. stacked-cuts-6 (−23.9 dB)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 5. surgical (−30.8 dB)
+
+- Different (yes / no):
+
+### 7 and 8, the dynamic pair (−40.8 / −43.4 dB, 3.8 / 4.7 dB GR)
+
+- Anything at all (yes / no):
+
+---
+
+## Source 7 — LOCKED IN, full mix  ⚠ LEVEL
+
+**Every case here renders above 0 dBFS, up to +5.0.** The mix arrives at
+−0.1 dBFS peak, so any boost puts it over. The files are 32-bit float and
+nothing is clipped inside them, but a fixed-point output will clip.
+**Pull the monitoring down 6 dB before this source and leave it there for all
+eight cases.**
+
+The strongest dynamic source in the set (10.0 / 12.0 dB), and the most like
+the thing anyone would actually reach for DEQ with.
+
+### 6. vocal-control — the validity check (−36.9 dB)
+
+- Different at all (yes / no):
+- If yes, what:
+
+### 1. lowcut-under-shelf (+0.1 dB — as loud as the input; peaks 3 dB apart)
+
+The 808 said the same thing about this case. This is it on a finished mix.
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 2. stacked-cuts-12 (−16.6 dB)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 4. stacked-boosts (−23.6 dB; renders to +5.0 dBFS)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 3. stacked-cuts-6 (−25.1 dB)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 8. tamer-dynamic (−35.1 dB, 12.0 dB GR)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 7. deess-dynamic (−34.6 dB, 10.0 dB GR)
+
+- Different (yes / no):
+- Prefer (A / B / neither):
+- What you heard:
+
+### 5. surgical (−37.3 dB, expected inaudible)
+
+- Different (yes / no):
 
 ---
 
