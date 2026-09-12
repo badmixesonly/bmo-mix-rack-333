@@ -48,8 +48,16 @@ void CorrectionLaw::prepare (double sampleRate)
 void CorrectionLaw::reset()
 {
     pitchIn = pitchSlow = 0.0;
+    pitchSlope = predicted = slopeFrom = 0.0;
+    history[0] = history[1] = history[2] = {};
+    haveHistory = 0;
+    slopeAnchorPitch = 0.0;
+    slopeAnchorAt = 0;
+    haveAnchor = false;
+    slopeAt = 0;
+    haveSlopeFrom = false;
     havePitch = voiced = false;
-    havePendingJump = false;
+    havePendingJump = jumpTaken = false;
     clarity = period = 0.0;
     note = -1;
     haveNote = false;
@@ -159,6 +167,13 @@ double CorrectionLaw::confirmPitch (double latest) noexcept
     if (havePendingJump && std::abs (latest - pendingJump) <= jump)
     {
         havePendingJump = false;
+
+        // A leap, confirmed. The pitch has just stepped by an interval, and
+        // a slope taken across that step is the interval divided by a hop --
+        // enough to predict a semitone ahead, which lands the note decision
+        // on the wrong side of a boundary and corrects by most of it. The
+        // step is not a slope; the estimates after it start a fresh one.
+        jumpTaken = true;
         return latest;
     }
 
@@ -193,9 +208,10 @@ void CorrectionLaw::setNote (int newNote) noexcept
     else
     {
         // The first note of a phrase: the split's slow state starts at this
-        // note's own error rather than the last phrase's.
+        // note's own error rather than the last phrase's. From the predicted
+        // pitch, like every other reader of it.
         target = newNote;
-        errorSlow = 100.0 * (newNote - pitchIn);
+        errorSlow = 100.0 * (newNote - predicted);
     }
 
     note = newNote;
@@ -225,13 +241,135 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
                 havePendingJump = false;
                 haveNote = false;
                 applied = 0.0;
+
+                // And nothing to predict from. An onset's first estimate has
+                // no predecessor that means anything -- the slope across a
+                // phrase boundary is the interval between two notes divided
+                // by a hop, which is enormous and meaningless.
+                pitchSlope = 0.0;
+                haveSlopeFrom = false;
             }
             else
             {
+                jumpTaken = false;
                 pitchIn = confirmPitch (fresh);
+
+                if (jumpTaken)
+                {
+                    pitchSlope = 0.0;
+                    haveHistory = 0;
+                    haveAnchor = false;
+                    haveSlopeFrom = false;
+                }
             }
 
             havePitch = true;
+
+            // The slope of the estimate, in semitones per sample. Only from
+            // estimates that were taken at face value: while confirmPitch is
+            // holding a jump it returns the OLD pitch, so the difference
+            // across those evaluations is zero and would drag the slope down
+            // just as the voice moves fastest. The jump's own step is not a
+            // slope either -- it is a leap, and the estimate after it starts
+            // a fresh baseline.
+            if (haveSlopeFrom && ! havePendingJump)
+            {
+                const auto dt = (double) (samples - slopeAt);
+
+                if (dt > 0.0)
+                {
+                    // Median of the last three, before any smoothing. A pitch
+                    // that moves in ONE evaluation and then stops is a step,
+                    // or detector noise, and predicting on it overshoots by
+                    // whatever it stepped: a 40 cent step at retune 3 ms cut
+                    // the measured 10-90 settling from 6.6 ms to 3.2. A real
+                    // scoop or vibrato holds its slope across several
+                    // evaluations, so the median keeps it and drops the step.
+                    // Same discipline as confirmPitch above, and the
+                    // detector's own stability gate.
+                    history[2] = history[1];
+                    history[1] = history[0];
+                    history[0] = { (pitchIn - slopeFrom) / dt, pitchIn, samples };
+                    if (haveHistory < 3)
+                        ++haveHistory;
+
+                    // The median of the three, taken WITH the estimate it was
+                    // measured from. A median picks one of three differences,
+                    // each spanning a different pair of evaluations, so the
+                    // slope it returns describes the voice at that pair and
+                    // not at the newest estimate. Predicting from the newest
+                    // one with it silently throws away however far back it
+                    // came from -- 1.5 hops on a smooth run, which at A2 is
+                    // 3.4 ms and cost 1.2 ms of the worst-case lag. Carrying
+                    // the anchor makes the extrapolation exact for a straight
+                    // line at any staleness, with no constant to tune: a
+                    // fixed 1.5-hop correction instead overshot every vibrato
+                    // into negative lag and put the residue back up to 1.46 c.
+                    auto pick = 0;
+                    if (haveHistory == 3)
+                    {
+                        const auto a = history[0].slope, b = history[1].slope, c = history[2].slope;
+                        pick = (a < b) ? ((b < c) ? 1 : ((a < c) ? 2 : 0))
+                                       : ((a < c) ? 0 : ((b < c) ? 2 : 1));
+                    }
+
+                    const auto chosen = history[pick];
+
+                    // A one-pole on top, off by default: see predictSlopeMs.
+                    const auto tau = fs * std::max (0.0, s.predictSlopeMs) * 0.001;
+                    const auto alpha = tau > 0.0 ? 1.0 - std::exp (-dt / tau) : 1.0;
+                    pitchSlope += alpha * (chosen.slope - pitchSlope);
+                    slopeAnchorPitch = chosen.pitch;
+                    slopeAnchorAt = chosen.at;
+                    haveAnchor = true;
+                }
+            }
+
+            if (! havePendingJump)
+            {
+                slopeFrom = pitchIn;
+                slopeAt = samples;
+                haveSlopeFrom = true;
+            }
+        }
+    }
+
+    // Predict the estimate forward to where the engine reads: the estimate
+    // refers to kAnalysisLagPeriods x T behind the newest sample, the engine
+    // reads readDelaySamples behind it, and the gap between them times the
+    // pitch slope is the residue off the note on a moving voice. Clamped, and
+    // never negative -- if the engine already rests past the estimate there
+    // is nothing to predict.
+    predicted = pitchIn;
+
+    if (havePitch && voiced && haveAnchor && period > 1.0)
+    {
+        const auto ahead = Detector::kAnalysisLagPeriods * period - s.readDelaySamples;
+
+        if (ahead > 0.0)
+        {
+            // From the anchor the slope was measured at, forward to what the
+            // engine is about to read: the anchor's own age plus the gap
+            // between the estimate and the read.
+            const auto span = (double) (samples - slopeAnchorAt) + ahead;
+            const auto candidate = slopeAnchorPitch + pitchSlope * span;
+
+            // Taken only if it lands within predictMaxCents of the estimate.
+            // Otherwise the estimate is left alone -- NOT dragged to the edge
+            // of the allowance, which is the difference between a guard and an
+            // error.
+            //
+            // The case that makes it matter is a pitch move too small for
+            // confirmPitch to call a jump, up to 75 cents, which leaves the
+            // anchor on the far side of it. Clamping there pulls the
+            // prediction a full predictMaxCents off an estimate that was
+            // perfectly good: on the reference stimulus it turned 0.72 ms of
+            // mean lag into 1.94 and 1.24 cents of residue into 2.41, the
+            // clamp firing as an error rather than as a guard. Declining
+            // costs only the prediction -- and predictMaxCents = 0 then means
+            // exactly what it says, the estimate untouched.
+            if (100.0 * std::abs (candidate - pitchIn) <= s.predictMaxCents)
+                predicted = candidate;
         }
     }
 
@@ -241,14 +379,19 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
         // so a vibrato straddling a boundary does not flip the target twice a
         // cycle. A leap bigger than any vibrato snaps it, so a real interval
         // is not heard late.
-        pitchSlow += decideCoeff * (pitchIn - pitchSlow);
-        if (std::abs (pitchIn - pitchSlow) > 1.5)
-            pitchSlow = pitchIn;
+        //
+        // Everything from here down reads `predicted`, never `pitchIn`: the
+        // note and the correction must come from the same pitch (AGENTS.md,
+        // "the octave bug" -- a held note paired with a pitch that had moved
+        // is what drove a correction by the whole interval).
+        pitchSlow += decideCoeff * (predicted - pitchSlow);
+        if (std::abs (predicted - pitchSlow) > 1.5)
+            pitchSlow = predicted;
 
         if (evaluated && voiced)
         {
             int decided = 0;
-            const auto decideOn = s.vibratoAmount > 0.0 ? pitchSlow : pitchIn;
+            const auto decideOn = s.vibratoAmount > 0.0 ? pitchSlow : predicted;
 
             if (decideNote (decideOn, decided))
             {
@@ -271,7 +414,7 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
 
     if (havePitch && haveNote)
     {
-        const auto error = 100.0 * (target - pitchIn);
+        const auto error = 100.0 * (target - predicted);
         errorSlow += slowCoeff * (error - errorSlow);
 
         const auto split = error - s.vibratoAmount * (error - errorSlow);
@@ -298,6 +441,7 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
                                  -s.maxCorrectionCents, s.maxCorrectionCents);
 
     st.pitchIn = pitchIn;
+    st.pitchUsed = predicted;
     st.target = target;
     st.note = haveNote ? note : -1;
     st.appliedCents = std::isfinite (out) ? out : 0.0;

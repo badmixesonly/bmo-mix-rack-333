@@ -24,12 +24,17 @@
 
       hardtune_target    (hardtune_tests --target; disabled in ctest until
                           it passes -- see tests/CMakeLists.txt)
-        - BMO flattens a vibrato as closely as Antares does, and its worst
-          correction lag is no worse than Antares' worst. Open: it fails today.
+        - BMO flattens a vibrato as closely as Antares does: **passes since
+          2026-09-12**, 1.24 c against Antares' 1.30, where it was 3.35.
+        - and its worst correction lag is no worse than Antares' worst. Open,
+          and the last thing between this file and green: 1.97 ms at A2
+          against 1.66 ms. Every other vibrato is inside half a millisecond.
 
-    The two open checks have one root cause, found 2026-09-11: the engine's
-    read delay is a flat 4 ms where both the detector's analysis lag and
-    Waves' delay are a period.
+    Both of the remaining open checks come from the same place, found
+    2026-09-11: the engine's read delay is a flat 4 ms where the detector's
+    analysis lag and Waves' delay are both a period of the note. Predicting
+    the pitch forward closed the correction lag (2026-09-12); bounding the
+    engine's window is what the per-note latency rule still needs.
     testing-notes/tune-latency-review-2026-09-11.md.
 */
 
@@ -57,11 +62,13 @@ namespace
         6.22 ms and 6.61 c until 2026-09-11, which were the figures from
         BEFORE the 4 ms rest landed in 31b30ef. Nobody re-ratcheted it, so the
         guard sat a factor of two slack and would not have noticed the rest
-        being reverted -- exactly the regression it exists to catch. These are
-        the figures at the 4 ms rest, on the stimulus as it now stands. Move
-        them down with any change that improves them, and say so. */
-    constexpr double kBaselineMeanLagMs = 3.19;
-    constexpr double kBaselineRmsCents = 3.35;
+        being reverted -- exactly the regression it exists to catch. Move them
+        down with any change that improves them, and say so.
+
+        Now the figures with the prediction in: the estimate carried forward
+        to where the engine reads, which is what the lag was. */
+    constexpr double kBaselineMeanLagMs = 0.71;
+    constexpr double kBaselineRmsCents = 1.24;
 
     std::vector<float> renderBmo (const std::vector<float>& in)
     {

@@ -16,6 +16,7 @@
 
 #include <cstdio>
 #include <functional>
+#include <vector>
 #include <string>
 
 using namespace bmo::tune;
@@ -28,22 +29,43 @@ namespace
 
     /** Drives a fresh law with a pitch track (Hz per sample; 0 = unvoiced),
         evaluating every `hop` samples as the detector would, and returns the
-        output pitch in semitones per sample (input + applied). */
+        output pitch in semitones per sample (input + applied).
+
+        **Prediction is off unless a case asks for it** (`predict`). This
+        harness models the output as input + correction AT THE SAME INSTANT,
+        which is a plugin whose engine reads the newest sample -- there is no
+        such plugin, the floor alone is 17 samples and the rest is 192. The
+        prediction stage exists precisely to bridge that gap, so leaving it on
+        here would have every case measure the bridge as if it were error: at
+        E4 it reads as 6.6 cents of peak-to-peak "vibrato" that the real
+        plugin does not have (it is what the engine's read delay then cancels,
+        and CoreTests and HardTuneTests measure the result through the engine).
+
+        So the cases below measure the stages the law owns outright --
+        quantize, the vibrato split, flex, the retune pole, the dwell -- with
+        the prediction out of the way, and "the prediction" below states its
+        own law on its own. */
     struct Run
     {
-        std::vector<double> out, applied;
+        std::vector<double> out, applied, target;
         int noteChanges = 0;
     };
 
-    Run drive (const std::function<double (size_t)>& hz, size_t n, const CorrectionSettings& s, int hop = 24)
+    Run drive (const std::function<double (size_t)>& hz, size_t n, const CorrectionSettings& s,
+               int hop = 24, bool predict = false)
     {
+        auto settings = s;
+        if (! predict)
+            settings.predictMaxCents = 0.0;
+
         CorrectionLaw law;
         law.prepare (fs);
-        law.setSettings (s);
+        law.setSettings (settings);
 
         Run r;
         r.out.resize (n);
         r.applied.resize (n);
+        r.target.resize (n);
         PitchEstimate e;
         bool wasVoiced = false;
 
@@ -72,6 +94,7 @@ namespace
             const auto a = law.tick (e, evaluated);
             r.applied[i] = a;
             r.out[i] = (f > 0.0 ? pitch::semitonesFromHz (f, s.refA) : 0.0) + a / 100.0;
+            r.target[i] = law.state().note >= 0 ? law.state().target : -1000.0;
         }
 
         r.noteChanges = law.state().noteChanges;
@@ -408,6 +431,163 @@ int main()
             worst = std::max (worst, std::abs (a));
         check (worst == 0.0, "with every note switched off the correction is exactly zero, every sample");
         check (r.noteChanges == 0, "and no note is ever chosen");
+    }
+
+    //== The prediction ========================================================
+    //
+    // The law: the detector's estimate refers to Detector::kAnalysisLagPeriods
+    // x T behind the newest sample and the engine reads readDelaySamples
+    // behind it, so the pitch the correction is computed from is moved forward
+    // by the difference. On a pitch rising at a known, steady rate that is an
+    // exactly predictable number of cents, which is what these measure --
+    // against the arithmetic, not against a recorded figure.
+    {
+        // A2 rising at a steady 600 cents per second: fast for a voice, slow
+        // enough that a hop never looks like a step to the median.
+        constexpr double hz0 = 110.0, rate = 600.0;
+        const auto ramp = [] (size_t i) { return hz0 * std::exp2 (rate * ((double) i / fs) / 1200.0); };
+
+        std::vector<double> shiftAt, expectedAt;
+
+        for (const auto readDelay : { 0.0, 96.0, 192.0 })
+        {
+            CorrectionSettings s;
+            s.readDelaySamples = readDelay;
+
+            const auto with = drive (ramp, (size_t) (1.2 * fs), s, 24, true);
+            const auto without = drive (ramp, (size_t) (1.2 * fs), s, 24, false);
+
+            // out = pitch + applied/100 = target - (predicted - pitch), so the
+            // difference between the two runs is exactly minus the prediction
+            // -- but only where both runs hold the SAME note. The ramp climbs
+            // through boundaries, and the prediction makes each switch land a
+            // little earlier; averaging across one would measure the timing of
+            // a semitone step, not the prediction.
+            const auto from = (size_t) (0.6 * fs), to = (size_t) (1.0 * fs);
+            double shift = 0.0, expected = 0.0;
+            size_t counted = 0;
+
+            for (size_t i = from; i < to; ++i)
+            {
+                if (with.target[i] != without.target[i])
+                    continue;
+
+                shift += -100.0 * (with.out[i] - without.out[i]);
+
+                // The analysis lag is a period, and the period shrinks as the
+                // ramp climbs, so it is taken at the note being sung here and
+                // not at the one it started from.
+                const auto periodHere = fs / ramp (i);
+                expected += rate * std::max (0.0, Detector::kAnalysisLagPeriods * periodHere - readDelay) / fs;
+                ++counted;
+            }
+
+            shift /= (double) counted;
+            expected /= (double) counted;
+            shiftAt.push_back (shift);
+            expectedAt.push_back (expected);
+
+            char buf[144];
+            std::snprintf (buf, sizeof buf, "read delay %.0f samples: the pitch is moved forward by", readDelay);
+            report (buf, shift, "c");
+            std::snprintf (buf, sizeof buf, "read delay %.0f samples: rate x (analysis lag - read delay) is", readDelay);
+            report (buf, expected, "c");
+
+            // The slope is extrapolated from the estimate it was measured at,
+            // which is up to two hops old, so the total carries that age too
+            // -- a hop and a half here, about 0.44 cents. Within a couple of
+            // hops of the bare (analysis lag - read delay) figure, and never
+            // short of it: predicting less than the gap is the bug this whole
+            // stage exists to fix.
+            const auto hopCents = rate * 24.0 / fs;
+            std::snprintf (buf, sizeof buf,
+                           "the prediction covers (analysis lag - read delay), within the age of the "
+                           "estimate it is drawn from, at read delay %.0f", readDelay);
+            check (counted > (to - from) / 2 && shift >= expected - 0.05 && shift <= expected + 3.0 * hopCents, buf);
+        }
+
+        // And it answers the read delay exactly: move the engine's rest by N
+        // samples and the prediction moves by rate x N, whatever the anchor
+        // was doing. That is the law with the bookkeeping divided out.
+        for (size_t k = 1; k < shiftAt.size(); ++k)
+        {
+            const auto measured = shiftAt[k - 1] - shiftAt[k];
+            const auto wanted = expectedAt[k - 1] - expectedAt[k];
+            char buf[144];
+            std::snprintf (buf, sizeof buf, "96 more samples of read delay predicts this much less (step %zu)", k);
+            report (buf, measured, "c");
+            check (std::abs (measured - wanted) < 0.02,
+                   "a read delay N samples deeper predicts exactly rate x N less");
+        }
+
+        // Past the analysis lag there is nothing to predict: the engine is
+        // already reading older material than the estimate refers to, and
+        // predicting backwards is not done (see CorrectionSettings).
+        {
+            CorrectionSettings s;
+            s.readDelaySamples = 4.0 * fs / hz0;   // four periods back, well past it
+
+            const auto with = drive (ramp, (size_t) (1.2 * fs), s, 24, true);
+            const auto without = drive (ramp, (size_t) (1.2 * fs), s, 24, false);
+
+            double worst = 0.0;
+            for (size_t i = (size_t) (0.6 * fs); i < (size_t) (1.0 * fs); ++i)
+                worst = std::max (worst, std::abs (100.0 * (with.out[i] - without.out[i])));
+
+            report ("read delay past the analysis lag: worst difference", worst, "c");
+            check (worst == 0.0, "past the analysis lag nothing is predicted, to the sample");
+        }
+
+        // A step is not a slope, and the slope must not be read off one.
+        //
+        // What the median of three buys is that the step's own difference is
+        // never taken as the slope: without it a 40 cent step at retune 3 ms
+        // cut the measured 10-90 settling from 6.6 ms to 3.2, because the
+        // correction overshot by what the pitch had just stepped.
+        //
+        // What it does NOT buy is instant recovery. The slope is extrapolated
+        // from the estimate it was measured at, which after a step is still on
+        // the old side of it, so the prediction holds the old pitch until the
+        // history refills -- measured at just under one evaluation here, and
+        // bounded below by the clamp meanwhile. That is the right answer when
+        // the step was detector noise, which is what a 40 cent move inside one
+        // hop usually is (a voice cannot move 40 cents in half a millisecond),
+        // and a brief wrong one when it was real. It is bounded by the clamp
+        // throughout, and on the two shoot-out takes it costs nothing
+        // measurable: splices 44 -> 41 and 38 -> 36 on Failure, flips and
+        // dropouts identical, Fuji unchanged.
+        {
+            const auto hop = 24;
+            const auto step = (size_t) (0.5 * fs);
+            const auto stepped = [step] (size_t i)
+            {
+                return i < step ? 110.0 : 110.0 * std::exp2 (40.0 / 1200.0);
+            };
+
+            CorrectionSettings s;
+            const auto with = drive (stepped, (size_t) (1.2 * fs), s, hop, true);
+            const auto without = drive (stepped, (size_t) (1.2 * fs), s, hop, false);
+
+            double worst = 0.0;
+            size_t settledAt = step;
+
+            for (size_t i = step; i < (size_t) (1.0 * fs); ++i)
+            {
+                const auto d = std::abs (100.0 * (with.out[i] - without.out[i]));
+                worst = std::max (worst, d);
+                if (d > 1.0)
+                    settledAt = i;
+            }
+
+            const auto evaluations = (double) (settledAt - step) / (double) hop;
+            report ("a 40 cent step: worst the prediction moves it", worst, "c");
+            report ("...and it is back within a cent after", evaluations, "evaluations");
+
+            check (worst <= s.predictMaxCents + 1.0e-9,
+                   "a step never moves the prediction further than the clamp allows");
+            check (evaluations <= 4.0,
+                   "and the prediction is back on the pitch within four evaluations of a step");
+        }
     }
 
     return finish ("correction");

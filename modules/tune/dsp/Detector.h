@@ -77,6 +77,35 @@ public:
     static constexpr double kCapacityMinHz = 40.0;
     static constexpr double kCapacityMaxHz = 2000.0;
 
+    /** How far behind the newest sample an estimate actually refers to, in
+        periods of the note it reports.
+
+        A property of the windows rather than a choice: refine() correlates
+        one period against the period before it, so the data an estimate is
+        drawn from spans two periods back and its centroid is one period
+        back, and the hop -- max(0.5 ms, T/4) -- adds about T/8 of staleness
+        on top. That predicts 1.125 x T.
+
+        MEASURED 1.07 x T, at four notes across two octaves: correction lag
+        plus in-tune delay came to 1.078, 1.038, 1.076 and 1.071 x T at A2,
+        D3, E3 and A3 (testing-notes/latency-and-lag-2026-09-11.md, read as
+        tune-latency-review-2026-09-11.md explains). The measured figure is
+        the one used; the derivation is a sanity check on it, not its source.
+
+        This is the whole reason a hard-tune correction lands late: the engine
+        reads the input somewhere else entirely, and the difference times the
+        pitch slope is the residue off the note. CorrectionLaw predicts the
+        pitch forward by it. Anything that changes refine()'s window or the
+        hop changes this number, and a wrong value shows up directly as
+        correction lag in HardTuneTests. */
+    static constexpr double kAnalysisLagPeriods = 1.07;
+
+    /** That lag in samples for the period currently held; 0 before a lock. */
+    double analysisLagSamples() const noexcept
+    {
+        return heldPeriod > 1.0 ? kAnalysisLagPeriods * heldPeriod : 0.0;
+    }
+
     /** Allocates everything; nothing afterwards does. */
     void prepare (double sampleRate, const Settings&);
 

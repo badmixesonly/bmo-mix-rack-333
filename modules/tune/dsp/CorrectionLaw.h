@@ -51,6 +51,47 @@ struct CorrectionSettings
     double noteHoldFreeCents = 60.0;
     double noteHoldBudgetCentMs = 320.0;
 
+    /** Predicting the pitch forward, which is what stops a correction landing
+        late (testing-notes/tune-latency-review-2026-09-11.md).
+
+        The detector's estimate refers to Detector::kAnalysisLagPeriods x T
+        behind the newest sample; the engine reads `readDelaySamples` behind
+        it. Correct the pitch the engine is about to read rather than the one
+        the detector last saw, and the difference -- which is the whole of the
+        residue on a moving voice -- goes away. So the distance to predict
+        over is (analysis lag - read delay), and where that is zero or
+        negative, because the engine already rests at or past the estimate,
+        nothing is predicted.
+
+        `readDelaySamples` is the engine's REST, set by TuneCore, and not its
+        instantaneous read position. The two differ only while the read has
+        wandered off its rest, which happens under a sustained correction,
+        which is exactly when the pitch is not moving and the prediction is
+        worth nothing anyway.
+
+        predictMaxCents caps it. Vibrato at 45 cents and 6.5 Hz needs about 9
+        cents at A2, and a fast scoop about 12; 50 is room for anything real
+        and a guard against a slope estimate gone wrong.
+
+        predictSlopeMs is a one-pole on the slope, on top of the median of
+        three that the slope is already taken as. **It is 0 -- off -- because
+        it only ever cost.** Every smoother delays the slope it reports, and
+        that delay comes straight back off the prediction. Swept on the
+        reference stimulus (2026-09-11, AURORA); correction lag and residue:
+
+            0 ms   0.970 ms   1.234 c        3 ms   1.052 ms   1.342 c
+            1 ms   0.982 ms   1.248 c        5 ms   1.148 ms   1.469 c
+            2 ms   1.013 ms   1.289 c
+
+        Monotonic, and by 3 ms it is already past Antares' 1.30 c. On the
+        Failure take it buys nothing either: 42 splices against 44 at 2 ms,
+        flips and dropouts identical. The median is doing the denoising and
+        this was adding lag on top of it. Kept as a knob in case some material
+        ever needs it, with the numbers here so nobody turns it up blind. */
+    double readDelaySamples = 0.0;
+    double predictMaxCents = 50.0;
+    double predictSlopeMs = 0.0;
+
     double clarityLo = 0.60, clarityHi = 0.85;   ///< confidence ramp (spec §4.4)
     double maxCorrectionCents = 1200.0;          ///< hard clamp (spec §6.1)
 };
@@ -59,6 +100,7 @@ struct CorrectionSettings
 struct CorrectionState
 {
     double pitchIn = 0.0;      ///< semitones, as detected
+    double pitchUsed = 0.0;    ///< that, predicted forward to where the engine reads
     double target = 0.0;       ///< semitones: the quantized note
     int note = -1;             ///< the quantized note, -1 for none
     double errorCents = 0.0;   ///< target - input
@@ -107,6 +149,11 @@ public:
     /** The flex soft knee on its own, for its test: gain in [0, 1]. */
     static double flexGain (double absCents, double flex) noexcept;
 
+    /** The pitch the note and the correction are both taken from: the
+        detector's estimate predicted forward to where the engine reads. Equal
+        to the raw estimate when there is nothing to predict over. */
+    double pitchUsed() const noexcept { return predicted; }
+
 private:
     bool decideNote (double pitchForDecision, int& note) noexcept;
     int holdOrSwitch (double pitch, int candidate) noexcept;
@@ -126,11 +173,27 @@ private:
     double clarity = 0.0;
     double period = 0.0;
 
+    // Prediction: the slope of the estimate, in semitones per sample, the
+    // pitch it implies where the engine reads, and the last estimate the
+    // slope was taken against.
+    double pitchSlope = 0.0, predicted = 0.0;
+    // The last three differences, each with the estimate and the sample it
+    // was measured at, so the median can be extrapolated from its own anchor.
+    struct Slope { double slope = 0.0, pitch = 0.0; long long at = 0; };
+    Slope history[3];
+    int haveHistory = 0;
+    double slopeAnchorPitch = 0.0;
+    long long slopeAnchorAt = 0;
+    bool haveAnchor = false;
+    double slopeFrom = 0.0;
+    long long slopeAt = 0;
+    bool haveSlopeFrom = false;
+
     // Target-side state.
     int note = -1;
     bool haveNote = false;
     double pendingJump = 0.0;
-    bool havePendingJump = false;
+    bool havePendingJump = false, jumpTaken = false;
     double target = 0.0;
 
     // A note switch waiting out noteDwellMs: which note, since which sample,

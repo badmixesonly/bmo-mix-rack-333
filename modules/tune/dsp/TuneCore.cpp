@@ -86,6 +86,11 @@ void TuneCore::applyParams() noexcept
     cs.flex = params.flexPercent / 100.0;
     cs.clarityLo = ds.clarityLo;
     cs.clarityHi = ds.clarityHi;
+
+    // Where the law predicts the pitch forward to: where the engine reads.
+    // Its rest, not its instantaneous lag -- see CorrectionSettings.
+    cs.readDelaySamples = (double) engine.liveRest();
+
     law.setSettings (cs);
 }
 

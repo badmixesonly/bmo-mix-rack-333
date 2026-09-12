@@ -77,7 +77,7 @@ signal path, in the order a sample meets it:
 
 ```
 Detector        recursive E/H kernel -> coarse NSDF at ~12 kHz -> full-rate refinement
-CorrectionLaw   jump confirmation -> quantize -> vibrato split -> flex -> retune -> gates
+CorrectionLaw   jump confirmation -> predict forward -> quantize -> vibrato split -> flex -> retune -> gates
 ClassicEngine   fractional-rate read, whole-period splices, Live window
 ```
 
@@ -153,7 +153,8 @@ named; undoing one should fail that test.
 | Reported latency, every range | 0 samples; rest delay 4.000 ms in every cell (re-run 2026-09-11) | Live: 0 |
 | True latency, reference stimulus, worst (2026-09-11) | 9.18 ms (in tune 4.20-4.49, correcting 3.88-9.18); Antares 10.74, Waves 19.22 -- all three at the stimulus' lowest note | <= Waves (the latency rule) |
 | True latency, **per note** (2026-09-11) | E2 9.18, A2 8.03, D3 3.88, A3 5.97, **A4 5.01, A5 4.61**; Waves 19.22 / 13.80 / 10.09 / 7.05 / **3.82 / 0.71** | **FAILS** <= Waves above ~C3, by 3.90 ms at A5 |
-| Correction lag at 0 ms, vibrato flattened (2026-09-11) | 3.19 ms mean, 0.81 (A3) to 6.07 (A2): one cycle less the 4 ms rest; Antares -0.24 mean, 1.66 worst | as Antares (open) |
+| Correction lag at 0 ms, vibrato flattened (2026-09-12, with the prediction) | **0.71 ms mean**, -0.06 (D3) to 1.97 (A2); was 3.19 mean and 6.07 worst. Antares -0.24 mean, 1.66 worst | worst still over Antares at A2 (open) |
+| Vibrato residue at 0 ms (2026-09-12) | **1.24 c mean**, was 3.35; Antares 1.30 | **meets Antares** |
 
 The rest is the floor. While it corrects, the read wanders up to a period
 above it (mean ~ rest + T/2): 6.2 ms at A4, 8.5 ms at A3, 12.9 at A2, 15.3 at
@@ -185,12 +186,19 @@ the latest of the three over most of the range.
   pays that in full at about 290 Hz and nowhere else. This is why the lag
   tracks the period, and why Fuji cleared while Failure did not.
 
-  Of the two routes, **only prediction is still open**: delay cannot pay for
-  it, because the rule is already broken at the bottom of the range. Note for
-  whoever takes it that Waves solves the same problem by resting one period
-  back (its in-tune delay is T + 1.26 ms) and Antares by having a detector
-  whose lag is a constant 4.4 ms -- copying Antares' constant does not work
-  for a detector that is not Antares'.
+  **Mostly closed, 2026-09-12**, by the route that costs no latency:
+  `CorrectionLaw` carries the estimate forward to where the engine reads
+  (`Detector::kAnalysisLagPeriods`, `CorrectionSettings::readDelaySamples`).
+  Mean lag 3.19 -> 0.71 ms, residue 3.35 -> 1.24 c, which meets Antares' 1.30.
+  What is left is the worst case at A2, 1.97 ms against Antares' 1.66; every
+  other vibrato is inside half a millisecond. On the shoot-out takes it costs
+  nothing: Failure 44 -> 41 splices at 0 ms, dropouts and flips unchanged,
+  Fuji 23 -> 22 splices and 39 -> 31 flips. **Not yet heard.**
+
+  Note for whoever takes the rest of it that Waves solves the same problem by
+  resting one period back (its in-tune delay is T + 1.26 ms) and Antares by
+  having a detector whose lag is a constant 4.4 ms -- copying Antares'
+  constant does not work for a detector that is not Antares'.
 - **The hiccups heard in 0.1** (Frosty's blind test, 2026-09-11: BMO last in
   four of six groups -- "pops and clicks", "hunting for pitch", "skipping /
   dropouts in the pitch hold", "weak at the end of each phrase"). The worst
