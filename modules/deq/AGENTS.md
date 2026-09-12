@@ -203,11 +203,17 @@ A redesign costs 135 ns (bell) to 300 ns (shelf) with the engine's prebuilt
   it to follow the dynamics too is a listening question; the argument against
   (it would undo a de-esser) is in `dsp/AutoGain.h`.
 
-**Serial, and the listening test.** Chosen from `spec/topology-options.md`,
-where it is the only option whose response is its band curves added in dB,
-and the only one in which a low cut still cuts under an overlapping boost.
-Parallel stays in `DspCore` only so `measure_deq render` can A/B it; delete
-it and its tests when the test confirms serial. Serial has one property worth
+**Serial, confirmed by ear 2026-09-12.** Chosen from
+`spec/topology-options.md`, where it is the only option whose response is its
+band curves added in dB, and the only one in which a low cut still cuts under
+an overlapping boost — then held to 57 blind pairs across seven sources
+(`testing-notes/deq-blind-2026-09-11.md`). Serial stands, **with no
+user-facing switch**: spec C4 is revised, and `decisions.md` has the reasoning.
+
+Parallel stays in `DspCore` for `measure_deq render`, which is how any of this
+was measurable. The old note here said to delete it once serial was confirmed;
+that is now a separate call, because deleting it ends the ability to A/B the
+question again, and `--match` is built on it. Serial has one property worth
 knowing: **dynamic bands commute only while still.** Static bands are
 order-independent to −300 dB. A dynamic band's moving coefficients do not
 commute with its neighbours', so reversing the band order differs by −86 to

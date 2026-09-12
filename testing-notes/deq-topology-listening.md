@@ -1,5 +1,9 @@
 # BMO DEQ — serial vs parallel, by ear
 
+**The house protocol for a pass like this is `blind-listening-protocol.md`.**
+This file is the argument and the cases; that one is how a blind round is run,
+what to check before anyone listens, and the shape of the answers sheet.
+
 **What this settles:** whether serial band summing, chosen on 2026-09-10 from the
 measurements in `modules/deq/spec/topology-options.md`, holds up when listened
 to. It runs **before there is a plugin**: `measure_deq render` pushes any WAV
