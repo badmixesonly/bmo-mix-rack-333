@@ -27,14 +27,14 @@ namespace bmo::tune
     to the host as 0; while correcting it wanders up to a period later still.
     This is the Waves contract (spec §2, §0.1).
 
-    KNOWN BROKEN (2026-09-11 review): `hi = rest + T` is an absolute delay of
-    rest + T, so at the bottom of the range the read runs later than Waves
-    Tune Real-Time, which the latency rule forbids -- 15.3 ms at E2 against
-    the 10.62 ms ceiling, on 54 cells of bmo-tune-latency's table. Waves
-    itself does not do this: its correcting delay (7.33-10.62 ms) barely
-    exceeds its in-tune delay (5.93-10.50). The upper bound wants to be an
-    excursion above the rest, not a whole period on top of an already-4 ms
-    rest. testing-notes/tune-latency-review-2026-09-11.md.
+    KNOWN BROKEN (2026-09-11 review): a flat rest plus `hi = rest + T` is an
+    absolute delay that does not track the note, where Waves Tune Real-Time's
+    is nearly proportional to it (1.68 ms per ms of period, and only 0.71 ms
+    at A5). So the two cross at about D#3 and BMO is later than Waves above
+    it -- by 3.90 ms at A5 -- which the latency rule forbids.
+    HardTuneTests' per-note check fails on it. The upper bound wants to be an
+    excursion about a rest that tracks the period, not a whole period on top
+    of a constant. testing-notes/tune-latency-review-2026-09-11.md.
 
     Whenever the input is unvoiced and correction has faded out, the engine
     homes back to its rest position with an equal-power crossfade (the two

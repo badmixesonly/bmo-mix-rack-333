@@ -339,7 +339,12 @@ scope: anything that changes what a control *does*.
 
 ### `bmo-tune-work` — Tune's own testing and finish
 
-Runs parallel to all of it. Start from `testing-notes/tune-handoff.md`. Open:
-the round-three blind set, the neighbour-note flips at vibrato 0, detector
-jumps on scoops, octave-down at creaky phrase ends, voicing dropouts, then the
-correction lag. The latency rule (10.62 ms) governs every change.
+Runs parallel to all of it. Start from `testing-notes/tune-handoff.md`, then
+`testing-notes/tune-latency-review-2026-09-11.md`, which revises what that
+handoff concluded about the 4 ms rest and leaves `tune_hardtune` red on a
+check BMO does not yet pass. Open: the correction lag and the per-note latency
+rule (one root cause), the round-three blind set, the neighbour-note flips at
+vibrato 0, detector jumps on scoops, octave-down at creaky phrase ends,
+voicing dropouts. The latency rule governs every change, and it is a curve --
+Waves' measured delay at each note, `references::ceilingMsAt` -- not the
+scalar 10.62 ms it was written as until 2026-09-11.

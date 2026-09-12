@@ -57,9 +57,10 @@ public:
         a period further while correcting, and says 0, as Waves does
         (LatencyContract.h).
 
-        That "period further" is over Waves' own ceiling below about D3:
-        15.3 ms at E2 against 10.62, on 54 cells of bmo-tune-latency's table.
-        testing-notes/tune-latency-review-2026-09-11.md. */
+        A flat rest against competitors whose delay tracks the note: BMO is
+        the least late of the three on a bass note and the latest on a high
+        one, over Waves from about D#3 upward -- 4.6 ms at A5 where Waves is
+        0.7. testing-notes/tune-latency-review-2026-09-11.md. */
     static constexpr int kReportedLatency = 0;
 
     /** Offline tools only: called once per sample with that sample's frame.

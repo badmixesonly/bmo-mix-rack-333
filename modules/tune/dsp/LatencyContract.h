@@ -72,10 +72,13 @@ namespace contract
             excursions; 35 -> 31 was the count asymptoting to that floor, not
             a benefit running out.
 
-        Neither route to fixing it is a change to this constant. Delay cannot
-        pay for it -- the rule is already broken at the bottom of the range
-        (see ClassicEngine's window). Predicting the pitch forward by the
-        estimate's age costs no latency and is the open work.
+        Neither route to fixing it is a change to this constant. A bigger
+        constant cannot pay for it: at A5 the latency rule allows 0.71 ms in
+        total and this rest alone is 4 ms (see ClassicEngine's window).
+        Predicting the pitch forward by the estimate's age costs no latency at
+        all, and is the only route that helps at the top of the range. A rest
+        that tracks the period -- which is what Waves does -- is still worth
+        doing for the bottom of it.
         testing-notes/tune-latency-review-2026-09-11.md. */
     inline constexpr double kLiveRestMs = 4.0;
 

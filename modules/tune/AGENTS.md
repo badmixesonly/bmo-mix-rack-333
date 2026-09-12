@@ -50,22 +50,26 @@ allocated, and the lime accent is in the accents table there.
 
 **A change is safe to take, as far as latency goes, so long as BMO Tune RT's
 true latency does not exceed Waves Tune Real-Time's measured true latency**
-(Frosty, 2026-09-11): **10.62 ms**, measured on AURORA, in
-`tools/tune/common/References.h` with its settings. The rule is written out in
-the root `AGENTS.md`, which is where the rest of the tree cites it.
-`tests/dsp/tune/HardTuneTests.cpp` enforces it in every ctest run, and
-`bmo-tune-latency` checks every semitone. A change may make BMO later, up to
-the ceiling, without asking -- say the new true latency and the headroom left
-in the commit body. The host is still told 0 either way. Re-measure the ceiling
-when Waves updates; `testing-notes/latency-and-lag-2026-09-11.md` has the
-commands.
+(Frosty, 2026-09-11). **The ceiling is a curve, not a number**: Waves' delay
+while correcting is nearly proportional to the period, 19.2 ms at E2 down to
+0.7 ms at A5, measured on AURORA and recorded per note in
+`tools/tune/common/References.h`. `references::ceilingMsAt (hz)` reads it off.
+The rule itself is written out in the root `AGENTS.md`, which is where the
+rest of the tree cites it. `tests/dsp/tune/HardTuneTests.cpp` enforces it in
+every ctest run, per note and worst-against-worst, and `bmo-tune-latency`
+checks every semitone. A change may make BMO later, up to the ceiling, without
+asking -- say the new figures and the headroom left in the commit body. The
+host is still told 0 either way.
 
-**BMO is over the ceiling today** and has been since the 4 ms rest landed in
-`31b30ef`: 54 cells of `bmo-tune-latency`'s table, worst 15.33 ms at E2
-against 10.62. It went unseen because both gates measured the wrong thing --
-the tool tested the *rest* delay, and the stimulus holds a correction only on
-A3 and D3. Both are fixed as of this commit and the tool now fails.
-`testing-notes/tune-latency-review-2026-09-11.md` has the finding and the two
+**BMO is over the ceiling today at the top of the range**, and has been since
+the 4 ms rest landed in `31b30ef`: a constant rest against a competitor whose
+delay tracks the note. The two cross at about D#3 -- BMO is comfortably under
+Waves below it, and over it above, by 3.90 ms at A5. It went unseen because
+both gates measured the wrong thing: the tool tested the *rest* delay against
+a scalar, and the stimulus held a correction only on A3 and D3, so a
+2.3-octave plugin was being judged through a five-semitone window. Both are
+fixed as of this commit and both now fail.
+`testing-notes/tune-latency-review-2026-09-11.md` has the finding and the
 routes out.
 
 BMO Tune RT's parameters (`params.h`) and its DSP (`dsp/`), JUCE-free. The
@@ -97,11 +101,12 @@ and what it measured.
   `TuneCore::kReportedLatency`). No parameter may move it -- a PDC change
   mid-session is a timing jump on the whole track. `bmo-tune-hostcheck`
   checks it on the built VST3.
-- **True latency no more than Waves Tune Real-Time's** -- the latency rule in
-  the root `AGENTS.md` (Frosty, 2026-09-11): 10.62 ms. Within that, a change
-  may make the audio later without asking. `HardTuneTests` checks it every
-  run and `bmo-tune-latency` sweeps the range. **Currently violated**: 15.33 ms
-  at E2, 54 cells over. This is the one invariant on this list that is known
+- **True latency no more than Waves Tune Real-Time's, at every note** -- the
+  latency rule in the root `AGENTS.md` (Frosty, 2026-09-11), held to Waves'
+  measured curve rather than a scalar. Within it, a change may make the audio
+  later without asking. `HardTuneTests` checks it every run and
+  `bmo-tune-latency` sweeps the range. **Currently violated** above about
+  D#3, by 3.90 ms at A5. This is the one invariant on this list that is known
   broken; it is open work, not licence to add more.
 - **The correction and the note always come from the same pitch.** See
   "the octave bug" below; this is the one that produced a +1200-cent glitch.
@@ -146,16 +151,20 @@ named; undoing one should fail that test.
 | THD+N, CLASSIC, +/-40 c on a sine | -76 dB | < -60 dB |
 | CPU, one core, 48 kHz / 128 | 0.9 % median, 1.2 % p99 (re-run 2026-09-11, CLASSIC only); +0.05 points with guard 4, same day, side by side | < 1.5 % |
 | Reported latency, every range | 0 samples; rest delay 4.000 ms in every cell (re-run 2026-09-11) | Live: 0 |
-| True latency, reference stimulus (2026-09-11) | 6.53 ms worst (in tune 4.20-4.49, correcting 3.84-6.53); Antares 6.49, Waves 10.62 | <= Waves (the latency rule) |
-| True latency, **worst over the range** (`bmo-tune-latency`, 2026-09-11) | **15.33 ms at E2; 54 cells over the ceiling** across Auto, Bass, Instrument and Alto/Tenor | **FAILS** <= Waves (the latency rule) |
+| True latency, reference stimulus, worst (2026-09-11) | 9.18 ms (in tune 4.20-4.49, correcting 3.88-9.18); Antares 10.74, Waves 19.22 -- all three at the stimulus' lowest note | <= Waves (the latency rule) |
+| True latency, **per note** (2026-09-11) | E2 9.18, A2 8.03, D3 3.88, A3 5.97, **A4 5.01, A5 4.61**; Waves 19.22 / 13.80 / 10.09 / 7.05 / **3.82 / 0.71** | **FAILS** <= Waves above ~D#3, by 3.90 ms at A5 |
 | Correction lag at 0 ms, vibrato flattened (2026-09-11) | 3.19 ms mean, 0.81 (A3) to 6.07 (A2): one cycle less the 4 ms rest; Antares -0.24 mean, 1.66 worst | as Antares (open) |
 
 The rest is the floor. While it corrects, the read wanders up to a period
 above it (mean ~ rest + T/2): 6.2 ms at A4, 8.5 ms at A3, 12.9 at A2, 15.3 at
-E2. The stimulus figure of 6.53 ms is **not** the worst case -- the stimulus
-holds a correction only on A3 and D3, and reads a correlation peak rather than
-a maximum. The per-semitone sweep is the worst, and it is over the ceiling on
-54 cells. `testing-notes/tune-latency-review-2026-09-11.md`.
+E2 on the per-semitone sweep, which is the strict worst.
+
+**Read the worst-case row per note, never as a scalar.** All three tuners'
+worst figures come from the stimulus' lowest note, which is where a
+period-proportional delay costs most and BMO's constant costs least: that
+comparison makes BMO look like the least late of the three while it is in fact
+the latest of the three over most of the range.
+`testing-notes/tune-latency-review-2026-09-11.md`.
 
 ## Open, and not for one session to settle
 

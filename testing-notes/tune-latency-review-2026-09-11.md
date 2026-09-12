@@ -102,44 +102,67 @@ allows"*. `31b30ef` did delay the audio, but as a constant, and was written up
 as a splice fix, so nothing downstream checked it against what it was actually
 doing and `hardtune_target` stayed off.
 
-## 3. The latency rule is broken today, and both gates missed it
+## 3. The latency rule's ceiling is a curve, and BMO is over it at the top
 
-`bmo-tune-latency --range all` at `9b18577`, correcting worst per cell against
-Waves' 10.62 ms:
-
-| range | cells over | worst |
-|---|---:|---|
-| Auto | 11 of 50 | 15.33 ms at E2 |
-| Bass | 18 of 39 | 15.33 ms at E2 |
-| Instrument | 18 of 61 | 15.33 ms at E2 |
-| Alto/Tenor | 7 of 40 | 13.44 ms at G#2 |
-| Soprano | 0 of 38 | — |
-
-**54 cells over**, including A2 and D3 — the two notes the stimulus is scored
-on. At E2 even the correcting *mean* is 11.33 ms. Why neither gate saw it:
+Two gates were meant to hold this rule, and neither did:
 
 - **`bmo-tune-latency` tested the wrong column.** It compared `row.restMs` —
   the *in-tune* delay, 4.00 ms in every cell — against
   `kWaves.trueLatencyMs`, which `References.h` documents as "worst delay, in
   tune **or** correcting". It computed `worstMs` and never tested it, so it
-  printed `every cell's rest delay is under the ceiling` and exited 0. Fixed
-  in this commit; it now fails.
-- **The stimulus has no corrected note below D3.** `HardTuneTests` reads
-  6.53 ms because the only marked (held off-pitch) segments are A3 and D3, and
-  the envelope cross-correlation reads a correlation peak over a held note
-  rather than a maximum. Fixed in this commit by adding a marked A2.
+  printed `every cell's rest delay is under the ceiling` and exited 0.
+- **The stimulus held a correction only on A3 and D3.** `HardTuneTests` read
+  6.53 ms for a 2.3-octave plugin through a five-semitone window.
 
-**The cause is `hi = rest + T`** in `ClassicEngine::process`: an absolute
-delay of rest plus a whole period, on a rest that is already 4 ms. Waves does
-not do this — its correcting delay (7.33–10.62) barely exceeds its in-tune
-delay (5.93–10.50). The upper bound wants to be an excursion above the rest,
-not a period on top of it.
+**A correction to the first version of this note.** Fixing the first gate
+alone, and holding every cell to Waves' 10.62 ms, reported 54 cells over at
+the *bottom* of the range — worst 15.33 ms at E2. That was wrong, and wrong
+for the reason this note had already given two paragraphs earlier: 10.62 ms
+is a scalar, and what it bounds is pitch-dependent for every tuner in the
+comparison. It is Waves' figure **at A2**. Comparing BMO's low notes against
+it is not the rule.
+
+Measured properly — marked segments at E2, A2, D3, A3, A4, A5, all three
+tuners through the same stimulus, same code, delay while correcting:
+
+| note | T (ms) | **BMO** | Antares | **Waves** |
+|---|---:|---:|---:|---:|
+| E2 | 12.13 | 9.18 | 10.74 | **19.22** |
+| A2 | 9.09 | 8.03 | 8.06 | 13.80 |
+| D3 | 6.81 | 3.88 | 5.92 | 10.09 |
+| A3 | 4.55 | 5.97 | 5.49 | 7.05 |
+| A4 | 2.27 | **5.01** | 3.59 | **3.82** |
+| A5 | 1.14 | **4.61** | 2.96 | **0.71** |
+
+**Waves' delay is 1.68 ms per ms of period**, intercept −1.2 — almost purely
+proportional, with essentially no fixed floor (0.71 ms at A5). BMO's is a
+constant 4 ms plus its excursion. So the two cross, at about **D#3**: BMO is
+comfortably under Waves below it, and over it above, by **3.90 ms at A5**.
+178 cells of the sweep, all at the top of the range — the exact inverse of
+what the scalar said.
+
+Against Antares the same shape: BMO is under at E2, A2 and D3, over at A3,
+A4 and A5.
+
+Worst against worst, BMO is still the least late of the three (9.18 against
+Antares' 10.74 and Waves' 19.22) — but that comparison is dominated by the
+lowest note in the stimulus and says nothing about the rest of the range. It
+is kept as a check because it is the rule as written; the per-note check is
+the one that means anything, and it fails.
+
+**The cause is the same constant, plus `hi = rest + T`** in
+`ClassicEngine::process`: an absolute delay of rest plus a whole period, on a
+rest that is already 4 ms. At A5 that is 4 ms of rest where Waves spends 0.7.
 
 ## What this means for the fix
 
-**The delay route is dead.** There is no headroom to spend at the bottom of
-the range; there is a deficit. Aligning by delay alone would need rest ~ 1.07 x
-T — 9.7 ms at A2, 13.4 ms at E2 — before the window's own excursion is added.
+**The delay route is not simply "spend the headroom".** Aligning by delay
+alone needs rest ~ 1.07 x T: 9.7 ms at A2, 13.0 ms at E2, but only 1.2 ms at
+A5. That is a rest proportional to the period — which is what Waves does, and
+under Waves' curve there is room for it at the bottom of the range. What there
+is no room for is the *constant*: at A5 the rule allows 0.71 ms and the rest
+alone is 4 ms. So the same change has to make the rest track the period in
+both directions, down at the top of the range as well as up at the bottom.
 
 I tried it anyway, to price it: `rest = 1.14 x T` with a +/- T/2 window took
 the mean lag from 3.19 to **0.54 ms** and the true latency to **13.44 ms**,
@@ -154,35 +177,50 @@ history. In that run the in-tune delay at D3, E3 and A3 never moved off
 Failure is denser, so the pointer rarely re-homes and sits at an arbitrary
 offset for whole phrases.
 
-**Prediction is the route that is left.** The analysis lag is ~1.07 x T and
-known at run time, so `CorrectionLaw` can extrapolate `pitchIn` forward by it
-at no latency cost. Not started; it needs a failing test and then Frosty's
-ears, as everything here does.
+**Prediction is the cheapest route, and it is the only one that helps at the
+top of the range.** The analysis lag is ~1.07 x T and known at run time, so
+`CorrectionLaw` can extrapolate `pitchIn` forward by it at no latency cost at
+all — which is the only kind of fix available at A5, where the rule allows
+0.71 ms in total. Not started; it needs a failing test and then Frosty's ears,
+as everything here does.
 
-**And the rule itself needs settling.** The ceiling is a scalar, but what it
-bounds is pitch-dependent for every tuner in the comparison: Waves' own delay
-is T + 1.26 ms, and 10.62 ms is that evaluated at A2, the lowest note the
-stimulus holds. A change that beats Waves at every note can still fail a
-scalar taken at one. That is Frosty's call, not a session's.
+A period-proportional rest is still worth doing alongside it, for the bottom
+of the range and for the window: it is what Waves does, and `hi = rest + T`
+has to go whatever else happens.
+
+**The rule is now a curve** (`references::ceilingMsAt`), read off Waves'
+measured delay at each note and interpolated in the period. Two judgements in
+it are Frosty's, not a session's:
+
+- **Is "no later than Waves" meant per note, or worst against worst?** Both
+  are now checked. Per note is the one that catches anything; worst against
+  worst passes today with 10 ms to spare.
+- **Outside the measured span**, the curve extrapolates downward on the two
+  lowest points and is held flat above A5. Held flat downward instead, it
+  would invent violations below E2; extrapolated upward it goes negative.
 
 ## What this commit changes, and what it does not
 
 Changed: the documentation that was wrong (below), the `bmo-tune-latency`
-gate, the stimulus, and the `HardTuneTests` ratchet. **No DSP was touched.**
-The engine, the detector and the correction law are byte for byte as they were
-at `9b18577`.
+gate, the stimulus and its ruler, `References.h`, and the `HardTuneTests`
+ratchet plus the new per-note gate. **No DSP was touched.** The engine, the
+detector and the correction law are byte for byte as they were at `9b18577`.
+
+`ctest`: 13 of 14 pass. `tune_hardtune` is red on the per-note latency rule,
+which is the point of it.
 
 Corrected claims, all of which had gone stale when `31b30ef` landed:
 
 | where | said | is |
 |---|---|---|
-| `README.md` | costs 0.4 ms; 3.8 ms at worst; "the least late of the three tuners" | 4.0 ms; 6.53 ms on the stimulus; **later than Antares' 6.49** |
+| `README.md` | costs 0.4 ms; 3.8 ms at worst; "the least late of the three tuners" | 4.0 ms; 9.18 ms on the stimulus; least late worst-against-worst, **later than both above A3** |
 | `ClassicEngine.h` | rests 19 samples, 0.4 ms | 192 samples, 4.0 ms |
 | `TuneCore.h` | runs 0.4 ms behind at rest | 4.0 ms |
 | `modules/tune/AGENTS.md` | Live floor 0.40 ms, meets spec's <= 1.5 ms | 4.00 ms, **fails** that gate |
-| `modules/tune/AGENTS.md` | true latency 3.82 ms; lag 6.22 ms mean | 6.53 ms; 3.19 ms mean |
+| `modules/tune/AGENTS.md` | true latency 3.82 ms; lag 6.22 ms mean | 9.18 ms; 3.19 ms mean |
 | `modules/tune/AGENTS.md` | `bmo-tune-latency` "checks it per semitone" | it checked the rest, not the rule |
 | root `AGENTS.md` | (cited by three files as holding the latency rule) | did not mention it at all; now does |
+| `References.h` | Antares 6.49 ms, Waves 10.62 ms true latency | 10.74 and 19.22, on a stimulus that reaches the low notes |
 
 Minor, also corrected: `LatencyContract.h` said 35 splices at 4 ms where the
 handoff says 38, for the same configuration; and "every voice cell resting at
@@ -191,11 +229,16 @@ takes are, `liveRestSamples` gives 176 samples = 3.991 ms.
 
 ## Pick up here
 
-1. **Prediction**, per section "What this means for the fix". Failing test
-   first (`hardtune_target` is already the shape of it), then ears.
-2. **Bound the window** so the correcting delay stops exceeding the rest by a
-   whole period. This is what clears the 54 cells, and it is separable from
-   the alignment work — do it first, since the rule is broken now.
-3. **Decide whether the ceiling is a scalar or a curve.** Frosty's call.
+1. **Prediction**, per "What this means for the fix". It is the only route
+   that helps at the top of the range, and it costs no latency. Failing tests
+   are in place for both halves: `hardtune`'s per-note latency rule and
+   `hardtune_target`'s lag and residue. Then Frosty's ears.
+2. **Bound the window.** `hi = rest + T` is an absolute delay of rest plus a
+   period; Waves' correcting delay barely exceeds its own in-tune delay. This
+   is separable from the alignment work and can go first.
+3. **Two calls for Frosty on the rule**, per "The rule is now a curve": per
+   note or worst against worst, and what happens outside the measured span.
 4. **The 4 ms rest has still never been felt.** Unchanged from the handoff:
    the blind sets align it away and the installed VST3 on AURORA is 0.1.
+5. **Waves across block sizes** is still open from the handoff — measured at
+   128 and 2048 only, and the whole ceiling curve is built on it.

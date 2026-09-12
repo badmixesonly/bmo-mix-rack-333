@@ -69,28 +69,33 @@ add a parameter at the **end** of `specs()`, never in the middle.
 ## The latency rule (BMO Tune RT)
 
 **BMO Tune RT's true latency may never exceed Waves Tune Real-Time's,
-measured the same way on the same stimulus** (Frosty, 2026-09-11). Waves'
-figure is **10.62 ms**, measured on AURORA and recorded with its settings in
-`tools/tune/common/References.h`. True latency is how late the audio really
-is, not what the plugin reports -- both report 0. Within the ceiling a change
-may make the audio later without asking; say the new figure and the headroom
-left in the commit body. Re-measure the ceiling when Waves updates;
-`testing-notes/latency-and-lag-2026-09-11.md` has the commands.
+measured the same way on the same stimulus** (Frosty, 2026-09-11). True
+latency is how late the audio really is, not what the plugin reports -- both
+report 0. Within the ceiling a change may make the audio later without
+asking; say the new figure and the headroom left in the commit body.
+Re-measure when Waves updates; `testing-notes/latency-and-lag-2026-09-11.md`
+has the commands.
+
+**The ceiling is a curve, not a number.** Waves' delay while correcting is
+nearly proportional to the period -- 19.2 ms at E2, 0.7 ms at A5, 1.68 ms per
+ms of period -- so a single figure is only that tuner's delay at one note and
+says nothing about any other. `references::ceilingMsAt (hz)` reads it off the
+measured curve in `tools/tune/common/References.h`; hold changes to that.
+Before 2026-09-11 the rule was the scalar 10.62 ms, which is Waves at A2, and
+it got the answer wrong in both directions.
 
 `modules/tune/AGENTS.md` and `modules/tune/README.md` cite this rule to this
 file, and until 2026-09-11 it was not written down anywhere but in the notes.
 
-**It is broken today**, at the bottom of the range: 54 cells of
-`bmo-tune-latency`'s table are over the ceiling, worst 15.3 ms at E2. Both
-gates missed it -- see `testing-notes/tune-latency-review-2026-09-11.md`.
-Two further things the rule needs settled, which that note argues:
-
-- **The ceiling is a scalar, but what it bounds is pitch-dependent for every
-  tuner in the comparison.** Waves' own delay is one period plus ~1.26 ms;
-  10.62 ms is that evaluated at A2, the lowest note the stimulus holds. A
-  change that beats Waves at every note can still fail a scalar taken at one.
-- **Measure the worst, not a mean.** The stimulus figure is a correlation
-  peak over a held note; the per-semitone sweep is the worst.
+**It is broken today**, at the top of the range. BMO's rest is a constant
+4 ms where Waves' delay tracks the note, so the two cross at about D#3: BMO is
+under Waves below it and over it above, by 3.90 ms at A5.
+`tests/dsp/tune/HardTuneTests.cpp` fails on it per note; the worst-against-
+worst form still passes and is kept as necessary but not sufficient. See
+`testing-notes/tune-latency-review-2026-09-11.md`, which also leaves two
+judgements open for Frosty: whether the rule is meant per note or worst
+against worst, and what the curve should do outside the notes it was measured
+at.
 
 ## How the pieces fit
 

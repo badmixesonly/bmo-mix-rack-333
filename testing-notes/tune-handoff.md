@@ -12,6 +12,28 @@ until the whole suite is finished and heard. The commits here are
 **unpushed** (Frosty's call: batch with DEQ, one CI run), and
 `origin/integration` has moved on again, so a merge comes before the push.
 
+> **Revised the same day by `testing-notes/tune-latency-review-2026-09-11.md`.
+> Read that alongside this.** It was asked for as a review of this handoff and
+> it changes two of its conclusions:
+>
+> - **The 4 ms rest is not a splice fix, it is an alignment.** What it does is
+>   move the engine's read toward where the detector's estimate actually
+>   refers to -- one period back. The splice curve it was chosen on had
+>   stopped responding; the lag it was read as incidentally improving is the
+>   thing it was really doing. A constant pays that debt at about 290 Hz and
+>   nowhere else, which is why the lag tracks the period, and why Fuji cleared
+>   while Failure did not.
+> - **The latency rule is a curve and BMO is over it above D#3.** Waves' delay
+>   is proportional to the note; BMO's rest is a constant. "6.53 ms against
+>   Waves' 10.62 ms ceiling, level with Antares' 6.49" below is a comparison
+>   of three numbers all taken at one note, and it flatters BMO: read per
+>   note, BMO is the latest of the three over most of the range. The stimulus
+>   and both gates have been fixed; `tune_hardtune` is red on it, by design.
+>
+> Nothing in the numbers below was wrong as measured -- the tables stand.
+> What changed is what they mean, and the 38 remaining Failure splices are now
+> expected not to yield to more window.
+
 ## What happened today, in order
 
 | | what | commit |

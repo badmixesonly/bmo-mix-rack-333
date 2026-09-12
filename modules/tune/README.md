@@ -42,21 +42,20 @@ It reports zero to the host and costs 4.0 ms while it is not correcting.
 While it corrects, it runs up to one cycle of the note later still. That is
 the only mode: it is what a singer monitoring through the plugin needs.
 
-Measured the same way on the same test file, it sits between the two tuners
-it is compared with: 6.5 ms on the reference stimulus, level with Antares
-Auto-Tune Artist's 6.5 ms and inside Waves Tune Real-Time's 10.6 ms -- and
-neither of those tells the host what it really costs either. The rule for
+Measured the same way on the same test file, its worst is 9.2 ms, against
+Antares Auto-Tune Artist's 10.7 ms and Waves Tune Real-Time's 19.2 ms --
+and neither of those tells the host what it really costs either. The rule for
 changes: BMO may never be later than Waves (the root `AGENTS.md`, "The
 latency rule").
 
-**That rule is broken at the bottom of the range today, and the figure above
-is not the worst case.** The stimulus only holds a correction on A3 and D3,
-so 6.5 ms is what the low notes are not being measured at;
-`bmo-tune-latency` sweeps every semitone and finds the read running 15.3 ms
-late at E2, with 54 cells across four ranges over Waves' ceiling. See
-`testing-notes/tune-latency-review-2026-09-11.md`. Until that is fixed, this
-section describes the contract the plugin is meant to keep, not the one it
-keeps.
+**Read note by note, that flatters it.** Those three figures are all taken at
+the lowest note in the test, which is where a period-proportional delay costs
+the most and BMO's flat 4 ms costs the least. The other two tuners' delays
+track the note; BMO's does not. So BMO is the least late of the three on a
+bass note and the latest of the three on a high one -- 4.6 ms at A5 where
+Waves is 0.7. It is over Waves from about D#3 upward, which is most of the
+range, and `tests/dsp/tune/HardTuneTests.cpp` fails on it today. See
+`testing-notes/tune-latency-review-2026-09-11.md`.
 
 ## CPU
 
