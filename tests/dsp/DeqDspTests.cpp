@@ -12,6 +12,7 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace bmo::deq;
@@ -350,6 +351,35 @@ namespace
     //==========================================================================
     void testCoefficientIntegrity()
     {
+        // A low cut's zeros are a double zero at DC -- two coincident roots on
+        // the unit circle -- and that is the case a root-radius minimum-phase
+        // test cannot decide. The discriminant of a double root is rounding
+        // noise, and its square root magnifies that noise to about 1e-8 in the
+        // radius. On macOS the noise came out non-zero (clang contracts
+        // b1*b1 - 4*b0*b2 into an fma; MSVC does not), the low cut's own fit
+        // was rejected as not minimum phase, Design.cpp fell back to mapped
+        // zeros, and T2's low-cut ceilings went from 1.793/1.607 to
+        // 3.313/2.404 -- on macOS alone. Fork run 34657686217.
+        for (double k : { 1.0e-3, 0.25, 1.0, 1.0e3 })
+        {
+            const auto scale = "k=" + std::to_string (k);
+            check (Biquad { k, -2.0 * k, k, 0.0, 0.0 }.isMinimumPhase(),
+                   "T3: a double zero on the unit circle is minimum phase, " + scale);
+
+            // Perturbed so the two roots are genuinely inside, by a margin far
+            // smaller than the noise a root test would read as being outside.
+            for (const auto& e : { std::pair { 1.0e-16, "1e-16" }, { 1.0e-15, "1e-15" },
+                                    { 1.0e-13, "1e-13" }, { 1.0e-12, "1e-12" } })
+                check (Biquad { k * (1.0 + e.first), -2.0 * k, k * (1.0 - e.first), 0.0, 0.0 }.isMinimumPhase(),
+                       "T3: zeros just inside the circle are minimum phase, " + scale
+                       + " eps=" + e.second);
+
+            // Still rejected when a zero is really outside: the product of the
+            // roots is 1 + 1e-3 here, which no tolerance should swallow.
+            check (! (Biquad { k, -2.0 * k, k * 1.001, 0.0, 0.0 }.isMinimumPhase()),
+                   "T3: a zero outside the circle is not minimum phase, " + scale);
+        }
+
         // The pole invariant, stated against the prototype's own poles:
         // a2 = e^(-(d1/d2)/Fs), the product of the two mapped poles. The spec
         // writes it as e^(-w0/Q) with the knob values, which is only true of

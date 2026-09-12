@@ -106,6 +106,33 @@ Keep it that way.
 | Every band filters M and S, not L and R | H(L) = H(M) + H(S), so one filter pair gives both the L/R and M/S contributions; the M/S blend is exact at every value with no warm-up | T6 blend sweep reads back continuous and monotone |
 | tau time constants | BMO Opto already uses them (`coeffFor`); one suite, one convention | T5 attack within 5 % |
 
+
+### The low cut's zeros sit on the circle
+
+A low cut is fitted with its two zeros pinned together at DC, so they are a
+double root **on** the unit circle, not inside it. Anything that asks "is this
+minimum phase?" by computing root radii cannot answer that reliably: the
+discriminant `b1^2 - 4 b0 b2` of a double root is nothing but rounding noise,
+and taking its square root magnifies that noise to about 1e-8 in the radius --
+larger than any sane tolerance. So the answer came down to how one expression
+happened to round, and that differs between compilers.
+
+It cost a day on 2026-09-11. `deq_dsp` passed on Windows and Linux and failed
+on macOS alone, in T2's low-cut ceilings: 3.313 and 2.404 against limits of
+1.89 and 1.69, where Windows measured 1.793 and 1.607. Nothing was wrong with
+the design. clang contracts `b1*b1 - 4.0*b0*b2` into an fma and MSVC does not,
+so on macOS the low cut's own fit was judged not minimum phase, and
+`designByLeastSquares` fell back to `mapZerosToo` -- a filter with the same
+zeros and poles but the gain matched at f0 instead of by least squares. That
+fallback is exactly 3.313/2.404, which is how the cause was pinned down.
+
+`Biquad::isMinimumPhase` is therefore written on the coefficients
+(Schur-Cohn: `|b2/b0| <= 1` and `|b1/b0| <= 1 + b2/b0`), the same shape of
+test `isStable()` makes on the poles. It is linear in the coefficients, so
+nothing cancels and every platform agrees. **Do not rewrite it in terms of
+roots**, and do not widen T2's ceilings to make a platform pass: a ceiling
+that moves is a design that changed.
+
 ## Where the spec was changed in the tests, and why
 
 Every one of these is argued with numbers in `spec/review-v0.1.md`.

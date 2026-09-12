@@ -43,16 +43,31 @@ struct Biquad
         return std::abs (a2) < 1.0 && std::abs (a1) < 1.0 + a2;
     }
 
-    /** Both zeros inside or on the unit circle, so 1/H is realisable. */
+    /** Both zeros inside or on the unit circle, so 1/H is realisable.
+
+        Schur-Cohn on the zeros -- the same shape of test isStable() makes on
+        the poles -- and deliberately not the root radii. A low cut's fitted
+        zeros are a double zero at DC: two coincident roots sitting exactly on
+        the circle. For coincident roots the discriminant b1^2 - 4 b0 b2 is
+        nothing but rounding noise, and taking its square root magnifies that
+        noise to around 1e-8 in the radius, which swamps any tolerance worth
+        having. A root test therefore accepted or rejected the low cut's own
+        fit according to how one expression happened to round, and that
+        differed between compilers. This form is linear in the coefficients,
+        so nothing cancels and every platform agrees. See
+        modules/deq/AGENTS.md, "The low cut's zeros sit on the circle".
+    */
     bool isMinimumPhase (double tolerance = 1.0e-9) const noexcept
     {
         if (b0 == 0.0)
             return false;
 
-        const auto disc = std::sqrt (std::complex<double> (b1 * b1 - 4.0 * b0 * b2, 0.0));
-        const auto r1 = std::abs ((-b1 + disc) / (2.0 * b0));
-        const auto r2 = std::abs ((-b1 - disc) / (2.0 * b0));
-        return r1 <= 1.0 + tolerance && r2 <= 1.0 + tolerance;
+        // z^2 + c1 z + c2, so the product of the roots is c2 and both are
+        // inside or on the circle exactly when |c2| <= 1 and |c1| <= 1 + c2.
+        const auto c1 = b1 / b0, c2 = b2 / b0;
+
+        return std::abs (c2) <= 1.0 + tolerance
+            && std::abs (c1) <= 1.0 + c2 + tolerance;
     }
 
     /** 1/H. The poles of the result are the zeros of this one, so it is only
