@@ -75,6 +75,14 @@ void DspCore::prepare (double sampleRate, int, int) noexcept
     rate = (std::isfinite (sampleRate) && sampleRate > 0.0) ? sampleRate : 48000.0;
     tickAlpha = std::exp (-(double) kControlInterval / (kSmoothingMs * 1.0e-3 * rate));
     grid = DesignGrid::make (rate);
+
+    // The analyser's window: about a third of a second, which holds four
+    // 8192-point frames at 44.1 kHz and leaves the display free to choose its
+    // own frame size and overlap. Allocated here, never on the audio thread,
+    // and written only while a panel is looking.
+    shared->pre.prepare ((int) (0.35 * rate));
+    shared->post.prepare ((int) (0.35 * rate));
+
     reset();
 }
 
@@ -225,6 +233,14 @@ void DspCore::processImpl (Sample* const* channels, int numChannels, int numSamp
     auto* right = stereo ? channels[1] : nullptr;
     const auto serial = current.topology == Topology::serial;
 
+    // The dry signal, before anything. Returns immediately unless a panel has
+    // asked for it, and touches no state the audio depends on.
+    shared->pre.write (channels, numChannels, numSamples);
+
+    // Read once, so a solo arriving mid-block cannot make a 4096-sample block
+    // differ from 4096 one-sample blocks. See kControlInterval.
+    const auto soloed = shared->solo.load (std::memory_order_relaxed);
+
     for (int n = 0; n < numSamples; ++n)
     {
         if (tickPhase == 0)
@@ -237,7 +253,7 @@ void DspCore::processImpl (Sample* const* channels, int numChannels, int numSamp
         const double xr = stereo ? (double) right[n] : xl;
         const auto dryM = 0.5 * (xl + xr), dryS = 0.5 * (xl - xr);
 
-        double yl = xl, yr = xr, accL = 0.0, accR = 0.0;
+        double yl = xl, yr = xr, accL = 0.0, accR = 0.0, soloL = 0.0, soloR = 0.0;
 
         for (int i = 0; i < kMaxBands; ++i)
         {
@@ -297,6 +313,11 @@ void DspCore::processImpl (Sample* const* channels, int numChannels, int numSamp
 
             if (serial) { yl += e * wl;   yr += e * wr; }
             else        { accL += e * wl; accR += e * wr; }
+
+            // This band on its own: what it adds or takes away, moving with
+            // its detector. A band that is off never reaches here, so soloing
+            // one is silence.
+            if (i == soloed) { soloL = e * wl; soloR = e * wr; }
         }
 
         if (! serial)
@@ -305,11 +326,21 @@ void DspCore::processImpl (Sample* const* channels, int numChannels, int numSamp
             yr = xr + accR;
         }
 
+        if (soloed >= 0)
+        {
+            yl = soloL;
+            yr = soloR;
+        }
+
         left[n] = (Sample) yl;
 
         if (stereo)
             right[n] = (Sample) yr;
     }
+
+    // What the module is putting out, solo included: the analyser draws what
+    // is being heard, not what would have been heard.
+    shared->post.write (channels, numChannels, numSamples);
 }
 
 void DspCore::process (float* const* channels, int numChannels, int numSamples) noexcept

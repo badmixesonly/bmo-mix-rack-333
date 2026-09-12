@@ -166,6 +166,158 @@ namespace
     //==========================================================================
     // T1 -- latency. The product claim; runs first.
     //==========================================================================
+    /** T-new: solo and the analyser tap, the two paths that are not
+        parameters. Both were added on 2026-09-12 (spec/decisions.md); the
+        claims worth protecting are that neither can change the sound and
+        neither can move the latency. */
+    void testSoloAndTap()
+    {
+        const Stereo in { pinkNoise (8000, -6.0), pinkNoise (8000, -6.0, 4242u) };
+
+        // -- Solo ------------------------------------------------------------
+        //
+        // Soloing does not take the band out of the chain: every band still
+        // runs, and solo only decides what leaves. So the exact claim is that
+        // the contributions add up -- the sum of every band soloed in turn is
+        // what the EQ did to the signal, whatever the topology.
+        //
+        // (An earlier version of this test asserted that solo equals the whole
+        // output minus the same EQ with that band switched off. That is only
+        // true in parallel: in serial, removing a band changes what every band
+        // after it sees, and the test failed by 0.12 -- correctly.)
+        for (auto topology : { Topology::serial, Topology::parallel })
+        {
+            Settings s;
+            s.topology = topology;
+            const auto label = topology == Topology::serial ? std::string ("serial") : std::string ("parallel");
+
+            const int used = 4;
+            for (int i = 0; i < used; ++i)
+            {
+                auto& b = s.bands[(size_t) i];
+                b.enabled = true;
+                b.shape = i == 0 ? Shape::lowShelf : (i == 3 ? Shape::highShelf : Shape::bell);
+                b.frequencyHz = 120.0 * std::pow (3.0, i * 0.8);
+                b.q = 0.7 + 0.6 * i;
+                b.gainDb = i % 2 ? 5.0 : -4.0;
+            }
+
+            // One of them dynamic, so the moving case is covered too.
+            s.bands[2].dynamics.enabled = true;
+            s.bands[2].dynamics.thresholdDb = -34.0;
+            s.bands[2].dynamics.ratio = 3.0;
+            s.bands[2].dynamics.rangeDb = -9.0;
+            s.bands[2].dynamics.attackMs = 2.0;
+            s.bands[2].dynamics.releaseMs = 60.0;
+
+            auto full = makeEngine (48000.0, s);
+            const auto whole = render (full, in, 256);
+
+            std::vector<double> sum (whole.l.size(), 0.0);
+
+            for (int band = 0; band < used; ++band)
+            {
+                auto one = makeEngine (48000.0, s);
+                one.setSolo (band);
+                const auto only = render (one, in, 256);
+                for (size_t i = 0; i < sum.size(); ++i) sum[i] += only.l[i];
+            }
+
+            double worst = 0.0;
+            for (size_t i = 0; i < sum.size(); ++i)
+                worst = std::max (worst, std::abs (sum[i] - (whole.l[i] - in.l[i])));
+
+            checkAtMost (worst, 1.0e-12, "T9: the soloed bands add up to what the EQ did, " + label);
+
+            // A band that is off contributes nothing, so soloing it is silence.
+            auto offSolo = s;
+            offSolo.bands[1].enabled = false;
+            auto quiet = makeEngine (48000.0, offSolo);
+            quiet.setSolo (1);
+            const auto nothing = render (quiet, in, 256);
+            checkAtMost (peakAbs (nothing.l), 1.0e-12, "T9: soloing a band that is off is silence, " + label);
+
+            // A band nobody configured, likewise.
+            auto never = makeEngine (48000.0, s);
+            never.setSolo (30);
+            const auto empty = render (never, in, 256);
+            checkAtMost (peakAbs (empty.l), 1.0e-12, "T9: soloing a band that was never set up is silence, " + label);
+
+            // -1 puts it back, bit for bit.
+            auto cleared = makeEngine (48000.0, s);
+            cleared.setSolo (2);
+            cleared.setSolo (-1);
+            const auto restored = render (cleared, in, 256);
+            double diff = 0.0;
+            for (size_t i = 0; i < whole.l.size(); ++i) diff = std::max (diff, std::abs (restored.l[i] - whole.l[i]));
+            checkAtMost (diff, 0.0, "T9: clearing solo restores the output exactly, " + label);
+        }
+
+        // Solo does not move the latency: the reported figure is a constant,
+        // and the first sample out is still the first sample in.
+        check (DspCore::latencySamples() == 0, "T9: latency is still 0 with solo available");
+
+        // Block-size invariance holds with a solo held down, which is what
+        // makes reading it once per block rather than per sample necessary.
+        {
+            auto s = bandsConfig (3);
+            auto ref = makeEngine (48000.0, s);
+            ref.setSolo (1);
+            const auto y0 = render (ref, in, 4096);
+
+            for (int block : { 1, 37, 512 })
+            {
+                auto e = makeEngine (48000.0, s);
+                e.setSolo (1);
+                const auto y = render (e, in, block);
+                double worst = 0.0;
+                for (size_t i = 0; i < y0.l.size(); ++i) worst = std::max (worst, std::abs (y.l[i] - y0.l[i]));
+                checkAtMost (worst, 0.0, "T9: block-size invariance holds under solo, block " + std::to_string (block));
+            }
+        }
+
+        // -- The analyser tap -------------------------------------------------
+        //
+        // The claim is that it cannot change the sound. Same engine, same
+        // input, tap off and tap on: the output has to be bit-identical.
+        {
+            auto s = bandsConfig (3);
+            auto silentTap = makeEngine (48000.0, s);
+            const auto without = render (silentTap, in, 512);
+
+            auto watched = makeEngine (48000.0, s);
+            watched.postTap().setEnabled (true);
+            watched.preTap().setEnabled (true);
+            const auto with = render (watched, in, 512);
+
+            double worst = 0.0;
+            for (size_t i = 0; i < without.l.size(); ++i) worst = std::max (worst, std::abs (with.l[i] - without.l[i]));
+            checkAtMost (worst, 0.0, "T9: a tap that is being read does not change the output");
+
+            // And it read something: the newest samples are the output's.
+            std::vector<float> window (1024, 0.0f);
+            const auto got = watched.postTap().read (window.data(), (int) window.size());
+            check (got == (int) window.size(), "T9: the post tap fills the window it is asked for");
+
+            double tapError = 0.0;
+            for (size_t i = 0; i < window.size(); ++i)
+            {
+                const auto at = with.l.size() - window.size() + i;
+                const auto expected = 0.5 * (with.l[at] + with.r[at]);
+                tapError = std::max (tapError, std::abs ((double) window[i] - expected));
+            }
+            checkAtMost (tapError, 1.0e-6, "T9: the post tap holds the mono sum of what was output");
+
+            // Nothing is written while no panel is looking.
+            auto closed = makeEngine (48000.0, s);
+            const auto ignored = render (closed, in, 512);
+            (void) ignored;
+            std::vector<float> empty (16, 1.0f);
+            check (closed.postTap().read (empty.data(), (int) empty.size()) == 0,
+                   "T9: a tap nobody enabled stays empty");
+        }
+    }
+
     void testLatency()
     {
         check (DspCore::latencySamples() == 0, "T1: reported latency is 0");
@@ -1051,6 +1203,7 @@ int main()
     testRobustness();
     testSerial();
     testTopologyBehaviour();
+    testSoloAndTap();
 
     if (failures == 0)
         std::cout << "deq_dsp: all passed\n";
