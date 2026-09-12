@@ -407,3 +407,75 @@ is a topology.** Every parallel preference above is reachable in serial by
 asking for less; none of the serial behaviours is reachable in parallel at
 all.
 
+
+---
+
+## Round two — the dynamics, level-matched (6 pairs)
+
+Frosty's condition for settling on serial: *serial only if the parallel
+preferences can be reached in serial by asking for less.* Measured on AURORA,
+2026-09-11:
+
+- **Tone: yes, comfortably.** `stacked-cuts-12`'s parallel result (−6.06 dB at
+  1 kHz) is matched by one serial band at −6.8 dB to within **0.76 dB**
+  anywhere in the spectrum; `stacked-boosts`'s +9.52 dB by one serial band at
+  +10.15 dB, within **0.63 dB**.
+- **Dynamics: the amount, yes; the movement, not quite.** Serial with a
+  smaller range lands on parallel's level exactly, but the *envelope* still
+  differs by up to **1.8–2.4 dB** momentarily, around the attack and release.
+  In parallel the static band's path keeps feeding through while the dynamic
+  band clamps, so the catch has a softer edge. No knob reproduces that.
+
+These six pairs are that residual, and nothing else. `measure_deq --match`
+reduced serial's range until the band an octave either side of the dynamic
+band sits at **the same level in both** — 0.06 dB apart at worst. So the
+question is no longer "which is doing more", it is **"does the way it moves
+sound better or worse?"**
+
+Seed 11, so the A/B assignment is fresh and unrelated to round one. Keys
+unopened.
+
+| source | case | serial's range | parallel's | band level matched to |
+|---|---|---|---|---|
+| m-vocal | `deess-dynamic` | −4.05 dB | −10 | 0.005 dB |
+| m-vocal | `tamer-dynamic` | −7.75 dB | −12 | 0.024 dB |
+| m-drums | `deess-dynamic` | −10.00 dB (no reduction needed) | −10 | 0.063 dB |
+| m-drums | `tamer-dynamic` | −5.45 dB | −12 | 0.000 dB |
+| m-mix | `deess-dynamic` | −5.54 dB | −10 | 0.003 dB |
+| m-mix | `tamer-dynamic` | −8.20 dB | −12 | 0.005 dB |
+
+**What to listen for:** not how much is being taken off — that is equal now —
+but *how* it comes off and goes back on. Pumping, a soft edge against an
+abrupt one, the first syllable or the first hit of a phrase, how the sound
+settles after.
+
+⚠ `m-mix` is the mastered mix again: monitoring down 6 dB.
+
+### m-vocal — deess-dynamic
+
+- **Different, which you prefer, what you heard:**
+
+### m-vocal — tamer-dynamic
+
+- **Different, which you prefer, what you heard:**
+
+### m-drums — deess-dynamic
+
+- **Different, which you prefer, what you heard:**
+
+### m-drums — tamer-dynamic
+
+- **Different, which you prefer, what you heard:**
+
+### m-mix — deess-dynamic
+
+- **Different, which you prefer, what you heard:**
+
+### m-mix — tamer-dynamic
+
+- **Different, which you prefer, what you heard:**
+
+### After the six
+
+- **Does the way it moves make a case for shipping both topologies?**
+  (no, serial only / yes, and for what):
