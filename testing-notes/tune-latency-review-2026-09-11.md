@@ -246,20 +246,65 @@ handoff says 38, for the same configuration; and "every voice cell resting at
 exactly 4.000 ms" holds at 48 kHz only — at 44.1 kHz, which both shoot-out
 takes are, `liveRestSamples` gives 176 samples = 3.991 ms.
 
+## What the prediction did (2026-09-12, AURORA)
+
+Built, measured, **not yet heard**. `CorrectionLaw` carries the estimate
+forward over (analysis lag − read delay), which costs no latency.
+
+| at retune 0 | before | after | Antares |
+|---|---:|---:|---:|
+| correction lag, mean | 3.19 ms | **0.71 ms** | −0.24 ms |
+| correction lag, worst | 6.07 ms (A2) | **1.97 ms** (A2) | 1.66 ms |
+| vibrato residue, mean | 3.35 c | **1.24 c** | 1.30 c |
+
+`hardtune_target`'s residue check passes for the first time. Its worst-lag
+check is the only thing left in that suite, and it is A2 alone — D3 reads
+−0.06 ms, E3 0.49, A3 0.42.
+
+On the shoot-out takes it costs nothing measurable:
+
+| | Failure 0 / 20 ms | Fuji 0 / 20 ms |
+|---|---|---|
+| splices | 44 → **41** / 38 → 38 | 23 → **22** / 15 → 16 |
+| flips back under 80 ms | 107 → 108 | 39 → **31** |
+| dropouts under 80 ms | 15 → 15 | 12 → 12 |
+
+CPU 0.934 % median at 48 kHz / 128, unchanged within noise.
+
+Four things about the shape of it, each of which cost a measurement and any
+of which someone could undo without noticing:
+
+- **The slope is a median of three differences.** A one-evaluation move is a
+  step or detector noise; predicting on it overshoots by what it stepped (a
+  40 cent step at retune 3 ms cut the measured 10-90 settling from 6.6 to
+  3.2 ms).
+- **It is extrapolated from the estimate it was measured at**, not the newest
+  one — a median returns a slope from ~1.5 hops back. Spending it as if it
+  were current costs 1.2 ms of worst-case lag at A2; adding a flat 1.5-hop
+  correction instead overshoots every vibrato into negative lag.
+- **A prediction that lands further than `predictMaxCents` from the estimate
+  is dropped, not clamped to it.** Clamped, it fires as an error rather than
+  a guard after a pitch move too small for `confirmPitch` to call a jump:
+  0.71 ms of mean lag became 1.94, and 1.24 c became 2.41.
+- **The smoother on top of the median is off**, because it only ever cost,
+  monotonically. The sweep is in `CorrectionSettings`.
+
 ## Pick up here
 
-1. **Prediction**, per "What this means for the fix". It is the only route
-   that helps at the top of the range, and it costs no latency. Failing tests
-   are in place for both halves: `hardtune`'s per-note latency rule and
-   `hardtune_target`'s lag and residue. Then Frosty's ears.
-2. **Bound the window.** `hi = rest + T` is an absolute delay of rest plus a
+1. **Hear it.** The prediction is in and measured (above) and has never been
+   listened to. That is the next thing, ahead of any more building: a round
+   five against Antares on both takes, at 0 and 20 ms.
+2. **The worst-case lag at A2**, 1.97 ms against Antares' 1.66 -- the last
+   check in `hardtune_target`. A2 is where the hop is longest, so the slope
+   is coarsest exactly where the most is being predicted.
+3. **Bound the window.** `hi = rest + T` is an absolute delay of rest plus a
    period; Waves' correcting delay barely exceeds its own in-tune delay. This
    is separable from the alignment work and can go first.
-3. **Bass and Instrument against the E2 floor** -- they declare 55 Hz and the
+4. **Bass and Instrument against the E2 floor** -- they declare 55 Hz and the
    rule now stops at E2. One of the two has to move; and the sweep's figures
    down there are transient-limited, so they need a longer held note before
    they mean anything.
-4. **The 4 ms rest has still never been felt.** Unchanged from the handoff:
+5. **The 4 ms rest has still never been felt.** Unchanged from the handoff:
    the blind sets align it away and the installed VST3 on AURORA is 0.1.
-5. **Waves across block sizes** is still open from the handoff — measured at
+6. **Waves across block sizes** is still open from the handoff — measured at
    128 and 2048 only, and the whole ceiling curve is built on it.
