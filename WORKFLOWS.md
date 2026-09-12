@@ -244,6 +244,11 @@ in progress on the same ref, so DEQ and Tune go through together: **whoever
 pushes Tune's branch dispatches once, on `integration`**, and that run is the
 one both machines install from.
 
+**This is a one-off, not a standing rule** (Frosty, 2026-09-12). Normally a
+branch dispatches its own run as soon as it is ready to be looked at. The
+batching here is only because DEQ and Tune are landing within hours of each
+other, and one 22-minute round trip beats two.
+
 Green locally on AURORA and waiting for that run — 6 of 6 DSP-only suites and
 14 of 14 full, in Release:
 
