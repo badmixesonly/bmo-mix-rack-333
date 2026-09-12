@@ -39,33 +39,56 @@ git submodule update --init libs/JUCE
 
 ## The order, and why it is this order
 
+**Frosty set the shape on 2026-09-11: finish DEQ and Tune on the fork, then
+one round of testing across every module -- look and sound -- and only then
+pull requests to Kevin.** Nothing reaches `kevkloud/bmo-mix-rack` until the
+suite is finished and heard, so `integration` is where the work lives until
+the end.
+
 ```
 main (Kevin's, mirrored on the fork)
  └── integration ─────────────────────────────────────────────┐
-      ├── add-bmo-deq        DEQ, plus the macOS fix          │  stage 1
-      ├── add-bmo-tune       Tune, in the repo not the rack   │  (merged in)
+      ├── add-bmo-deq        DEQ, plus the macOS fix          │  done
+      ├── add-bmo-tune       Tune, in the repo not the rack   │  done
       │
-      ├── deq-topology       serial vs parallel: a decision   │  stage 2
+      │  STAGE 1 -- finish the two new products
+      ├── deq-topology       serial vs parallel, then the     │  parallel;
+      │                      rest of DEQ's open list          │  ears at the
+      ├── bmo-tune-work      the hiccups, then the lag        │  end of each
+      │
+      │  STAGE 2 -- the DSP work on the older modules
       ├── ceq-latency        BMO CEQ's latency work           │  parallel,
       ├── opto-high-gr       behaviour at high reduction      │  DSP only
       │
-      └── ui-pass            everything a listener sees       │  stage 3
-           ├── dim-controls  Dimension's controls audit       │  stage 4
-           ├── sat-voicing   the voicing bell, by ear         │  parallel,
-           └── (the listening passes for the above)           │  ears
+      │  STAGE 3 -- one pass over everything a listener sees
+      └── ui-pass            layout, colour, controls, and    │  alone
+                             the BMO CEQ rename               │
 
-bmo-tune-work      off integration, parallel to all of it, all the way through
+   STAGE 4 -- one build, one round of testing: every module, look and sound
+   STAGE 5 -- pull requests to Kevin, one per piece, opened by Frosty
 ```
 
-**Stage 2 comes before the UI pass, not after it.** Anything that changes
-*which controls exist* forces the panel to be laid out twice. Each item below
-says whether it can.
+**Stage 1 before stage 3.** DEQ's topology answer decides whether DEQ's panel
+gains a control, and Tune's remaining work can still move what its panel
+shows. Laying either panel out first means laying it out twice.
 
-**Stage 4 comes after it** for the opposite reason: a listening pass should
-happen on the build that ships, or it gets done twice.
+**Stage 3 before stage 4.** A listening pass belongs on the build that ships.
+Testing before the UI pass means testing twice.
+
+**Stage 5 last, and that is a change.** An earlier draft of this file had each
+piece going to Kevin as it became ready. It doesn't: the suite is finished and
+tested here first. Two consequences worth knowing --
+
+- Branches off `integration` carry DEQ and Tune with them, so a pull request
+  from one would drag both in. At stage 5 each piece is rebased onto `main`
+  and sent on its own, in the order DEQ, Tune, then the UI pass.
+- The fork's `main` still tracks Kevin's exactly. Keep it that way: it is what
+  makes those rebases possible.
 
 **The listening and the DSP measuring are different things.** Measuring needs
-no UI and can start at stage 2. Ears want the finished panel.
+no UI and happens inside stages 1 and 2. Ears want the finished panel, which
+is stage 4 -- except where a decision is gated on ears, like DEQ's topology,
+and there the rendering is prepared early and only the listening waits.
 
 ---
 
@@ -100,13 +123,19 @@ where they were open questions.
   strings over a `Mode` parameter whose choices are `Tele` and `Stressed`.
   Renaming a button is free; renaming a choice is not.
 
-### So the UI pass is cleared to start, for everything but DEQ's panel
+### What that means for the UI pass
 
-Six panels are settled: BMO CEQ, Saturator, Util, Opto, Dimension and Tune,
-plus the shared work -- `core/ui` tokens, the `utilGain` recolour, derived
-tokens, the contrast and text-fit assertions, and the CEQ rename. DEQ takes
-the shared token and colour work with everything else; only its control layout
-waits, because a topology switch would add a control to that panel.
+Four panels are fully settled by these answers -- Saturator, Util, Opto and
+Dimension -- and BMO CEQ is settled too, since its oversampling cannot move
+without a schema event. The two that are not are the two being finished first:
+**DEQ**, whose panel gains a control if the blind test asks for a topology
+switch, and **Tune**, whose own work can still move what its panel shows.
+
+Which is the reason the order puts the UI pass at stage 3 rather than running
+it now: waiting costs nothing, and starting early costs two panels laid out
+twice. What can be done at any time is the shared work that no control set can
+invalidate -- `core/ui` tokens, the `utilGain` recolour, derived tokens, and
+the contrast and text-fit assertions from `docs/ui-workflow-brief.md`.
 
 ## Dependency audit
 
@@ -215,7 +244,39 @@ Jobs: **DSP** (Linux, seconds), **Each side alone** (Linux, the two switches),
 4. Tell Frosty. Merging into `integration`, and anything that reaches Kevin,
    is his.
 
+No pull request is opened along the way. Every branch ends in `integration`,
+and Kevin sees the work at stage 5, after the suite has been heard.
+
 ---
+
+
+## Stage 4 — the round of testing, look and sound
+
+One build, every module, on both machines. It happens once, after the UI pass,
+and it is the gate before anything reaches Kevin.
+
+- Build it in CI on `integration`, not locally, so both machines install the
+  same bytes: `gh workflow run build.yml --repo badmixesonly/bmo-mix-rack-333
+  --ref integration`, then the `BMO-Windows` and `BMO-macOS` artifacts.
+- Record the artifact's run id and each plugin's SHA-256 in the testing note,
+  and check the hashes again after the session. The DETUNE host checks were
+  once attributed to the wrong build for want of that.
+- The per-module checklists already exist and are what to work through:
+  `dim-testing-checklist.md`, `opto-testing-checklist.md`,
+  `deq-testing-checklist.md`, `saturator-voicing-retest.md`, and Tune's
+  handoff. What has no checklist yet -- BMO CEQ, BMO Util, the rack itself --
+  needs one written before the round, not during it.
+- **Look and sound are separate passes over the same build.** Render every
+  panel with `snapshot` and `bmo-tune-snapshot` in both appearances and read
+  them side by side; then listen. A panel fault found by eye costs nothing to
+  fix; the same fault found after a listening session costs the session.
+- Name the machine on every result.
+
+## Stage 5 — the pull requests
+
+Frosty opens them, in this order, each rebased onto `main` so it carries only
+its own work: **DEQ**, then **Tune**, then the **UI pass**. Kevin reviews each
+on its own. `WORKFLOWS.md` itself never goes: it is the fork's file.
 
 ## The workflows, one by one
 
@@ -266,8 +327,8 @@ build that ships.
 
 ### `ui-pass` — everything a listener sees
 
-The big one, and the one that has to be alone. **Cleared to start for every
-panel but DEQ's**, whose control layout waits on the topology answer. Read
+The big one, and the one that has to be alone. It runs at stage 3, after DEQ
+and Tune are finished, so every panel including DEQ's can be laid out once. Read
 `docs/ui-workflow-brief.md` and `testing-notes/ui-editor-handoff.md` first —
 45 commits of prior art, what was tried and thrown away, and the loop that
 makes this cheap. In scope: layout, colour and controls across every rack
