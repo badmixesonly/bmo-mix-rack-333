@@ -144,6 +144,63 @@ int main()
         }
     }
 
+    //== A splice lands on the waveform, not just a period away ================
+    {
+        // The engine jumps the read by a whole DETECTED period, trusting that
+        // one period away is the same waveform. It is, when the period is
+        // right. When it is not -- a few per cent out on a scoop, or a factor
+        // of two on an octave error -- the jump lands out of phase and steps
+        // the waveform, and that step is the pop.
+        //
+        // Frosty timestamped the pops he hears on Failure (2026-09-12): all
+        // seven were splices, but only 7 of 38 splices were audible, and the
+        // audible ones are the ones that landed badly. So this measures the
+        // landing, which is the thing, and not the count, which is not.
+        // testing-notes/tune-blind-2026-09-12.md.
+        //
+        // 2.0 x the true period is the control and must pass with no help at
+        // all: two whole cycles away is still the same waveform.
+        const auto trueHz = 150.0;
+        const auto truePeriod = fs / trueHz;
+
+        const auto run = [&] (double wrongBy)
+        {
+            ClassicEngine engine;
+            engine.prepare (fs, fs / 40.0);
+
+            sig::VoiceSettings v;
+            v.seed = 4242;
+            const auto x = sig::voice (sig::steady (trueHz, 1.5, fs), fs, v).samples;
+
+            // 60 cents sharp throughout, so the read drifts and has to splice
+            // over and over.
+            for (size_t i = 0; i < x.size(); ++i)
+                engine.process (x[i], 60.0, truePeriod * wrongBy, false);
+
+            report (label ("period %.2f x true: splices", wrongBy), (double) engine.spliceCount(), "");
+            report (label ("period %.2f x true: worst landing error", wrongBy), engine.worstSpliceMismatch(), "");
+            check (engine.spliceCount() > 0, label ("a correction with the period %.2f x true splices at all", wrongBy));
+            return engine.worstSpliceMismatch();
+        };
+
+        // What the engine promises: within half a period of the jump the
+        // period proposed, it finds where the waveform actually repeats.
+        // A period out by a few per cent -- a scoop, a jittery note -- is
+        // inside that, and 2.0 x is the control, two whole cycles away.
+        for (auto wrongBy : { 1.0, 1.03, 0.97, 2.0 })
+            check (run (wrongBy) < 0.01,
+                   label ("every splice lands on the waveform with the period %.2f x true", wrongBy));
+
+        // What it does not, and cannot: a period an OCTAVE out puts the jump
+        // half a true cycle away, and getting back needs a move of a whole
+        // detected period -- which is the reach that lets the shimmer pick a
+        // different cycle each time, and that thrashes (see bestJump). This
+        // belongs to the detector: on Failure, 15 of 38 splices sit within
+        // 50 ms of a note change of seven semitones or more, and those are
+        // the ones Frosty hears. Open, and measured here so it stays visible.
+        report ("period 0.50 x true (an octave error): worst landing error", run (0.5), "");
+    }
+
     //== Block-size invariance and determinism (T-1) ===========================
     {
         TuneParams p;
