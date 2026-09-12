@@ -43,14 +43,17 @@ public:
     /** Delay below which a read would need samples not yet written. */
     static constexpr int kFloor = contract::kFloor;
 
-    /** Where Live rests: two samples above the floor. Resting on the floor
-        itself meant any upward correction at all -- including the few
-        ten-thousandths of a cent of detector noise on an in-tune note --
-        spliced a whole period of delay in at the first voiced sample. Two
-        samples absorb a 0.001-cent drift for over a minute, and a real
-        +30-cent correction spends them in about a hundred samples, which
-        is what the splice is there for. */
-    static constexpr int kLiveRest = contract::kLiveRest;
+    /** Where Live rests at the prepared rate: contract::kLiveRestMs behind
+        the newest sample, and never nearer than two samples above the floor.
+
+        Resting on the floor itself meant any upward correction at all --
+        including the few ten-thousandths of a cent of detector noise on an
+        in-tune note -- spliced a whole period of delay in at the first voiced
+        sample. Two samples above it cured that and no more: the read still
+        had only about one period of room either way, and a correction held
+        against a singer who had moved spent it and spliced. Those were round
+        three's pops; LatencyContract.h has what each rest measured. */
+    int liveRest() const noexcept { return rest; }
 
     /** Allocates. `longestPeriod` is the largest period any pitch range can
         report, in samples. */
@@ -78,7 +81,8 @@ private:
 
     SincBank kernels;   // full band while aliases stay above 20 kHz; see SincBank
 
-    double lag = kLiveRest, ratio = 1.0, lastPeriod = 0.0;
+    int rest = contract::kLiveFloorRest;   // set by prepare(), from the rate
+    double lag = (double) contract::kLiveFloorRest, ratio = 1.0, lastPeriod = 0.0;
 
     // Crossfade state: the outgoing read and its progress.
     bool fading = false, fadeEqualPower = false;

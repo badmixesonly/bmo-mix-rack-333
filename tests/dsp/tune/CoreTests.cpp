@@ -85,7 +85,7 @@ int main()
         const auto x = sig::sine (c, fs, 0.8).samples;
         const auto y = render (x, p, fs);
 
-        const auto d = ClassicEngine::kLiveRest;
+        const auto d = contract::liveRestSamples (fs);
 
         // An "in-tune" A440 is detected a few ten-thousandths of a cent off,
         // so the engine really does apply that correction: over half a
@@ -98,7 +98,7 @@ int main()
             worst = std::max (worst, (double) std::abs (y[i] - x[i - (size_t) d]));
         report ("in-tune A440: worst deviation from the delayed input", 20.0 * std::log10 (worst + 1e-30), "dBFS");
         check (worst < 3.0e-3, "an in-tune A440 comes out as the input delayed by the Live rest delay, within -50 dBFS");
-        check (an::delayOf (x, y, 200) == d, "cross-correlation finds the same delay with correction enabled (T-5)");
+        check (an::delayOf (x, y, d + 64) == d, "cross-correlation finds the same delay with correction enabled (T-5)");
 
         TuneParams zero = p;
         zero.allowed = 0;

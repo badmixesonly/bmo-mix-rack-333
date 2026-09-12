@@ -23,7 +23,7 @@
     The check at the end is the latency rule (Frosty, 2026-09-11; AGENTS.md):
     no cell's rest delay may exceed Waves Tune Real-Time's measured true
     latency (tools/common/References.h). Until then the rule was that the rest
-    delay must equal ClassicEngine::kLiveRest; a change that moves the floor
+    delay must equal contract::liveRestSamples(); a change that moves the floor
     -- a lookahead, say -- is now allowed as long as it stays under the
     ceiling, and this still reports whether the floor is the documented one,
     so the manual's number is never quietly wrong. The whole-plugin form of
@@ -135,7 +135,7 @@ int main (int argc, char** argv)
     char line[512];
 
     const auto reported = TuneCore::kReportedLatency;
-    const auto expectedRestMs = 1000.0 * ClassicEngine::kLiveRest / fs;
+    const auto expectedRestMs = 1000.0 * contract::liveRestSamples (fs) / fs;
 
     for (auto r : ranges)
     {
