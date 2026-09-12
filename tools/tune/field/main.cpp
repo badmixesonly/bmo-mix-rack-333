@@ -122,19 +122,24 @@ int main (int argc, char** argv)
         wav::writeMono (outPath, y, fs);
 
     std::vector<Row> ev;
-    int splices = 0;
+    std::vector<int> evSplices;   // splices since the previous evaluation
+    int splices = 0, spliceRun = 0;
     for (const auto& r : col.rows)
     {
-        if (r.splice) ++splices;
-        if (r.evaluated) ev.push_back (r);
+        if (r.splice) { ++splices; ++spliceRun; }
+        if (r.evaluated) { ev.push_back (r); evSplices.push_back (spliceRun); spliceRun = 0; }
     }
 
     if (! csvPath.empty())
         if (auto* f = std::fopen (csvPath.c_str(), "w"))
         {
-            std::fprintf (f, "seconds,f0,pitch_in,voiced,note\n");
-            for (const auto& r : ev)
-                std::fprintf (f, "%.5f,%.3f,%.4f,%d,%d\n", (double) r.n / fs, r.f0, r.pitchIn, r.voiced ? 1 : 0, r.note);
+            std::fprintf (f, "seconds,f0,pitch_in,voiced,note,splices\n");
+            for (size_t i = 0; i < ev.size(); ++i)
+            {
+                const auto& r = ev[i];
+                std::fprintf (f, "%.5f,%.3f,%.4f,%d,%d,%d\n", (double) r.n / fs, r.f0, r.pitchIn,
+                              r.voiced ? 1 : 0, r.note, evSplices[i]);
+            }
             std::fclose (f);
         }
 
