@@ -41,7 +41,42 @@ namespace contract
         rather than merely inside Waves' 10.62 ms ceiling (the latency rule).
 
         In milliseconds, not samples, so every rate rests at the same delay --
-        both shoot-out takes are 44.1 kHz, not 48. */
+        both shoot-out takes are 44.1 kHz, not 48.
+
+        WHAT THAT REASONING MISSED (review, 2026-09-11). The rest's larger job
+        is not window room, it is ALIGNMENT. The detector is pushed the newest
+        sample while the engine reads `rest` behind it, so the residue off the
+        note is
+
+            out - target = (detector's analysis lag - rest) x pitch slope
+
+        and the detector's analysis lag is one period: fullNsdf correlates a
+        one-period window against a block one period older. Measured on the
+        reference stimulus, correction lag + in-tune delay came to 1.078,
+        1.038, 1.076 and 1.071 x T at A2, D3, E3, A3 -- flat to 4 % over two
+        octaves. So the lag the shoot-out measures is the rest subtracted from
+        one period, and moving the rest moves it 1 for 1: at 8 ms the four
+        vibratos read 2.116, -0.606, -1.537 and -3.203 ms against 2.069,
+        -0.608, -1.522 and -3.193 predicted.
+
+        Two consequences the chosen constant does not survive:
+
+          - A constant cannot serve the range. It pays the debt in full at one
+            pitch only (about 290 Hz). Going 4 -> 8 ms took A2's residue from
+            5.85 to 2.10 cents and A3's from 0.95 to 3.13 -- it trades octaves
+            against each other, it does not tune the plugin.
+          - The splice curve was the wrong thing to read. Under a sustained
+            correction the pointer drifts |1 - rho| per sample and each splice
+            moves it exactly T, so splices/second = |1 - rho| x fs / T, with
+            no rest and no window width in it. Widening only removes transient
+            excursions; 35 -> 31 was the count asymptoting to that floor, not
+            a benefit running out.
+
+        Neither route to fixing it is a change to this constant. Delay cannot
+        pay for it -- the rule is already broken at the bottom of the range
+        (see ClassicEngine's window). Predicting the pitch forward by the
+        estimate's age costs no latency and is the open work.
+        testing-notes/tune-latency-review-2026-09-11.md. */
     inline constexpr double kLiveRestMs = 4.0;
 
     /** That rest in samples at this rate, never below kLiveFloorRest. */

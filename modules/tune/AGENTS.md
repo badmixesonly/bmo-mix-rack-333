@@ -51,13 +51,22 @@ allocated, and the lime accent is in the accents table there.
 **A change is safe to take, as far as latency goes, so long as BMO Tune RT's
 true latency does not exceed Waves Tune Real-Time's measured true latency**
 (Frosty, 2026-09-11): **10.62 ms**, measured on AURORA, in
-`tools/tune/common/References.h` with its settings. BMO was 3.82 ms that day.
+`tools/tune/common/References.h` with its settings. The rule is written out in
+the root `AGENTS.md`, which is where the rest of the tree cites it.
 `tests/dsp/tune/HardTuneTests.cpp` enforces it in every ctest run, and
-`bmo-tune-latency` checks it per semitone. A change may make BMO later, up to
+`bmo-tune-latency` checks every semitone. A change may make BMO later, up to
 the ceiling, without asking -- say the new true latency and the headroom left
 in the commit body. The host is still told 0 either way. Re-measure the ceiling
 when Waves updates; `testing-notes/latency-and-lag-2026-09-11.md` has the
 commands.
+
+**BMO is over the ceiling today** and has been since the 4 ms rest landed in
+`31b30ef`: 54 cells of `bmo-tune-latency`'s table, worst 15.33 ms at E2
+against 10.62. It went unseen because both gates measured the wrong thing --
+the tool tested the *rest* delay, and the stimulus holds a correction only on
+A3 and D3. Both are fixed as of this commit and the tool now fails.
+`testing-notes/tune-latency-review-2026-09-11.md` has the finding and the two
+routes out.
 
 BMO Tune RT's parameters (`params.h`) and its DSP (`dsp/`), JUCE-free. The
 signal path, in the order a sample meets it:
@@ -89,9 +98,11 @@ and what it measured.
   mid-session is a timing jump on the whole track. `bmo-tune-hostcheck`
   checks it on the built VST3.
 - **True latency no more than Waves Tune Real-Time's** -- the latency rule in
-  the root `AGENTS.md` (Frosty, 2026-09-11): 10.62 ms on the reference
-  stimulus; BMO measured 3.82 ms. Within that, a change may make the audio
-  later without asking. `HardTuneTests` checks it every run.
+  the root `AGENTS.md` (Frosty, 2026-09-11): 10.62 ms. Within that, a change
+  may make the audio later without asking. `HardTuneTests` checks it every
+  run and `bmo-tune-latency` sweeps the range. **Currently violated**: 15.33 ms
+  at E2, 54 cells over. This is the one invariant on this list that is known
+  broken; it is open work, not licence to add more.
 - **The correction and the note always come from the same pitch.** See
   "the octave bug" below; this is the one that produced a +1200-cent glitch.
 - **Retired parameter ids stay retired.** `engine`, `glide`, `formant`,
@@ -131,16 +142,20 @@ named; undoing one should fail that test.
 | Gross pitch error, 59 pitched corpus items | 0.10 % mean, 1.06 % worst (10 dB pink) | < 1 % clean, < 3 % at 20 dB |
 | Output tuning at retune 0 | within 0.04 c, 110 - 880 Hz | < 3 c |
 | Time to lock (sawtooth onset) | 2.2 - 2.6 periods | -- |
-| Live floor | 19 samples, 0.40 ms, every pitch | <= 1.5 ms CLASSIC >= 200 Hz |
+| Live rest | 192 samples, 4.00 ms, every pitch (`kLiveRestMs`, 2026-09-11) | **FAILS** <= 1.5 ms CLASSIC >= 200 Hz |
 | THD+N, CLASSIC, +/-40 c on a sine | -76 dB | < -60 dB |
 | CPU, one core, 48 kHz / 128 | 0.9 % median, 1.2 % p99 (re-run 2026-09-11, CLASSIC only); +0.05 points with guard 4, same day, side by side | < 1.5 % |
-| Reported latency, every range | 0 samples; rest delay 0.40 ms in every cell (re-run 2026-09-11) | Live: 0 |
-| True latency, reference stimulus (2026-09-11) | 3.82 ms worst (in tune 0.66-1.01, correcting 2.94-3.82); Antares 6.49, Waves 10.62 | <= Waves (the latency rule) |
-| Correction lag at 0 ms, vibrato flattened (2026-09-11) | 6.22 ms mean, 3.98 (A3) to 8.95 (A2): about one cycle; Antares -0.24 mean, 1.66 worst | as Antares (open) |
+| Reported latency, every range | 0 samples; rest delay 4.000 ms in every cell (re-run 2026-09-11) | Live: 0 |
+| True latency, reference stimulus (2026-09-11) | 6.53 ms worst (in tune 4.20-4.49, correcting 3.84-6.53); Antares 6.49, Waves 10.62 | <= Waves (the latency rule) |
+| True latency, **worst over the range** (`bmo-tune-latency`, 2026-09-11) | **15.33 ms at E2; 54 cells over the ceiling** across Auto, Bass, Instrument and Alto/Tenor | **FAILS** <= Waves (the latency rule) |
+| Correction lag at 0 ms, vibrato flattened (2026-09-11) | 3.19 ms mean, 0.81 (A3) to 6.07 (A2): one cycle less the 4 ms rest; Antares -0.24 mean, 1.66 worst | as Antares (open) |
 
-Live's figure is the floor. While it corrects, the read wanders up to a period
-above it (mean ~ floor + T/2): 1.5 ms at A4, 2.5 ms at A3. The latency tool's
-table records both; the spec's 1.5 ms is met by the floor, not by the mean.
+The rest is the floor. While it corrects, the read wanders up to a period
+above it (mean ~ rest + T/2): 6.2 ms at A4, 8.5 ms at A3, 12.9 at A2, 15.3 at
+E2. The stimulus figure of 6.53 ms is **not** the worst case -- the stimulus
+holds a correction only on A3 and D3, and reads a correlation peak rather than
+a maximum. The per-semitone sweep is the worst, and it is over the ceiling on
+54 cells. `testing-notes/tune-latency-review-2026-09-11.md`.
 
 ## Open, and not for one session to settle
 
@@ -148,15 +163,25 @@ table records both; the spec's 1.5 ms is met by the floor, not by the mean.
   shoot-out (`testing-notes/shootout-2026-09-11.md`): on a held note BMO is
   close to Antares (0.4 c against 0.2 c median on Failure), but the faster
   the pitch moves the further behind it lands -- 5.7 c against 2.0 c at
-  10-20 cents per 10 ms, 14.9 against 6.6 beyond. On the reference stimulus the
-  correction lag is 4.0 ms at A3 and 9.0 ms at A2, nearly all of the error
-  (the fit leaves 1.2-2.5 c). Antares' is -0.24 ms mean: it spends its
-  6.5 ms of true latency looking ahead. `HardTuneTests --target` fails on it;
-  enable `hardtune_target` in the change that fixes it. Two ways in, both
-  measurable there: predict the pitch forward by the estimate's age (no
-  latency cost), or delay the audio so the estimate is on time -- which the
-  latency rule now allows up to Waves' 10.62 ms, and BMO has 6.8 ms of that
-  to spend. Frosty hears the result before it is called fixed.
+  10-20 cents per 10 ms, 14.9 against 6.6 beyond. Antares' lag is -0.24 ms
+  mean: it spends its 6.5 ms of true latency looking ahead.
+  `HardTuneTests --target` fails on it; enable `hardtune_target` in the change
+  that fixes it. Frosty hears the result before it is called fixed.
+
+  **The mechanism, found 2026-09-11** (`testing-notes/tune-latency-review-2026-09-11.md`):
+  the detector is pushed the newest sample while the engine reads `rest`
+  behind it, so the residue off the note is
+  `(detector's analysis lag - rest) x pitch slope`, and the analysis lag is
+  one period (measured 1.07 x T, flat to 4 % over two octaves). The 4 ms rest
+  pays that in full at about 290 Hz and nowhere else. This is why the lag
+  tracks the period, and why Fuji cleared while Failure did not.
+
+  Of the two routes, **only prediction is still open**: delay cannot pay for
+  it, because the rule is already broken at the bottom of the range. Note for
+  whoever takes it that Waves solves the same problem by resting one period
+  back (its in-tune delay is T + 1.26 ms) and Antares by having a detector
+  whose lag is a constant 4.4 ms -- copying Antares' constant does not work
+  for a detector that is not Antares'.
 - **The hiccups heard in 0.1** (Frosty's blind test, 2026-09-11: BMO last in
   four of six groups -- "pops and clicks", "hunting for pitch", "skipping /
   dropouts in the pitch hold", "weak at the end of each phrase"). The worst

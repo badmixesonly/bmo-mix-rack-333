@@ -22,10 +22,19 @@ namespace bmo::tune
     correlated material bumps the level mid-fade).
 
     The window is the latency contract, Live (LatencyContract.h): [floor,
-    rest + T]. At rest the engine sits two samples above the floor -- the
-    interpolator's lookahead plus one, 19 samples, 0.4 ms at 48 kHz -- and is
-    reported to the host as 0; while correcting it wanders up to a period
-    later. This is the Waves contract (spec §2, §0.1).
+    rest + T]. At rest the engine sits contract::kLiveRestMs behind the newest
+    sample -- 4 ms since 2026-09-11, 192 samples at 48 kHz -- and is reported
+    to the host as 0; while correcting it wanders up to a period later still.
+    This is the Waves contract (spec §2, §0.1).
+
+    KNOWN BROKEN (2026-09-11 review): `hi = rest + T` is an absolute delay of
+    rest + T, so at the bottom of the range the read runs later than Waves
+    Tune Real-Time, which the latency rule forbids -- 15.3 ms at E2 against
+    the 10.62 ms ceiling, on 54 cells of bmo-tune-latency's table. Waves
+    itself does not do this: its correcting delay (7.33-10.62 ms) barely
+    exceeds its in-tune delay (5.93-10.50). The upper bound wants to be an
+    excursion above the rest, not a whole period on top of an already-4 ms
+    rest. testing-notes/tune-latency-review-2026-09-11.md.
 
     Whenever the input is unvoiced and correction has faded out, the engine
     homes back to its rest position with an equal-power crossfade (the two
@@ -52,7 +61,11 @@ public:
         sample. Two samples above it cured that and no more: the read still
         had only about one period of room either way, and a correction held
         against a singer who had moved spent it and spliced. Those were round
-        three's pops; LatencyContract.h has what each rest measured. */
+        three's pops; LatencyContract.h has what each rest measured.
+
+        The rest is also what aligns the read with the detector's estimate,
+        which is the larger of its two jobs and was not known when it was
+        chosen: see LatencyContract.h. */
     int liveRest() const noexcept { return rest; }
 
     /** Allocates. `longestPeriod` is the largest period any pitch range can

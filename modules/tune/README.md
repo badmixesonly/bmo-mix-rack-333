@@ -38,16 +38,25 @@ is kept for a possible non-real-time tuner --
 
 ## Latency
 
-It reports zero to the host and costs 0.4 ms while it is not correcting.
-While it corrects, it runs up to one cycle of the note later -- the same
-contract as Waves Tune Real-Time. That is the only mode: it is what a
-singer monitoring through the plugin needs.
+It reports zero to the host and costs 4.0 ms while it is not correcting.
+While it corrects, it runs up to one cycle of the note later still. That is
+the only mode: it is what a singer monitoring through the plugin needs.
 
-Measured the same way on the same test file, it is the least late of the
-three tuners it is compared with: 3.8 ms at worst, against Antares Auto-Tune
-Artist's 6.5 ms and Waves Tune Real-Time's 10.6 ms -- and neither of those
-tells the host what it really costs either. The rule for changes: BMO may
-never be later than Waves (the root `AGENTS.md`, "The latency rule").
+Measured the same way on the same test file, it sits between the two tuners
+it is compared with: 6.5 ms on the reference stimulus, level with Antares
+Auto-Tune Artist's 6.5 ms and inside Waves Tune Real-Time's 10.6 ms -- and
+neither of those tells the host what it really costs either. The rule for
+changes: BMO may never be later than Waves (the root `AGENTS.md`, "The
+latency rule").
+
+**That rule is broken at the bottom of the range today, and the figure above
+is not the worst case.** The stimulus only holds a correction on A3 and D3,
+so 6.5 ms is what the low notes are not being measured at;
+`bmo-tune-latency` sweeps every semitone and finds the read running 15.3 ms
+late at E2, with 54 cells across four ranges over Waves' ceiling. See
+`testing-notes/tune-latency-review-2026-09-11.md`. Until that is fixed, this
+section describes the contract the plugin is meant to keep, not the one it
+keeps.
 
 ## CPU
 

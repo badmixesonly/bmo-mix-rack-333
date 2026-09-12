@@ -53,8 +53,13 @@ public:
     void process (float* samples, int numSamples) noexcept;
 
     /** What to report to the host: always 0. Live only -- the plugin runs
-        0.4 ms behind at rest and up to a period while correcting, and says 0,
-        as Waves does (LatencyContract.h). */
+        contract::kLiveRestMs behind at rest (4 ms since 2026-09-11) and up to
+        a period further while correcting, and says 0, as Waves does
+        (LatencyContract.h).
+
+        That "period further" is over Waves' own ceiling below about D3:
+        15.3 ms at E2 against 10.62, on 54 cells of bmo-tune-latency's table.
+        testing-notes/tune-latency-review-2026-09-11.md. */
     static constexpr int kReportedLatency = 0;
 
     /** Offline tools only: called once per sample with that sample's frame.
