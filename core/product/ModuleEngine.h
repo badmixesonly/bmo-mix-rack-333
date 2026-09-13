@@ -74,6 +74,13 @@ public:
         return dsp->latencyForParams (now.data(), (int) now.size());
     }
 
+    /** Momentary, from the panel; -1 clears it. Not a parameter, so it is not
+        in paramSet, not in a preset and not in a saved session. */
+    void setSolo (int index) noexcept { dsp->setSolo (index); }
+
+    /** The module's analyser window, or null if it has none. */
+    AnalyserTap* analyser() noexcept { return dsp->analyser(); }
+
 private:
     void read() noexcept { paramSet.readAll (values.data()); }
 

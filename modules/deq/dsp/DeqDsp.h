@@ -131,6 +131,13 @@ public:
 
     float currentGainReductionDb() const noexcept override { return (float) core.currentGainReductionDb(); }
 
+    /** A band index, or -1. Momentary: the panel holds it, nothing saves it. */
+    void setSolo (int band) noexcept override { core.setSolo (band); }
+
+    /** Post-EQ, which is what the panel draws. The engine carries a pre tap on
+        the same terms if a second curve is ever wanted. */
+    AnalyserTap* analyser() noexcept override { return &core.postTap(); }
+
     /** For the panel's curve and the tests: the engine as it stands. */
     const DspCore& engine() const noexcept { return core; }
 

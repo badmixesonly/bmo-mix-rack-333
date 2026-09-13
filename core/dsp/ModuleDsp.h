@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/dsp/AnalyserTap.h"
+
 #include <memory>
 
 namespace bmo
@@ -37,6 +39,26 @@ public:
         (BMO Opto and whatever follows it) has anything to report here; the
         default is silence, so EQ/Sat/Util need no change to keep building. */
     virtual float currentGainReductionDb() const noexcept { return 0.0f; }
+
+    /** Hear one part of the module on its own, or -1 for the whole thing.
+
+        **Momentary, and never a parameter.** It is set from the panel while a
+        control is held and cleared when it is released, so it is not in the
+        parameter set, not in a preset, not automatable and not saved with a
+        session. A solo left on in a saved session is a support ticket.
+
+        What an index means is the module's own business -- for BMO DEQ it is a
+        band -- and the default here does nothing, so a module that has no such
+        idea needs no change. This is the first path in the suite from a panel
+        to the audio thread that is not a parameter: an atomic store on one
+        side, a relaxed load on the other, no allocation and no lock.
+    */
+    virtual void setSolo (int) noexcept {}
+
+    /** The module's analyser tap, or null if it has none. The panel reads the
+        window; the DSP writes it. See core/dsp/AnalyserTap.h for why it cannot
+        change the sound or the latency. */
+    virtual AnalyserTap* analyser() noexcept { return nullptr; }
 };
 
 } // namespace bmo

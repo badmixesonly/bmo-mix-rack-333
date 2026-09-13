@@ -107,7 +107,9 @@ ui::ModuleContext SingleModuleProcessor::makeContext()
              [this] { return engine.meter().maxRms(); },
              [this] { return engine.inputMeter().maxPeak(); },
              [this] { return engine.inputMeter().maxRms(); },
-             [this] { return engine.gainReduction().get(); } };
+             [this] { return engine.gainReduction().get(); },
+             [this] (int band) { engine.setSolo (band); },
+             engine.analyser() };
 }
 
 //==============================================================================

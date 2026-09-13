@@ -79,7 +79,9 @@ ui::ModuleContext RackProcessor::makeContext (int slot)
              [engine] { return engine->meter().maxRms(); },
              [engine] { return engine->inputMeter().maxPeak(); },
              [engine] { return engine->inputMeter().maxRms(); },
-             [engine] { return engine->gainReduction().get(); } };
+             [engine] { return engine->gainReduction().get(); },
+             [engine] (int band) { engine->setSolo (band); },
+             engine->analyser() };
 }
 
 bool RackProcessor::isSlotExpanded (int slot) const noexcept

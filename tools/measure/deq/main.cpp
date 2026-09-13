@@ -9,7 +9,7 @@
 //                                            informative, never a test)
 //   measure_deq curve <shape> <f0> <q> <gain> [rate]
 //                                            one band against its prototype and the cookbook
-//   measure_deq render <in.wav> <out> [--blind [seed]] [--case name]
+//   measure_deq render <in.wav> <out> [--blind [seed]] [--case name] [--match]
 //                                            the topology listening set, serial and parallel,
 //                                            as 32-bit float WAVs (testing-notes/deq-topology-listening.md)
 //
@@ -662,7 +662,76 @@ namespace
         return 20.0 * std::log10 (std::max (p, 1.0e-15));
     }
 
-    int render (const std::string& inPath, const std::string& outDir, bool blind, unsigned seed, const std::string& only)
+    /** Energy in an octave either side of `f0`, in dB: Welch over 4096-sample
+        Hann frames. Whole-file RMS cannot see a narrow dynamic band -- a Q 4
+        bell at 2.5 kHz moves it by hundredths of a dB while moving the band
+        itself by ten -- so a level match has to be made where the band works.
+    */
+    double bandRmsDb (const std::vector<float>& x, double f0, double fs)
+    {
+        constexpr size_t kFrame = 4096;
+        if (x.size() < kFrame) return -300.0;
+
+        const auto lo = (size_t) std::max (1.0, std::floor (f0 / 2.0 / fs * (double) kFrame));
+        const auto hi = (size_t) std::min ((double) kFrame / 2.0 - 1.0, std::ceil (f0 * 2.0 / fs * (double) kFrame));
+
+        double acc = 0.0;
+        size_t frames = 0;
+
+        for (size_t pos = 0; pos + kFrame <= x.size(); pos += kFrame / 2)
+        {
+            std::vector<std::complex<double>> a (kFrame);
+            for (size_t i = 0; i < kFrame; ++i)
+            {
+                const auto w = 0.5 - 0.5 * std::cos (2.0 * kPi * (double) i / (double) (kFrame - 1));
+                a[i] = { (double) x[pos + i] * w, 0.0 };
+            }
+
+            ref::fft (a);
+            for (size_t i = lo; i <= hi; ++i) acc += std::norm (a[i]);
+            ++frames;
+        }
+
+        return 10.0 * std::log10 (std::max (acc / (double) std::max<size_t> (frames, 1), 1.0e-30));
+    }
+
+    /** The serial range that puts serial's output at parallel's level on this
+        material, for a dynamic case.
+
+        Parallel catches less than it is asked to, because the static band's
+        path carries the signal past the dynamic one. So comparing the two at
+        the same `range` compares two different amounts of gain reduction, and
+        a listener is answering "how much" rather than "which behaviour".
+        Matching the level first leaves only the behaviour: how the catch
+        moves, which is the part no knob reproduces.
+
+        Output level falls monotonically as range deepens, so a bisection
+        finds it in a dozen renders rather than a sweep's hundreds. */
+    double matchedSerialRange (const Wav& in, const std::vector<BandSettings>& bands, double asked,
+                               double parallelBandDb, double f0)
+    {
+        auto levelAt = [&] (double range)
+        {
+            auto b = bands;
+            for (auto& band : b)
+                if (band.dynamics.enabled)
+                    band.dynamics.rangeDb = range;
+            return bandRmsDb (renderCase (in, b, Topology::serial).l, f0, in.sampleRate);
+        };
+
+        double deep = asked, shallow = 0.0;
+
+        for (int i = 0; i < 14; ++i)
+        {
+            const auto mid = 0.5 * (deep + shallow);
+            (levelAt (mid) < parallelBandDb ? deep : shallow) = mid;
+        }
+
+        return 0.5 * (deep + shallow);
+    }
+
+    int render (const std::string& inPath, const std::string& outDir, bool blind, unsigned seed, const std::string& only,
+                bool matchLevel)
     {
         const auto in = readWav (inPath);
         if (! in.ok) return 1;
@@ -685,10 +754,34 @@ namespace
         {
             if (! only.empty() && only != c.name) continue;
 
-            const auto ser = renderCase (in, c.bands, Topology::serial);
+            auto serialBands = c.bands;
             const auto par = renderCase (in, c.bands, Topology::parallel);
+            double matched = 0.0;
+            bool wasMatched = false;
+
+            if (matchLevel)
+            {
+                double asked = 0.0, f0 = 1000.0;
+                for (const auto& b : c.bands)
+                    if (b.dynamics.enabled)
+                        { asked = b.dynamics.rangeDb; f0 = b.frequencyHz; }
+
+                if (asked < 0.0)
+                {
+                    matched = matchedSerialRange (in, c.bands, asked, bandRmsDb (par.l, f0, in.sampleRate), f0);
+                    wasMatched = true;
+                    for (auto& b : serialBands)
+                        if (b.dynamics.enabled)
+                            b.dynamics.rangeDb = matched;
+                }
+            }
+
+            const auto ser = renderCase (in, serialBands, Topology::serial);
             const auto diff = rmsDb (ser.l, &par.l) - rmsDb (in.l);   // relative to the input's level
             const auto channels = std::min (in.channels, 2);
+
+            if (matchLevel && ! wasMatched)
+                continue;   // --match is about the dynamic cases; a static one has nothing to match
 
             // Serial in the reverse band order: only a dynamic case can differ.
             std::string order = "--";
@@ -701,6 +794,25 @@ namespace
 
             std::printf ("  %-20s  %8.1f dB rel. in   %8.1f dBFS   %8.1f dBFS   %5.1f dB   %s\n", c.name, diff,
                          peakDb (ser.l), peakDb (par.l), ser.maxGrDb, order.c_str());
+
+            if (wasMatched)
+            {
+                double f0 = 1000.0, asked = 0.0;
+                for (const auto& b : c.bands)
+                    if (b.dynamics.enabled) { f0 = b.frequencyHz; asked = b.dynamics.rangeDb; }
+
+                const auto pb = bandRmsDb (par.l, f0, in.sampleRate);
+                const auto sb = bandRmsDb (ser.l, f0, in.sampleRate);
+
+                std::printf ("      level-matched: serial ran at %.2f dB of range rather than the case's %.0f, which puts\n"
+                             "      the band an octave either side of %.0f Hz at %.2f dB in both (%.3f dB apart).\n"
+                             "      What is left to hear is the shape of the catch.\n",
+                             matched, asked, f0, pb, std::abs (sb - pb));
+
+                if (matched <= asked + 0.01)
+                    std::printf ("      (Nothing had to be given up: serial at full range already sat at parallel's\n"
+                                 "      level on this material.)\n");
+            }
 
             if (blind)
             {
@@ -839,11 +951,12 @@ int main (int argc, char** argv)
 
     if (cmd == "render" && argc >= 4)
     {
-        bool blind = false; unsigned seed = 1; std::string only;
+        bool blind = false, match = false; unsigned seed = 1; std::string only;
         for (int i = 4; i < argc; ++i)
         {
             if (std::strcmp (argv[i], "--blind") == 0) { blind = true; if (i + 1 < argc && std::isdigit ((unsigned char) argv[i + 1][0])) seed = (unsigned) std::strtoul (argv[++i], nullptr, 10); }
             else if (std::strcmp (argv[i], "--case") == 0 && i + 1 < argc) only = argv[++i];
+            else if (std::strcmp (argv[i], "--match") == 0) match = true;
         }
         std::error_code ec;
         std::filesystem::create_directories (argv[3], ec);
@@ -855,7 +968,7 @@ int main (int argc, char** argv)
                           std::strlen (argv[3]) > 200 ? " -- the path is long; Windows limits paths to 260 characters" : "");
             return 1;
         }
-        return render (argv[2], argv[3], blind, seed, only);
+        return render (argv[2], argv[3], blind, seed, only, match);
     }
 
     if (cmd == "gate")       return gate();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Controls.h"
+#include "core/dsp/AnalyserTap.h"
 #include "core/state/ParamSet.h"
 
 namespace bmo
@@ -27,6 +28,15 @@ struct ModuleContext
     std::function<float()> inputPeak;         ///< input level, linear, before the DSP
     std::function<float()> inputRms;
     std::function<float()> gainReductionDb;   ///< always >= 0
+
+    // The panel-to-DSP direction, and the only one that is not a parameter.
+    // `setSolo` is momentary: the panel calls it while a control is held and
+    // calls it with -1 on release. Nothing saves it and nothing automates it.
+    // `analyser` is null unless the module has a tap; a panel enables it when
+    // it opens and disables it when it closes, so a module with no editor on
+    // screen pays nothing (core/dsp/AnalyserTap.h).
+    std::function<void (int)> setSolo;
+    AnalyserTap* analyser = nullptr;
 };
 
 /** Base of every module panel: a fixed-size faceplate of the module's design

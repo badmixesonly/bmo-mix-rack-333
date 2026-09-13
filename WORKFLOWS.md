@@ -128,8 +128,8 @@ where they were open questions.
 Four panels are fully settled by these answers -- Saturator, Util, Opto and
 Dimension -- and BMO CEQ is settled too, since its oversampling cannot move
 without a schema event. The two that are not are the two being finished first:
-**DEQ**, whose panel gains a control if the blind test asks for a topology
-switch, and **Tune**, whose own work can still move what its panel shows.
+~~**DEQ**~~ -- settled 2026-09-12, serial with no switch, so its panel is now
+fixed too -- and **Tune**, whose own work can still move what its panel shows.
 
 Which is the reason the order puts the UI pass at stage 3 rather than running
 it now: waiting costs nothing, and starting early costs two panels laid out
@@ -147,7 +147,7 @@ order, and it is answered from the notes, not from the code.
 |---|---|---|---|
 | `add-bmo-tune` | `modules/tune`, `products/tune`, `tools/tune`, `tests/*/tune`, the four CMakeLists, `products/AGENTS.md` | DEQ, in the CMakeLists and the identity tables | no |
 | `add-bmo-deq` | `modules/deq`, `products/deq`, the rack's registry, `RackTests.cpp`, the same CMakeLists | Tune, as above | no — the macOS fix is a test fault |
-| `deq-topology` | `modules/deq/dsp`, `tests/dsp/DeqDspTests.cpp`, `testing-notes/deq-topology-listening.md` | nothing else | **yes, and unanswered** — a switch would add a control; held for the blind test, 2026-09-11 |
+| `deq-topology` | `modules/deq/dsp`, `tests/dsp/DeqDspTests.cpp`, `testing-notes/deq-topology-listening.md` | nothing else | **answered 2026-09-12: no** — serial, no user-facing switch, so DEQ's panel is settled |
 | `ceq-latency` | `modules/eq/dsp`, `tests/dsp/EqDspTests.cpp` | nothing else | no — `Oversampling` is frozen schema, so a change is a retirement, not a side effect |
 | `opto-high-gr` | `modules/opto/dsp`, `tests/dsp/OptoDspTests.cpp` | nothing else | no — confirmed by inspection, 2026-09-11 |
 | `sat-voicing` | ears, then maybe `modules/sat/dsp/Filters.h` | nothing else | no — it is a retest of Kevin's change |
@@ -236,6 +236,35 @@ Jobs: **DSP** (Linux, seconds), **Each side alone** (Linux, the two switches),
 **macOS** and **Windows** (the plugins, ~20-25 min). The Windows job's
 `BMO-Windows` artifact is what ICE QUEEN installs, by hash.
 
+#### Waiting to be batched — as of 2026-09-12
+
+**DEQ's work is on `integration` with no CI run behind it, on purpose**
+(Frosty). A round trip is ~22 minutes and the concurrency group cancels a run
+in progress on the same ref, so DEQ and Tune go through together: **whoever
+pushes Tune's branch dispatches once, on `integration`**, and that run is the
+one both machines install from.
+
+**This is a one-off, not a standing rule** (Frosty, 2026-09-12). Normally a
+branch dispatches its own run as soon as it is ready to be looked at. The
+batching here is only because DEQ and Tune are landing within hours of each
+other, and one 22-minute round trip beats two.
+
+Green locally on AURORA and waiting for that run — 6 of 6 DSP-only suites and
+14 of 14 full, in Release:
+
+- `33e940b` solo, and the analyser tap
+- `a933500` the decisions behind them
+- `0af087a` serial settled by ear, no topology switch
+- `546dd02` `measure_deq --match`
+- `2150ddd` only a band that is on gets a node
+
+The last green run on `integration` is **34662591052**, at `7341a39` — all
+four jobs, artifacts good until 11 December. Everything listed above landed
+after it and has not been through CI.
+
+**Delete this section once the batched run is green**, and put its id on the
+line above.
+
 ### Finishing a workflow
 
 1. Full `ctest` in Release passes on the machine you are on.
@@ -297,6 +326,12 @@ call on the lime accent's 1.29 contrast on the pale plate
 (`products/AGENTS.md`), and a CI run.
 
 ### `deq-topology` — serial or parallel
+
+**Settled 2026-09-12: serial, no user-facing switch.** 57 blind pairs over
+seven sources, then six level-matched dynamic pairs; the record is
+`testing-notes/deq-blind-2026-09-11.md` and the method is
+`testing-notes/blind-listening-protocol.md`. What is left of DEQ in stage 1 is
+its Ableton checklist, which is a host test rather than a decision.
 
 `testing-notes/deq-topology-listening.md` §0 renders the blind set; §2 is
 Frosty's ear. **Do not open the key.** Render, check the tool's table for a
