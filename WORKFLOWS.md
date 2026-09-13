@@ -339,12 +339,18 @@ scope: anything that changes what a control *does*.
 
 ### `bmo-tune-work` — Tune's own testing and finish
 
-Runs parallel to all of it. Start from `testing-notes/tune-handoff.md`, then
-`testing-notes/tune-latency-review-2026-09-11.md`, which revises what that
-handoff concluded about the 4 ms rest and leaves `tune_hardtune` red on a
-check BMO does not yet pass. Open: the correction lag and the per-note latency
-rule (one root cause), the round-three blind set, the neighbour-note flips at
-vibrato 0, detector jumps on scoops, octave-down at creaky phrase ends,
-voicing dropouts. The latency rule governs every change, and it is a curve --
-Waves' measured delay at each note, `references::ceilingMsAt` -- not the
-scalar 10.62 ms it was written as until 2026-09-11.
+Runs parallel to all of it. **Start from
+`testing-notes/tune-handoff-2026-09-13.md`**: the current state, which build
+is still best by ear (round four, `31b30ef`), and the list of avenues that
+have been measured and thrown away -- do not re-derive those. Behind it,
+`testing-notes/tune-handoff.md` for how the engine works and what rounds three
+and four found, and `testing-notes/tune-latency-review-2026-09-11.md` for the
+alignment finding and the latency rule.
+
+Open, in order: what makes a splice audible (the blocker -- two metrics have
+been refuted); the detector's octave and twelfth errors on scoops; the
+live-monitoring budget, which is Frosty's to set and which the per-note
+latency rule cannot go green without. The latency rule governs every change,
+and it is a curve -- Waves' measured delay at each note,
+`references::ceilingMsAt` -- not the scalar 10.62 ms it was written as until
+2026-09-11.

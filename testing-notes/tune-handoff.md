@@ -12,6 +12,12 @@ until the whole suite is finished and heard. The commits here are
 **unpushed** (Frosty's call: batch with DEQ, one CI run), and
 `origin/integration` has moved on again, so a merge comes before the push.
 
+> **Superseded for everything after 9b18577 by
+> `testing-notes/tune-handoff-2026-09-13.md`**, which has rounds five and six,
+> the list of avenues measured and thrown away, and which build is still the
+> best by ear (this one). Read that for the state; read this for how the
+> engine works and what rounds three and four found.
+>
 > **Revised the same day by `testing-notes/tune-latency-review-2026-09-11.md`.
 > Read that alongside this.** It was asked for as a review of this handoff and
 > it changes two of its conclusions:
