@@ -69,21 +69,21 @@ in the set that only your ears can settle.**
 
 Ranking (best to worst): 
 
-- A: 
-- B: 
-- C: 
-- D: 
+- A: 2nd worst same pops as before
+- B: best, fewer/softer pops, some audible tracking
+- C: 2nd best same pops as before
+- D: worst, most pops
 
-Pops -- fewer or softer than before? 
+Pops -- fewer or softer than before? only on B, same or worse on others
 
 ## Failure 20 ms
 
 Ranking (best to worst): 
 
-- A: 
-- B: 
-- C: 
-- D: 
+- A: tied with B
+- B: tied with A
+- C: Best no noticeable pops
+- D: worst
 
 Pops -- fewer or softer than before? 
 
@@ -91,10 +91,10 @@ Pops -- fewer or softer than before?
 
 Ranking (best to worst): 
 
-- A: 
-- B: 
-- C: 
-- D: 
+- A: Indistinct from B
+- B: indistinct from A
+- C: worst, one big pop toward end
+- D: 2nd worst, some small/soft pops
 
 Pops -- fewer or softer than before? 
 
@@ -102,10 +102,10 @@ Pops -- fewer or softer than before?
 
 Ranking (best to worst): 
 
-- A: 
-- B: 
-- C: 
-- D: 
+- A: 2nd best
+- B: Best
+- C: worst, bad tracking on held notes
+- D: 3rd, better tracking than A&C but small pops
 
 Pops -- fewer or softer than before? 
 
@@ -116,4 +116,53 @@ did you prefer?
 
 The single worst thing left, across all four: 
 
-Listened on: AURORA, 
+Listened on: AURORA, UA Apollo Twin X gen 2, HEDD Type 20 mk2 monitors (Frosty, 2026-09-13)
+
+---
+
+## What the key said
+
+| group | A | B | C | D |
+|---|---|---|---|---|
+| Failure 0 ms | **BMO now** | Antares | round four | BMO now + 1 ms |
+| Failure 20 ms | round four | **BMO now** | Antares | BMO now + 1 ms |
+| Fuji 0 ms | round four | Antares | BMO now + 1 ms | **BMO now** |
+| Fuji 20 ms | **BMO now** | round four | BMO now + 1 ms | Antares |
+
+Heard, in order:
+
+| group | order |
+|---|---|
+| Failure 0 ms | Antares > round four > **BMO now** > +1 ms |
+| Failure 20 ms | Antares > (round four = **BMO now**) > +1 ms |
+| Fuji 0 ms | (round four = Antares) > **BMO now** > +1 ms |
+| Fuji 20 ms | round four > **BMO now** > Antares > +1 ms |
+
+## Both changes failed
+
+**The splice landing fix: 0 wins, 1 tie, 3 losses** against the build it
+replaces. "Same pops as before" on Failure, and worse than round four on both
+Fuji groups. It is not earned and it should come out.
+
+**The 1 ms note transition: worst of four, in all four groups.** No ambiguity
+at all, and it kills the formant hypothesis outright -- smoothing the note
+transition does not trade formant smoothness against splices, it is simply
+worse. It also drew the only "bad tracking on held notes" of the round.
+
+## The metric was wrong again, in the same way
+
+The landing error said this change was an improvement: mean 0.36 -> 0.31 on
+Failure at 20 ms, worst 1.97 -> 1.79, and on Fuji 0.74 -> 0.68 and 0.56 ->
+0.48. The ear says no change on Failure and a loss on Fuji. **The measure
+moved the right way and the sound moved the wrong way.**
+
+That is the second measure to fail this exact test in two days. The splice
+COUNT failed it first -- 120 to 38 with no audible change -- which is what the
+landing error was built to replace. Neither predicts what Frosty hears.
+
+What is left standing, and it is not nothing: every pop is a splice (seven of
+seven timestamped), and only some splices are audible. What separates them is
+still unknown, and two plausible answers have now been measured and found not
+to be it. The next attempt should not be a third guess dressed as a metric --
+it should start from the four timestamps whose splices did NOT improve and ask
+what is physically different about them.

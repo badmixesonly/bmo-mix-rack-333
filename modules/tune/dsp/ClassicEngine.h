@@ -99,11 +99,6 @@ public:
 
 private:
     double read (const Sinc&, double lagBehindNewest) const noexcept;
-
-    /** Where to jump, given what the period proposes: the offset near
-        `nominal` whose recent history best matches the outgoing read's.
-        See the definition. */
-    double bestJump (double fromLag, double nominal, double T, double lo, double hi) const noexcept;
     void startFade (double newLag, int length, bool equalPower) noexcept;
 
     double fs = 48000.0;
