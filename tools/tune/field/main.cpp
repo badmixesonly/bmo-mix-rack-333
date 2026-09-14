@@ -139,12 +139,14 @@ int main (int argc, char** argv)
     std::vector<int> evSplices;   // splices since the previous evaluation
     std::vector<double> evMismatch;   // and the worst one's landing error
     std::vector<std::pair<long long, double>> mismatches;   // every splice: where, and how badly
+    std::vector<long long> spliceAt;                        // and just where, for the period test
     int splices = 0, spliceRun = 0;
     double mismatchRun = 0.0;
     for (const auto& r : col.rows)
     {
         if (r.splice) { ++splices; ++spliceRun; }
         if (r.mismatch > 0.0) { mismatches.emplace_back (r.n, r.mismatch); mismatchRun = std::max (mismatchRun, r.mismatch); }
+        if (r.splice) spliceAt.push_back (r.n);
         if (r.evaluated)
         {
             ev.push_back (r);
@@ -310,6 +312,41 @@ int main (int argc, char** argv)
 
         line ("ON PITCH:", onPitch);
         line ("on noise:", onNoise);
+
+        // WHETHER THE DETECTOR HAD THE PERIOD when the jump was taken, which
+        // is the one thing so far that separates the splices Frosty hears
+        // from the ones he does not.
+        //
+        // Measured on Failure, 2026-09-13, against six timestamps he read
+        // cold: in the 40 ms before each of the five audible splices the
+        // detector's own f0 spans a ratio of 1.76 to 3.94 -- it is losing the
+        // period and reading a harmonic. Before the quiet ones, 1.00 to 1.02.
+        // Six against six, cleanly separated, first try.
+        //
+        // The splice COUNT and the splice LANDING ERROR were both refuted
+        // against the same ears (2026-09-12, 2026-09-13). This is the third
+        // measure and the first that agrees with them, so it is the one to
+        // drive work from -- and it points at the detector, not the engine:
+        // the same splices fire at the same millisecond at every rest from
+        // 2 to 8 ms, which is why four rests sounded indistinguishable and
+        // all of them unacceptable.
+        int lost = 0;
+        for (auto at : spliceAt)
+        {
+            double lo = 0.0, hi = 0.0;
+            for (const auto& r : ev)
+            {
+                if (r.n > at || r.n < at - (long long) (0.040 * fs) || ! r.voiced || r.f0 <= 0.0)
+                    continue;
+                if (lo == 0.0 || r.f0 < lo) lo = r.f0;
+                if (r.f0 > hi) hi = r.f0;
+            }
+            if (lo > 0.0 && hi / lo > 1.5)
+                ++lost;
+        }
+
+        std::printf ("  splices taken while the detector had LOST the period (f0 spanning >1.5x in the "
+                     "40 ms before): %d of %zu\n", lost, spliceAt.size());
 
         if (listSplices)
         {

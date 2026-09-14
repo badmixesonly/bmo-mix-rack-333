@@ -163,6 +163,11 @@ public:
 
     const CorrectionState& state() const noexcept { return st; }
 
+    /** The period the law is actually working from, in samples: the one that
+        matches the pitch it accepted, not the raw estimate. The engine sizes
+        its window from this -- see where it is set. */
+    double heldPeriod() const noexcept { return period; }
+
     /** The flex soft knee on its own, for its test: gain in [0, 1]. */
     static double flexGain (double absCents, double flex) noexcept;
 

@@ -233,7 +233,6 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
 
         if (e.voiced && e.period > 0.0)
         {
-            period = e.period;
             const auto fresh = pitch::semitonesFromHz (fs / e.period, s.refA);
 
             if (e.onset || ! havePitch)
@@ -268,6 +267,29 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
             }
 
             havePitch = true;
+
+            // The period the rest of the plugin uses comes from the pitch that
+            // was ACCEPTED, not from the estimate that arrived.
+            //
+            // confirmPitch holds the old pitch when a jump has not been
+            // confirmed, but `period` used to be written from e.period a line
+            // earlier, unconditionally -- so on a one-hop octave error the law
+            // correctly ignored the pitch while the engine was handed a period
+            // half as long. ClassicEngine's window is [floor, rest + T], so a T
+            // that halves collapses the window under the read pointer and
+            // forces a splice at that instant, whatever the rest is.
+            //
+            // That is what the audible pops are. Measured on Failure
+            // (2026-09-13): in the 40 ms before each of the five splices Frosty
+            // hears, the detector's f0 spans a ratio of 1.76 to 3.94; before
+            // the quiet ones, 1.00 to 1.02. And they fire at the same
+            // millisecond at every rest from 2 to 8 ms, which is why four rests
+            // sounded "almost indistinguishable" and all of them unacceptable.
+            //
+            // AGENTS.md already has the rule this restores, one step short of
+            // far enough: "the correction and the note always come from the
+            // same pitch". So does the period.
+            period = fs / pitch::hzFromSemitones (pitchIn, s.refA);
 
             // The slope of the estimate, in semitones per sample. Only from
             // estimates that were taken at face value: while confirmPitch is

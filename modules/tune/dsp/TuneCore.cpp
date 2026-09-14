@@ -113,7 +113,9 @@ void TuneCore::process (float* samples, int numSamples) noexcept
         // an unvoiced stretch -- then the engine is carrying nothing worth
         // keeping in its delay.
         const auto settled = ! est.voiced && cents == 0.0;
-        samples[i] = engine.process (x, cents, est.period, settled);
+        // The law's period, not the detector's raw one: they differ exactly
+        // when a jump is unconfirmed, which is when the audible pops happen.
+        samples[i] = engine.process (x, cents, law.heldPeriod(), settled);
 
         if (analysisTap != nullptr)
         {
