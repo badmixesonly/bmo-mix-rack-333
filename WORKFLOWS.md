@@ -8,6 +8,10 @@ This file lives on the **fork** (`badmixesonly/bmo-mix-rack-333`), on the
 integration branch. It is not for Kevin's repository: it describes how Frosty's
 two machines work, not how the suite is built.
 
+**Start from `testing-notes/session-handoff-2026-09-14.md`** — the state after
+the 0.2.4 review, what is installed, the two blind sets waiting on ears, and
+the order of everything that follows.
+
 ---
 
 ## The rules that apply to every workflow below
