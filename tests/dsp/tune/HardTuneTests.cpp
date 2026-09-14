@@ -266,20 +266,52 @@ int main (int argc, char** argv)
     check (bmo.trueLatencyMs <= ref::kWaves.trueLatencyMs,
            "BMO's true latency is no more than Waves Tune Real-Time's, worst against worst (the latency rule)");
 
-    // THE LATENCY RULE, PER NOTE. Waves' delay while correcting is nearly
-    // proportional to the period (1.68 ms per ms of it) and BMO's rest is a
-    // constant 4 ms, so which of the two is later depends entirely on the
-    // note, and a single worst-case comparison cannot see it. Measured
-    // 2026-09-11: BMO is under Waves at E2, A2, D3 and A3, and over it at A4
-    // (5.01 against 3.82) and A5 (4.61 against 0.71).
+    // THE LIVE-MONITORING BUDGET, PER NOTE -- and as of 2026-09-14 this IS the
+    // per-note latency rule. It replaces the per-note comparison against Waves,
+    // which was never the point: root AGENTS.md has always said Waves is the
+    // proxy, and that "a change that is later than Waves at some note, but
+    // still comfortably inside what a singer monitoring through the plugin can
+    // work with, is arguable rather than forbidden -- argue it with a figure
+    // and Frosty's ear, and write the budget down here when there is one."
     //
-    // THIS FAILS TODAY, by design -- it is the rule stated honestly against an
-    // engine that does not yet keep it, and it is the test the fix has to turn
-    // green. The cause is `hi = rest + T` in ClassicEngine plus a rest that
-    // does not track the period; the same root cause as the correction lag.
-    // testing-notes/tune-latency-review-2026-09-11.md.
+    // There is one now. On 2026-09-14, on AURORA, Frosty monitored a duplicated
+    // vocal through the installed build against Waves at 48 kHz on a tone
+    // opening on A2 -- the note where BMO is furthest past Waves in the part of
+    // the range a singer lives in. His answer: "while I can probably convince
+    // myself I could hear a difference, I feel like I wouldn't be able to tell
+    // had I not seen the chart."
+    //
+    // So the budget is BMO's own measured curve as it stood when he listened,
+    // per note, and the rule is that it does not get LATER than this. Not a
+    // target to beat: a line not to cross. These are the delays that build
+    // actually measured, and kBudgetTolerance is the only slack.
+    //
+    // Re-base DOWNWARD freely and say so, exactly as the lag ratchet works.
+    // Raising one costs what raising it cost this time: a figure and Frosty's
+    // ear, on the record. Buying latency back is wanted but not owed -- the
+    // engine's floor is the rest plus one whole cycle, so this curve is very
+    // nearly `liveRest + T`, and getting under it means changing what a splice
+    // is rather than tuning a constant.
+    //
+    // Waves is still measured and still reported below, as information, and the
+    // worst-against-worst check above still stands. What is gone is the
+    // per-note assertion against it, which on this engine could never go green:
+    // at A5 Waves' whole delay is 0.709 ms, under one period there (1.136), and
+    // BMO's floor plus one whole-cycle excursion is 1.491. A rule that fails
+    // every cell while the ear says it is fine was measuring the wrong thing.
     {
-        int over = 0;
+        struct Budget { const char* name; double ms; };
+        constexpr Budget kBudget[] = {
+            { "held +30c E2", 10.427 },
+            { "held +30c A2",  9.275 },
+            { "held -35c D3",  3.986 },
+            { "held +30c A3",  6.076 },
+            { "held +30c A4",  4.987 },
+            { "held +30c A5",  4.600 },
+        };
+        constexpr double kBudgetTolerance = 1.05;
+
+        int over = 0, judged = 0;
         double worstBy = 0.0;
 
         for (const auto& r : bmo.rows)
@@ -292,41 +324,33 @@ int main (int argc, char** argv)
                 if (r.name == seg.name)
                     hz = seg.hz;
 
-            const auto ceiling = ref::ceilingMsAt (hz);
+            // Waves at the same note: reported, not asserted.
             report ("BMO vs Waves at " + r.name + ": BMO " + std::to_string (r.delayMs).substr (0, 5)
-                        + " ms, Waves (the ceiling here)", ceiling, "ms");
+                        + " ms, Waves at this note", ref::ceilingMsAt (hz), "ms");
 
-            if (r.delayMs > ceiling)
+            for (const auto& b : kBudget)
             {
-                ++over;
-                worstBy = std::max (worstBy, r.delayMs - ceiling);
+                if (r.name != b.name)
+                    continue;
+
+                ++judged;
+
+                if (r.delayMs > b.ms * kBudgetTolerance)
+                {
+                    ++over;
+                    worstBy = std::max (worstBy, r.delayMs - b.ms);
+                }
             }
         }
 
-        report ("segments where BMO is later than Waves at the same note", (double) over, "");
+        report ("notes judged against the live-monitoring budget", (double) judged, "");
+        report ("notes over the budget", (double) over, "");
         report ("...worst by", worstBy, "ms");
 
-        // Asserted only under --target, with hardtune_target, because it is
-        // not reachable by any amount of work on this engine and so must not
-        // block a build (tests/CMakeLists.txt keeps that one DISABLED and
-        // labelled open, which is what the label is for).
-        //
-        // The arithmetic, from testing-notes/tune-latency-review-2026-09-11.md:
-        // at A5 Waves' whole delay is 0.709 ms, which is LESS than one period
-        // there (1.136 ms). BMO's absolute floor is kFloor, 0.354 ms, and one
-        // whole-cycle excursion on top of it is 1.491 ms. No rest, no window
-        // and no tuning gets under Waves at A5 while a splice is a whole
-        // cycle. A period-proportional rest was built and swept on 2026-09-12
-        // to try: worse on every axis and still over at A5.
-        //
-        // So the rule needs the live-monitoring budget Frosty described (root
-        // AGENTS.md) before this can ever be green. At the top of the range
-        // BMO is 1.5 to 5 ms, which is not a monitoring problem; Waves being
-        // faster there is not a reason it has to be. Frosty's figure to set.
-        if (target)
-            check (over == 0,
-                   "BMO is no later than Waves Tune Real-Time AT EVERY NOTE, not only at the worst one "
-                   "(the latency rule, per note -- open, and unreachable until the rule carries a budget)");
+        check (judged == (int) (sizeof kBudget / sizeof kBudget[0]),
+               "every note in the live-monitoring budget was measured");
+        check (over == 0,
+               "BMO is inside the live-monitoring budget at every note (the latency rule, per note)");
     }
 
     check (bmo.meanLagMs <= kBaselineMeanLagMs * 1.05 && bmo.meanRmsCents <= kBaselineRmsCents * 1.05,

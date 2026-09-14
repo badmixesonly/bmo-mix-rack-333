@@ -98,22 +98,43 @@ long as it remains fast enough for live monitor we can adjust"). So a change
 that is later than Waves at some note, but still comfortably inside what a
 singer monitoring through the plugin can work with, is arguable rather than
 forbidden -- argue it with a figure and Frosty's ear, and write the budget
-down here when there is one. No budget is encoded today, deliberately: the
-only thing a number would do right now is turn a red test green without
-changing the plugin.
+down here when there is one.
+
+**There is one, from 2026-09-14** (Frosty, on AURORA). He monitored a
+duplicated vocal through the installed build against Waves at 48 kHz, on a
+tone opening on A2 -- the note where BMO is furthest past Waves in the part of
+the range a singer lives in -- and said: *"while I can probably convince
+myself I could hear a difference, I feel like I wouldn't be able to tell had I
+not seen the chart."*
+
+**So the budget is BMO's own measured curve as it stood that day, per note,
+and the rule is that it does not get LATER than this.** E2 10.427 ms, A2
+9.275, D3 3.986, A3 6.076, A4 4.987, A5 4.600, with 5 % of slack; the table is
+in `tests/dsp/tune/HardTuneTests.cpp` and it is asserted on every run, not
+under `--target`. It is a line not to cross, not a target to beat. Re-base it
+DOWNWARD freely and say so, exactly as the correction-lag ratchet works;
+raising a figure costs what raising it cost this time, a measurement and
+Frosty's ear on the record.
+
+Buying latency back is wanted but not owed (Frosty: "hopefully down the road
+find a clever way to buy back some latency if it becomes an issue"). Know what
+it would take: the engine's floor is the rest plus one whole cycle, so this
+curve is very nearly `liveRest + T`, and getting under it means changing what
+a splice **is**, not tuning a constant.
+
+**Waves is now information, not the per-note gate.** The curve stays measured
+in `References.h` and is still reported beside every note, and the
+worst-against-worst check still runs. What was retired on 2026-09-14 is the
+per-note assertion against it, which on this engine could never go green: at
+A5 Waves' whole delay is 0.709 ms, under one period there (1.136), while BMO's
+floor plus one whole-cycle excursion is 1.491. A rule that failed every cell
+while the ear said it was fine was measuring the wrong thing.
 
 `modules/tune/AGENTS.md` and `modules/tune/README.md` cite this rule to this
 file, and until 2026-09-11 it was not written down anywhere but in the notes.
-
-**It is broken today**, at the top of the range. BMO's rest is a constant
-4 ms where Waves' delay tracks the note, so the two cross at about C3: BMO is
-under Waves below it and over it above, by 3.90 ms at A5.
-`tests/dsp/tune/HardTuneTests.cpp` fails on it per note; the worst-against-
-worst form still passes and is kept as necessary but not sufficient. See
-`testing-notes/tune-latency-review-2026-09-11.md`, which also leaves two
-judgements open for Frosty: whether the rule is meant per note or worst
-against worst, and what the curve should do outside the notes it was measured
-at.
+`testing-notes/tune-latency-review-2026-09-11.md` has the derivation, and one
+judgement it left open is still open: what the curve should do outside the
+notes it was measured at.
 
 ## How the pieces fit
 
