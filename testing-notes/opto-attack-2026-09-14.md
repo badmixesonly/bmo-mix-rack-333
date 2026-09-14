@@ -192,3 +192,89 @@ the only branch holding an undecided change, and it is not in the merge set.
   with the attack rewritten, which means it never pinned the attack at all.
 - **The thirteen preset levels have not been re-solved.** A faster attack takes
   slightly more average gain, so preset levels on this branch are a little off.
+
+---
+
+# Round three heard, 2026-09-14 on AURORA — candidate B is rejected
+
+Frosty's rankings, written before `KEY.txt` was opened, all four letters
+answered in both groups this time.
+
+## Stressed 75
+
+| rank | letter | what it was |
+|---|---|---|
+| 1 | A | **candidate B** #2 |
+| 2 | D | shipped 0.2.4 #2 |
+| =3 | B | shipped 0.2.4 #1 |
+| =3 | C | **candidate B** #1 |
+
+## Stressed 50
+
+| rank | letter | what it was |
+|---|---|---|
+| 1 | A | shipped 0.2.4 #1 |
+| 2 | B | **candidate B** #2 |
+| =3 | C | **candidate B** #1 |
+| =3 | D | shipped 0.2.4 #2 |
+
+## Both groups interleave, so both are null
+
+In each group, each variant has one copy near the top and one copy at the
+bottom. Neither duplicate pair groups. Under the criterion the design was
+built on — both copies of one variant in the top two — **neither group
+qualifies, and it is not close.**
+
+Round two's clean separation at Stressed 50 did not repeat. It reversed: there
+candidate B took ranks 1 and 2, here the shipped build takes rank 1 and
+candidate B's two copies land 2nd and tied-last. Two rounds of the same
+comparison on the same material giving opposite orders is what chance looks
+like, and a p = 1/6 result failing to repeat is the ordinary outcome of a
+p = 1/6 result.
+
+Stressed 75 is now null twice, which at least is consistent.
+
+## The verdict
+
+**Candidate B is rejected. The shipped 10 ms attack stays, in both cells.**
+
+`opto-attack-b` is **not merged** and is kept only as the record. The branch
+holds the implementation, the three rounds and this verdict; nothing from it
+goes into `integration` except this note.
+
+Nothing in `modules/opto/` changes as a result of any of this. The fixed attack
+and the two comments explaining why it is fixed stand as they were — and they
+were right: no source supported the attack moving, and three rounds of blind
+listening could not hear it move either.
+
+## What the exercise was worth
+
+It cost three rounds and it prevented a change to how a shipped module sounds
+on the strength of a result that was noise. Round one put candidate B first in
+both groups and would have shipped it. What stopped that was the control:
+
+- **Round one**: one group turned out to be two byte-identical files ranked a
+  place apart, which made that group unrankable and left one group of evidence.
+- **Round two**: the duplicate-pair design gave a clean separation at CRUSH 50
+  — p = 1/6, reported as suggestive rather than settled.
+- **Round three**: the same test, repeated, reversed.
+
+The design earned its keep. An ordinary three-letter round, run twice, would
+have shown candidate B first in round one and first in round two and the change
+would have gone in.
+
+**The lesson to carry into the next listening test of a small difference:**
+enter at least one variant twice. The gap between two identical files is the
+noise floor of that comparison, measured on the same material in the same
+sitting by the same ears, and without it there is no way to tell a small real
+difference from a small imagined one. Both Opto rounds that looked positive
+were positive by less than that floor.
+
+## Not done, and now not needed
+
+The absolute t63/t90 assertions and the thirteen re-solved preset levels were
+gated on this round. They are not needed: nothing is changing.
+
+Worth keeping from it anyway: **`OptoDspTests` passed unchanged with the attack
+rewritten in both cells**, which means the suite does not pin the attack at
+all. That is a real gap whatever the verdict, and it is not fixed here.
