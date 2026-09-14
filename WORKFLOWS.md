@@ -300,6 +300,20 @@ Frosty opens them, in this order, each rebased onto `main` so it carries only
 its own work: **DEQ**, then **Tune**, then the **UI pass**. Kevin reviews each
 on its own. `WORKFLOWS.md` itself never goes: it is the fork's file.
 
+**Check every branch for audio before the PR is opened**, on the rebased
+branch:
+
+```
+git diff --stat main...<branch> | grep -iE '\.(wav|aif|aiff|flac|mp3|otf|ttf)$'
+```
+
+It must print nothing, and the result goes in the PR checklist. Audio and the
+licensed fonts have been swept into a commit twice (both 2026-09-14, both
+rewritten and force-pushed within minutes); the two affected commits are
+unreachable, so no merge can carry them forward, but the check is cheap and the
+mistake is not. Root `AGENTS.md`, "Before your first commit: never commit
+audio", has the detail and the commit ids.
+
 ## The workflows, one by one
 
 ### `add-bmo-deq` — DEQ, and the macOS failure
