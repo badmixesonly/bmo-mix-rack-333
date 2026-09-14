@@ -430,13 +430,22 @@ one place:
 6. [ ] **Frosty's per-module Ableton pass on this build**, one module at a
        time, each against its checklist, naming the machine. Fill in the
        Opto blind form and the Tune timestamps.
-7. [ ] The **B** fixes and the cheap **S** fixes on this branch: EQ phase
-       and auto gain, Vcomp Keep The Air and the tool table, Util's switch
-       ramps, Dimension's CENTS 0 and preset level test, the doc
-       corrections. DSP-only tests green, then a full Release `ctest`.
-8. [ ] The ear-gated changes, each on its own branch with renders: Tune's
-       frozen-period confirmation, Opto's attack (if a candidate wins),
-       Vcomp's THRU cap, Dimension's DIFFUSE/DETUNE wording or behaviour.
+7. [x] The **B** fixes and the cheap **S** fixes on this branch (`240de6d`):
+       EQ phase and auto gain, Vcomp Keep The Air and the tool table, Util's
+       switch ramps, Dimension's CENTS 0 and preset level test, the project
+       version, the snapshot script, the doc corrections. DSP-only 15 of 15
+       and the full Release `ctest` 26 of 26 on AURORA. Not yet through CI
+       and not yet installed: the installed build is still `cbd0939`.
+8. [ ] The ear-gated changes, each on its own branch with renders:
+       - [x] **Tune's frozen-period confirmation**, branch `tune-phrase-end`
+             off this one, blind set `field-audio/blind-2026-09-14-round9/`
+             against Antares and the shipped guard 6; the numbers are in
+             `tune-blind-round9-2026-09-14.md`. Frosty ranks it.
+       - [x] **Opto's attack**, two candidates rendered in
+             `field-audio/opto-attack-2026-09-14/`; nothing in any tree.
+       - [ ] Vcomp's THRU cap; Dimension's DIFFUSE/DETUNE wording or
+             behaviour; the Saturator's `bodyGain` sign, which needs one
+             render Frosty has.
 9. [ ] The click fixes that need a design: Vcomp's band-split crossfade,
        DEQ's MID↔SIDE glide and DYN-off glide, EQ's and Sat's switches.
 10. [ ] Merge into `integration`, dispatch CI, install the new bytes, a
