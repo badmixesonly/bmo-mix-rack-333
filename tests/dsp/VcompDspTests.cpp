@@ -315,7 +315,11 @@ void testArcIsProgrammeDependent()
         const auto probeStart = buf.size();
         buf.insert (buf.end(), probeIn.begin(), probeIn.end());
 
-        auto p = standard (70.0f);
+        // OUTPUT trimmed well down so the limiter never engages. Every test that
+    // compares two renders has to stay off the ceiling: the limiter is last
+    // and pins whatever reaches it to the same level, which would make two
+    // different settings measure identical and the check vacuous.
+    auto p = standard (70.0f, -24.0f);
         p.complex = true;
         p.arc = true;
         const auto out = render (buf, p);
@@ -350,7 +354,11 @@ void testArcIsProgrammeDependent()
         const auto probeStart = buf.size();
         buf.insert (buf.end(), probeIn.begin(), probeIn.end());
 
-        auto p = standard (70.0f);
+        // OUTPUT trimmed well down so the limiter never engages. Every test that
+    // compares two renders has to stay off the ceiling: the limiter is last
+    // and pins whatever reaches it to the same level, which would make two
+    // different settings measure identical and the check vacuous.
+    auto p = standard (70.0f, -24.0f);
         p.complex = true;
         p.arc = false;
         const auto out = render (buf, p);
@@ -380,7 +388,11 @@ void testReleaseScalesArc()
         const auto probeStart = buf.size();
         buf.insert (buf.end(), probeIn.begin(), probeIn.end());
 
-        auto p = standard (70.0f);
+        // OUTPUT trimmed well down so the limiter never engages. Every test that
+    // compares two renders has to stay off the ceiling: the limiter is last
+    // and pins whatever reaches it to the same level, which would make two
+    // different settings measure identical and the check vacuous.
+    auto p = standard (70.0f, -24.0f);
         p.complex = true;
         p.arc = true;
         p.releaseMs = releaseMs;
@@ -404,7 +416,11 @@ void testAttackIsFasterWhenShorter()
 
     auto peakInFirst = [&in] (float attackMs, double windowSec)
     {
-        auto p = standard (70.0f);
+        // OUTPUT trimmed well down so the limiter never engages. Every test that
+    // compares two renders has to stay off the ceiling: the limiter is last
+    // and pins whatever reaches it to the same level, which would make two
+    // different settings measure identical and the check vacuous.
+    auto p = standard (70.0f, -24.0f);
         p.complex = true;
         p.attackMs = attackMs;
         return peakBetween (render (in, p), 0.0, windowSec);
@@ -425,7 +441,11 @@ void testSidechainHighpassDeafensTheDetector()
     {
         DspCore core;
 
-        auto p = standard (70.0f);
+        // OUTPUT trimmed well down so the limiter never engages. Every test that
+    // compares two renders has to stay off the ceiling: the limiter is last
+    // and pins whatever reaches it to the same level, which would make two
+    // different settings measure identical and the check vacuous.
+    auto p = standard (70.0f, -24.0f);
         p.complex = true;
         p.sidechainHz = cutoffHz;
         core.setParams (p);
@@ -665,7 +685,10 @@ double duckingOf (double toneHz, DspCore::Params p)
     else; with it, the low tone sits still. */
 void testLowThruStopsTheLowEndBeingPumped()
 {
-    auto p = standard (80.0f);
+    // OUTPUT trimmed so the limiter stays out of it: at AMOUNT 80 the makeup
+    // alone is ~22 dB, the output would sit on the ceiling, and the limiter
+    // would be modulating everything the ducking figure is trying to measure.
+    auto p = standard (80.0f, -24.0f);
     p.complex = true;
 
     const auto pumped = duckingOf (80.0, p);
@@ -690,7 +713,10 @@ void testLowThruStopsTheLowEndBeingPumped()
     case passes. */
 void testHighThruStopsTheTopBeingPumped()
 {
-    auto p = standard (80.0f);
+    // OUTPUT trimmed so the limiter stays out of it: at AMOUNT 80 the makeup
+    // alone is ~22 dB, the output would sit on the ceiling, and the limiter
+    // would be modulating everything the ducking figure is trying to measure.
+    auto p = standard (80.0f, -24.0f);
     p.complex = true;
 
     const auto pumped = duckingOf (12000.0, p);
@@ -718,7 +744,10 @@ void testHighThruStopsTheTopBeingPumped()
     new one. */
 void testOneSideEngagedLeavesTheOtherAlone()
 {
-    auto p = standard (80.0f);
+    // OUTPUT trimmed so the limiter stays out of it: at AMOUNT 80 the makeup
+    // alone is ~22 dB, the output would sit on the ceiling, and the limiter
+    // would be modulating everything the ducking figure is trying to measure.
+    auto p = standard (80.0f, -24.0f);
     p.complex = true;
 
     const auto bothRails = duckingOf (12000.0, p);
@@ -754,6 +783,71 @@ void testRailsAreExactlyOff()
         worst = std::max (worst, (double) std::abs (unsplit[i] - railed[i]));
 
     checkNear (worst, 0.0, 0.0, "LOW and HIGH THRU at their rails bypass the crossover entirely");
+}
+
+//==============================================================================
+/** The ceiling is a ceiling, not a target it usually hits.
+
+    Zero latency means the limiter cannot see a transient coming, so it holds
+    the ceiling by computing each sample's gain from that same sample. The
+    claim that buys is absolute rather than statistical: **no sample, anywhere,
+    at any setting, comes out above the ceiling.** Driven here with the module
+    at its most aggressive and OUTPUT pushed hard on top, which is the worst
+    case a user can build. */
+void testLimiterHoldsTheCeiling()
+{
+    const auto ceiling = dbToLin ((double) kLimiterCeilingDb);
+
+    // A source with real transients, not a steady tone: a limiter that only
+    // ever saw sine waves would pass this by being slow.
+    std::vector<float> in ((size_t) (2.0 * kSampleRate));
+
+    for (size_t i = 0; i < in.size(); ++i)
+    {
+        const auto t = (double) i / kSampleRate;
+        const auto beat = std::fmod (t, 0.31);
+        const auto envelope = beat < 0.002 ? beat / 0.002 : std::exp (-(beat - 0.002) * 9.0);
+        in[i] = (float) (dbToLin (-3.0) * envelope * std::sin (2.0 * kPi * 180.0 * t));
+    }
+
+    for (const auto amountPercent : { 0.0f, 50.0f, 100.0f })
+    {
+        for (const auto outputDb : { 0.0f, 12.0f, 24.0f })
+        {
+            const auto out = render (in, standard (amountPercent, outputDb));
+            auto worst = 0.0;
+
+            for (const auto v : out)
+                worst = std::max (worst, (double) std::abs (v));
+
+            check (worst <= ceiling * 1.0001,
+                   "nothing exceeds the ceiling at AMOUNT " + std::to_string ((int) amountPercent)
+                       + " OUTPUT " + std::to_string ((int) outputDb)
+                       + " (peak " + std::to_string (linToDb (worst)) + " dBFS)");
+        }
+    }
+}
+
+/** Below the knee the limiter is not there at all.
+
+    A safety net that quietly shaved everything near full scale would break the
+    module's own wire claim, and it did: the knee was 3 dB wide and centred on
+    the ceiling, so it reached 1.5 dB below it and touched a -1 dBFS tone at
+    AMOUNT 0. The knee is 1 dB now and this is the check that keeps it honest
+    -- a tone just under the knee's lower edge has to come out bit-identical. */
+void testLimiterIsInertBelowItsKnee()
+{
+    const auto justUnder = (double) kLimiterCeilingDb - (double) kLimiterKneeDb * 0.5 - 0.2;
+    const auto in = sine (440.0, 0.5, dbToLin (justUnder));
+    const auto out = render (in, standard (0.0f));
+
+    auto worst = 0.0;
+
+    for (size_t i = 0; i < in.size(); ++i)
+        worst = std::max (worst, (double) std::abs (out[i] - in[i]));
+
+    checkNear (worst, 0.0, 1.0e-6,
+               "a tone just below the limiter's knee passes through untouched");
 }
 
 /** Nothing blows up, goes NaN or sticks, over a level sweep that crosses the
@@ -823,6 +917,8 @@ int main()
     testHighThruStopsTheTopBeingPumped();
     testOneSideEngagedLeavesTheOtherAlone();
     testRailsAreExactlyOff();
+    testLimiterHoldsTheCeiling();
+    testLimiterIsInertBelowItsKnee();
     testStability();
     testLatencyIsAlwaysZero();
 

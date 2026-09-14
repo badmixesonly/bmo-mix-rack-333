@@ -42,7 +42,12 @@ so where you put it is the level it acts at.
 
 **Zero latency at every setting.** No lookahead, no oversampling, so it can sit
 on a vocal while the singer is listening to it. The band split is IIR, so it
-costs phase rather than samples.
+costs phase rather than samples, and the limiter is instantaneous rather than
+looking ahead, for the same reason.
+
+**A limiter catches what the makeup would have clipped.** Last in the chain,
+no controls, ceiling a hair under full scale -- so it is inert for anything
+that was not going to clip anyway, and the module never puts out an over.
 
 **Stereo is always linked**, with no switch: two channels of one voice
 compressed independently is a wandering image, not an option. The gate is
@@ -70,7 +75,7 @@ off because a threshold is an absolute level: the right one depends on the
 track, and a number chosen here would be wrong for almost every session it
 loaded into.
 
-**None of these are ear-tuned yet.** `tools/measure/vcomp` prints the tables and
+**Heard on real material 2026-09-14 and kept.** `tools/measure/vcomp` prints the tables and
 writes the WAVs for that pass:
 
 ```bash

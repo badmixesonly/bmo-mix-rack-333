@@ -3,6 +3,7 @@
 #include "Crossover.h"
 #include "Detector.h"
 #include "Gate.h"
+#include "Limiter.h"
 
 #include <algorithm>
 #include <array>
@@ -49,7 +50,7 @@ private:
 /** BMO Vcomp.
 
         in -> gate -> [band split] -> compressor on the mid band
-           -> + the thru bands -> auto makeup -> OUTPUT
+           -> + the thru bands -> auto makeup -> OUTPUT -> limiter
 
     **The gate is first**, because what it closes has to be closed before the
     makeup amplifies it, and it is keyed off the raw input so its threshold is
@@ -108,6 +109,7 @@ public:
         }
 
         gate.prepare (rate);
+        limiter.prepare (rate);
 
         amountSmoother.prepare (rate, 15.0);
         outputSmoother.prepare (rate, 15.0);
@@ -127,6 +129,7 @@ public:
         }
 
         gate.reset();
+        limiter.reset();
         release.reset();
 
         envelopeDb = 0.0f;
@@ -231,6 +234,15 @@ public:
 
             const auto compressorGain = std::pow (10.0f, -envelopeDb / 20.0f);
 
+            // Both channels are worked out before either is written, because
+            // the limiter needs the peak of the pair to decide one gain for
+            // both. Writing as we went and limiting afterwards would either
+            // limit each channel on its own -- which swings the image exactly
+            // when the signal is loudest -- or need a second pass over the
+            // samples just written.
+            float pending[2] { 0.0f, 0.0f };
+            auto pendingPeak = 0.0f;
+
             for (int ch = 0; ch < active; ++ch)
             {
                 auto& c = channels[(size_t) ch];
@@ -249,8 +261,18 @@ public:
                     out = gated * compressorGain * autoMakeupLin * outputLin;
                 }
 
-                channelData[ch][i] = out;
+                pending[(size_t) ch] = out;
+                pendingPeak = std::max (pendingPeak, std::abs (out));
             }
+
+            // Last, and after OUTPUT: the ceiling is the module's, so OUTPUT
+            // drives into it rather than sitting past it. A trim that could
+            // push the output over the ceiling would make the ceiling a
+            // suggestion.
+            const auto limiterGain = limiter.process (pendingPeak);
+
+            for (int ch = 0; ch < active; ++ch)
+                channelData[ch][i] = pending[(size_t) ch] * limiterGain;
         }
 
         reportedReductionDb = blockMaxReduction;
@@ -311,6 +333,7 @@ private:
 
     std::array<Channel, 2> channels;
     Gate gate;
+    Limiter limiter;
     ReleaseStage release;
     Smoother amountSmoother, outputSmoother;
 

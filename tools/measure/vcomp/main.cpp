@@ -564,6 +564,61 @@ void printGateOpen()
     }
 }
 
+//==============================================================================
+/** Does the limiter add colour, and how much?
+
+    A zero-latency limiter cannot see a transient coming, so it holds its
+    ceiling by moving the gain within the sample that asked for it. That is
+    waveshaping by another name, and it is the price of not spending latency --
+    so the honest question is not "is it clean" but "how much does it add, and
+    where does it stop being a safety net and start being a sound".
+
+    Measured as harmonic distortion on a steady tone driven progressively
+    further into the ceiling. THD is the total of harmonics 2 to 8 against the
+    fundamental. The second and third are reported separately because they are
+    what an ear calls warmth and edge respectively: mostly-second is the sound
+    people pay for, mostly-third is the sound people complain about. */
+void printColour()
+{
+    constexpr double hz = 220.0;
+
+    std::printf ("\nLimiter distortion on a %.0f Hz tone, driven into the ceiling with\n"
+                 "OUTPUT. 'into' is how far past the ceiling the tone would have been\n"
+                 "without the limiter. AMOUNT is 0 throughout, so the compressor is a\n"
+                 "wire and everything here is the limiter.\n\n", hz);
+
+    std::printf ("%8s %10s %10s %10s %10s\n", "into dB", "THD %", "2nd dB", "3rd dB", "out dBFS");
+
+    const auto in = sine (hz, 1.0, std::pow (10.0, -6.0 / 20.0));
+
+    for (const auto driveDb : { 0.0f, 1.0f, 3.0f, 6.0f, 12.0f, 18.0f })
+    {
+        // OUTPUT pushes the tone at the ceiling; AMOUNT stays at 0.
+        DspCore::Params p;
+        p.outputDb = driveDb + 5.9f;   // AMOUNT stays 0: this is the limiter alone
+        const auto out = renderMono (in, p);
+
+        const auto fundamental = magnitudeAt (out, hz, 0.3, 0.9);
+        auto harmonicPower = 0.0;
+
+        for (int h = 2; h <= 8; ++h)
+        {
+            const auto m = magnitudeAt (out, hz * h, 0.3, 0.9);
+            harmonicPower += m * m;
+        }
+
+        const auto second = magnitudeAt (out, hz * 2.0, 0.3, 0.9);
+        const auto third  = magnitudeAt (out, hz * 3.0, 0.3, 0.9);
+
+        std::printf ("%8.0f %10.3f %10.1f %10.1f %10.2f\n",
+                     (double) driveDb,
+                     100.0 * std::sqrt (harmonicPower) / std::max (fundamental, 1.0e-12),
+                     db (second) - db (fundamental),
+                     db (third) - db (fundamental),
+                     db (peak (out, at (0.3), at (0.9))));
+    }
+}
+
 void printBands (const std::string& outdir)
 {
     std::printf ("\nLOW THRU and HIGH THRU.\n\n"
@@ -682,6 +737,7 @@ int main (int argc, char** argv)
     if (command == "balance") { printBalance();        return 0; }
     if (command == "arc")     { printArc();            return 0; }
     if (command == "gateopen"){ printGateOpen();       return 0; }
+    if (command == "colour")  { printColour();          return 0; }
 
     if (command == "gen")
     {
