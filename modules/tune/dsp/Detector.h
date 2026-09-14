@@ -63,7 +63,6 @@ public:
 
         // Octave guards (spec §3.5).
         double peakFraction    = 0.88; ///< McLeod's k: first key maximum above k * max
-        double earlyExit       = 0.95; ///< a lobe this clear ends the scan (the patent's eps = 0.05)
         double subMultipleRatio = 1.15;///< prefer tau/k if its difference is within this factor
         double continuityWeight = 0.10;///< penalty per octave of distance from the held period
         double onsetGraceMs     = 30.0;///< continuity is off this long after an onset
@@ -71,6 +70,16 @@ public:
         double multipleFloor    = 0.006;///< ...and the period's own aperiodicity is at least this (not noise)
         double heldMultipleRatio = 0.9;///< the ratio when the multiple is the period just held
         double heldMultipleFloor = 0.02;///< ...if the period's own aperiodicity is at least this
+
+        // Guard 6 (spec addendum 2026-09-14). A leap to a SHORTER period is
+        // the direction every harmonic error takes, so one of more than
+        // leapVetoCents, while a note is held, must first beat the held period
+        // on a window long enough to judge them both. A run of vetoes expires
+        // after leapVetoHoldMs, so a real leap is delayed by an evaluation or
+        // two and the guard can never latch. Costs nothing when the estimate
+        // is steady: heldSurvives() runs only on a proposed leap.
+        double leapVetoCents  = 100.0;
+        double leapVetoHoldMs = 2.0;
     };
 
     /** The widest range any Settings may ask for; prepare() allocates for it. */

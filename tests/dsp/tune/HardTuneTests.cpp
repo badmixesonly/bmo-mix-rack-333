@@ -67,10 +67,28 @@ namespace
         being reverted -- exactly the regression it exists to catch. Move them
         down with any change that improves them, and say so.
 
-        Now the figures with the prediction in: the estimate carried forward
-        to where the engine reads, which is what the lag was. */
-    constexpr double kBaselineMeanLagMs = 0.71;
-    constexpr double kBaselineRmsCents = 1.24;
+        Then the figures with the prediction in: the estimate carried forward
+        to where the engine reads, which is what the lag was. 0.71 and 1.24.
+
+        Re-based 2026-09-14, and this one is a LOOSENING, which is why it is
+        spelled out. Guard 6 -- the detector's leap veto, which is what stops
+        the pops -- costs 0.053 ms of mean lag and 0.024 cents of residue, all
+        of it at A2, where the guard correctly vetoes a real octave error and
+        holds the period for up to 2 ms across a fast vibrato. True latency
+        goes with it, 10.262 -> 10.427 ms, leaving 8.78 ms of headroom under
+        the Waves ceiling.
+
+        Frosty accepted the trade on 2026-09-14, after round eight put guard 6
+        first in all four blind groups -- ahead of the standing build in every
+        one, and ahead of Antares in three. The residue is still under
+        Antares' 1.30. A cent is 1/100 of a semitone and a listener notices
+        5-10 of them on a held note, so 0.024 is not an audible quantity; the
+        blind result is, and it is what this number was loosened for.
+
+        The rule for the next person is unchanged: move these DOWN with any
+        change that improves them. Moving them UP needs ears on the record. */
+    constexpr double kBaselineMeanLagMs = 0.76;
+    constexpr double kBaselineRmsCents = 1.27;
 
     std::vector<float> renderBmo (const std::vector<float>& in)
     {
