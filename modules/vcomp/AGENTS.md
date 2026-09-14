@@ -150,18 +150,32 @@ clip zones: a compressor working hard is not a compressor in trouble, and 24 dB
 of reduction in the clip red would be the meter telling the user off for using
 the module.
 
-## A gap in the shared layout test
+## The layout test did not look at this panel
 
-`ui_layout` passed with "LOW THRU" and "HIGH THRU" rendering as "LOW THR" and
-"HIGH TH". `PlainKnob::captionOverflow` measures the same font into the same box
-the caption is drawn into and reported that both fitted. The render disagreed.
+`ui_layout` passed while "LOW THRU" and "HIGH THRU" rendered as "LOW THR" and
+"HIGH TH" -- `Graphics::drawText` curtails what will not fit rather than
+spilling it, so a caption wider than its control loses its tail with nothing
+said.
 
-They were given half the panel each rather than the arithmetic being argued
-with, so the panel is right today -- but **the measurement and the render
-disagree for these two strings**, and that is a shared-code question affecting
-every module's caption, not something to patch from inside one module's layout.
-It is unresolved. If you are in `core/ui/Controls.cpp` for other reasons, this
-is worth half an hour.
+**This was first written up here as a fault in `PlainKnob::captionOverflow`,
+and that was wrong.** Measured directly, it reports 10.7 px and 13.3 px of
+overflow for those two strings in an 80 px column -- correct, and it would have
+failed the build. The actual fault was that **BMO Vcomp was never added to
+`tests/ui/LayoutTests.cpp`'s product list**, so nothing ever laid this panel
+out. `modules/AGENTS.md` names that file as one of the shared files a new
+module must edit and predicts this exact failure mode: "unchecked, silent".
+
+Two things came out of fixing it:
+
+- The knobs get half the panel each, which fits both captions.
+- That list was addressed by **hard-coded index** -- `all[5]` and `all[6]` were
+  BMO DEQ. Adding a row in the middle silently re-pointed every one of those,
+  so DEQ's width assertions started running against Vcomp and failing while
+  talking about "deq". It looks up by name now, because a list that every new
+  module is told to edit has to survive being edited anywhere but the end.
+
+The lesson worth carrying: a green suite after adding a module is not evidence
+the module was tested. Check the module's name actually appears in the output.
 
 ## What waits on an ear
 

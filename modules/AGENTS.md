@@ -34,8 +34,8 @@ own tests could not see. What belongs *here* is anything every module shares.
   programme-dependent because of its *attack* -- the one piece here most likely
   to be simplified into something that does nothing -- and two faults the
   measurement harness caught that no test had: a band split that silently
-  stopped compressing above 10.8 kHz, and a caption `ui_layout` says fits and
-  the renderer clips.
+  stopped compressing above 10.8 kHz, and a clipped caption that ui_layout
+  never saw because the module was missing from its product list.
 - [`tune/AGENTS.md`](tune/AGENTS.md) -- BMO Tune RT. **A product of this
   repository, not a rack module**: nothing of it is in the rack's registry or
   on its link line, and `-DBMO_BUILD_TUNE=OFF` / `-DBMO_BUILD_RACK=OFF` keep
