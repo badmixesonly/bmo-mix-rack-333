@@ -126,12 +126,38 @@ struct Tokens
         `utility` style. That said it *was* one of them, and it is not: INPUT
         and OUTPUT are the pair every module begins and ends with, trims either
         side of whatever the module does. Util's gain is the thing Util does.
-        Same behaviour, different job, so it gets its own rules.
+        Same behaviour, different job, so it keeps rules of its own -- which is
+        why this is still a token rather than a second use of `track`, even
+        though the two now hold the same hex. `track`, `switchAlt` and `meterGr`
+        already share it on the same terms: one name per job, so a colour can
+        move for one of them without silently moving for the others.
 
-        BMO Opto's old lavender, unused since that module went greyscale in
-        0.2.2. A placeholder that differentiates rather than a colour chosen
-        for this knob -- when one is chosen, change it here. */
-    juce::Colour utilGain   { 0xff9c71c3 };
+        **The value came back to the azure on Frosty's call, 2026-09-14, from
+        rendered candidates rather than from the table of ratios.** 0.2.3 had
+        parked it on BMO Opto's old lavender as a placeholder that
+        differentiated rather than a colour chosen for this knob, and that
+        placeholder was the fault: at hue 271.5 degrees against BMO Dimension's
+        271.6, VOLUME read as a Dimension control whenever the two sat in one
+        rack.
+
+        Three candidates were rendered, panel and rack, both appearances:
+
+        | | hue | on the dark plate | on the pale one |
+        |---|---|---|---|
+        | Util's own green `#7fc98a` | 128.9 | 6.84:1 | 1.72:1 |
+        | **the utility azure** | **198.8** | **6.02:1** | **1.95:1** |
+        | gold `#e8c95a` | 46.9 | 8.33:1 | 1.41:1 |
+
+        Green needed no new colour and cleared the rack, but rendered it took
+        VOLUME to the same green as PAN and WIDTH and the panel went monochrome
+        -- the headline knob stopped being the headline. Numbers could not show
+        that; only the render did. Gold read best of the three in the rack and
+        is the one that was recommended, and it was not taken: it puts a section
+        legend at 1.41:1 on the pale plate, below the 1.72-2.00 band the raw
+        legend rule already spends, and it buys a permanent new hue to get
+        there. The azure is second in the rack, clear of every accent by hue,
+        and the only candidate that stays inside the band already signed off. */
+    juce::Colour utilGain   { 0xff4fb8e8 };
 
     juce::Colour accent     { 0xfff08cb4 };   ///< the module's own colour; see ModuleDef
 

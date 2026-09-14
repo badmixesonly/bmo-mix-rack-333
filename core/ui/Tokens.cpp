@@ -33,6 +33,7 @@ namespace
         { "polarity",   &Tokens::polarity },
         { "accent",     &Tokens::accent },
         { "neutral",    &Tokens::neutral },
+        { "utilGain",   &Tokens::utilGain },
         { "meterLow",   &Tokens::meterLow },
         { "meterHigh",  &Tokens::meterHigh },
         { "meterClip",  &Tokens::meterClip },
