@@ -261,3 +261,93 @@ untouched.
 
 If the round goes against candidate B, this branch is deleted and the shipped
 attack stands.
+
+---
+
+# The confirming round, heard 2026-09-14 on AURORA
+
+Frosty's rankings, written before `KEY.txt` was opened. Decoded, with the
+duplicate pairs marked:
+
+## Stressed 50 — clean
+
+| rank | letter | what it was | his word |
+|---|---|---|---|
+| 1 | D | **candidate B** #1 | "best, bias unexplainable" |
+| 2 | A | **candidate B** #2 | "2nd by a hair" |
+| 3 | B | shipped 0.2.4 #1 | "2nd worst" |
+| 4 | C | shipped 0.2.4 #2 | "worst" |
+
+**Both copies of each variant landed adjacent, and candidate B took the top two
+slots.** That is the one arrangement out of six that the design was looking
+for: p = 1/6 by chance.
+
+The internal distances are the other half of it. The gap *inside* the candidate
+B pair — two byte-identical files — he called "by a hair". The gap between the
+pairs was large enough to order confidently. So the effect is bigger than this
+comparison's own noise floor, measured on the same material in the same
+sitting, which is exactly what round one could not establish.
+
+## Stressed 75 — a null, and unambiguously so
+
+| letter | what it was | his word |
+|---|---|---|
+| B | shipped 0.2.4 **#2** | "best" (tie) |
+| A | candidate B #1 | "2nd worst" |
+| C | shipped 0.2.4 **#1** | "worst" |
+| D | candidate B #2 | *not answered* |
+
+**The two identical shipped renders were ranked best and worst** — the widest
+possible split of a duplicate pair. D being blank does not matter: whatever D
+was, the shipped pair spans the whole ranking, so the pairs cannot group and
+the group carries no information about the variants.
+
+That is not a failure of the round. It is the round measuring the resolution of
+the comparison at CRUSH 75 and finding it wider than the difference.
+
+## The two groups disagree, and the mechanism predicts which way
+
+At CRUSH 50 the shipped attack is slower, so candidate B changes it by more in
+absolute terms:
+
+| | shipped t63 | candidate B t63 | change |
+|---|---|---|---|
+| Stressed 50 | 21 ms | 11.5 ms | **9.5 ms** |
+| Stressed 75 | 11 ms | 5.5 ms | 5.5 ms |
+
+The group with the larger change separated cleanly; the group with the smaller
+change was unrankable. That ordering is what a real effect looks like and is
+not what noise looks like — noise has no reason to respect the size of the
+change.
+
+## What this does to round one
+
+Round one's only rankable group was **Stressed 75**, where candidate B was
+placed first. Round two says Stressed 75 is not rankable at all. So round one's
+result there should be treated as noise, and the evidence for candidate B rests
+on this round's CRUSH 50 sweep rather than on two rounds agreeing.
+
+Stated plainly: **one controlled positive at p = 1/6, one demonstrated null,
+and a round-one positive now withdrawn.** Candidate B has never been ranked
+below the shipped build in a comparison that could rank anything.
+
+## Recommendation
+
+Ship candidate B. The one clean result is at the setting where the mechanism
+says the effect should be largest, the null is where it says it should be
+smallest, and the change is physically motivated, costs no latency and has
+never measured or sounded worse.
+
+p = 1/6 is suggestive, not certain. If Frosty wants it firmer before the preset
+re-solve, the strongest cheap test is another duplicate-pair round at **CRUSH
+50 and CRUSH 25**, where the shipped attack is slower still and the predicted
+difference is larger again. If the effect is real it should separate more
+easily at 25 than at 50; if it does not, that is the result that should stop
+this going in.
+
+## Still not done
+
+- Absolute t63/t90 assertions on `OptoDspTests`. The suite passed unchanged
+  with the attack rewritten, which means it never pinned the attack at all.
+- **The thirteen preset levels have not been re-solved.** A faster attack takes
+  slightly more average gain, so preset levels on this branch are a little off.
