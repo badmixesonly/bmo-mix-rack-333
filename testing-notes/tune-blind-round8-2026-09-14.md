@@ -74,35 +74,35 @@ waiting on this answer.
 
 ## Failure 0 ms
 
-Ranking (best to worst): 
+Ranking (best to worst): **C > A > B**
 
-- A: 
-- B: 
-- C: 
+- A: 2nd worst, still not shippable, new pops toward end
+- B: worst, old pops
+- C: best, new pops, less and fewer than A and B
 
 ## Failure 20 ms
 
-Ranking (best to worst): 
+Ranking (best to worst): **C > A > B**
 
-- A: 
-- B: 
-- C: 
+- A: 2nd worst, new pops, still clearly audible
+- B: worst, old pops, loud pops
+- C: best, new pops, significantly softer
 
 ## Fuji 0 ms
 
-Ranking (best to worst): 
+Ranking (best to worst): **C > B > A**
 
-- A: 
-- B: 
-- C: 
+- A: worst, has the most apparent pop on the word spills
+- B: second, pop on the word spills
+- C: best
 
 ## Fuji 20 ms
 
-Ranking (best to worst): 
+Ranking (best to worst): **C > (A = B, both worst)**
 
-- A: 
-- B: 
-- C: 
+- A: Worst, close but slightly more audible tracking, pop at the word spills
+- B: worst, smoothest tracking, but loud pop at the word spills
+- C: best, slightly more apparent tuning, but no pop
 
 ## Anything else
 
@@ -115,3 +115,56 @@ Anything new or worse at phrase ends?
 The single worst thing left: 
 
 Listened on: AURORA, 
+
+---
+
+## Answered, 2026-09-14, on AURORA
+
+Frosty, blind, before the key was opened. Rankings above; the letters decode:
+
+| group | A | B | C | result |
+|---|---|---|---|---|
+| Failure 0 ms | Antares | BMO now | **guard 6** | **guard 6 > Antares > BMO now** |
+| Failure 20 ms | guard 6 | BMO now | Antares | Antares > **guard 6** > BMO now |
+| Fuji 0 ms | Antares | BMO now | **guard 6** | **guard 6 > BMO now > Antares** |
+| Fuji 20 ms | BMO now | Antares | **guard 6** | **guard 6 > (BMO now = Antares)** |
+
+**Guard 6 beats the standing build 4-0.** Nothing had beaten round four since
+round four; three arms had been tried and lost. This is the first.
+
+**Guard 6 beats Antares 3-1**, and one of those three is **Failure 0 ms** --
+Antares had won Failure at both speeds in every round it has been in. Its one
+loss is Failure 20 ms, which is now guard 6's weakest group.
+
+**BMO now is last in three groups and tied last in the fourth.**
+
+### The thing Frosty heard that the numbers had not
+
+He separates **"old pops"** from **"new pops"** without being prompted, and the
+split is clean: every arm he calls "old pops" is BMO now. Both the arms he
+calls "new pops" are guard 6 *and Antares*. So the class of pop that has been
+the complaint all week is gone, and what is left is a class Antares has too.
+
+And on Fuji he names a place: **a pop "at the word spills"**, on Antares and on
+BMO now, absent on guard 6 -- *"C: best, slightly more apparent tuning, but no
+pop"*.
+
+That lands on a splice `bmo-tune-field` had been discounting. Fuji at 20 ms,
+BMO now, carries two splices the ruler calls **ON NOISE** with landing errors
+of 1.63 and 1.60, at **15.950 s** and **19.457 s**. Guard 6 removes both. The
+tool's own comment says an ON NOISE splice "is not a pop: two unrelated noisy
+reads differ a lot and sound the same", and that **"only the periodic column is
+a prediction about what is heard."** A sibilant is exactly the material the
+ruler calls aperiodic, and Frosty hears a pop there.
+
+**So the ON NOISE exclusion is wrong, and it is the fourth measure this project
+has had to retire against these ears.** It should be re-scored, not deleted:
+the two it discounted here are the two that went.
+
+### What is still true
+
+- *"still not shippable"* -- and he wrote that about **Antares**, at Failure
+  0 ms, not about BMO.
+- *"still clearly audible"* -- guard 6 at Failure 20 ms. Better is not done.
+- Failure 20 ms is where the work goes next. It is the one group Antares still
+  wins and the one where guard 6's remaining pops are loudest.
