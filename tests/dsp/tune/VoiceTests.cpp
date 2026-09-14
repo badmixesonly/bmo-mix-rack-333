@@ -49,6 +49,23 @@ namespace
         return v;
     }
 
+    /** A vowel whose FIRST FORMANT rings between the third and fourth
+        harmonic -- the Failure 17.409 s condition. `ratio` is where F1 sits
+        in multiples of the fundamental. */
+    sig::VoiceSettings formantOnHarmonic (double hz, double ratio, double bw,
+                                          double db, std::uint64_t seed)
+    {
+        sig::VoiceSettings v;
+        v.formants[0] = hz * ratio;
+        v.formants[1] = std::max (hz * ratio * 1.6, 1150.0);
+        v.bandwidths[0] = bw;
+        v.fundamentalDb = db;
+        v.jitter = 0.003;
+        v.shimmer = 0.03;
+        v.seed = seed;
+        return v;
+    }
+
     struct DetectorRead
     {
         double right = 0.0, octaveUp = 0.0, twelfthUp = 0.0, octaveDown = 0.0;   // fractions of voiced evaluations
@@ -182,6 +199,75 @@ int main()
         report (name + ": worst output frame off D4", worst, "c");
         report (name + ": output frames more than 5 c off", (double) off);
         check (worst <= 5.0, name + ": a held note comes out on D4, every 10 ms frame within 5 cents");
+    }
+
+    //== 2. A first formant on the fourth harmonic: the detector ==============
+    // Failure at 17.409 s, the splice Frosty timestamped. The singer is on
+    // A3, about 219 Hz, and the coarse scan's candidate list holds ONE entry:
+    // 787.5 Hz, which is no harmonic of 219 -- it is 3.67x. The real period,
+    // at 0.974, is never scored.
+    //
+    // The cause is the scan's early exit. closeLobe() breaks the lag scan as
+    // soon as any lobe's RAW correlation clears earlyExit (0.95), before the
+    // continuity weighting and before McLeod's peak-fraction rule. The coarse
+    // pass's window IS the lag, so at a short lag it spans about a
+    // millisecond -- roughly one cycle of the vowel's first formant -- and a
+    // formant ringing in there correlates as well as a period does. Nothing
+    // downstream can recover: guards 1 and 2 only ever look for a SHORTER
+    // lag, guard 3 can only rank candidates that are in the list, and guard 4
+    // climbs by factors of 2 and 3, so a lag at 3.67x is out of its reach.
+    //
+    // THE PITCHES HERE ALL HAVE A NON-INTEGER PERIOD, and that is the point.
+    // The first sweep of this case used 200, 240, 250, 300 and 320 Hz and
+    // found nothing, because at 48 kHz each of those is a whole number of
+    // samples (240, 200, 192, 160, 150) and the ambiguity does not arise.
+    // Every pitch between them fails. A singer is never on a whole number of
+    // samples.
+    std::printf ("a first formant on the fourth harmonic: the detector's read of a held note\n");
+    for (const auto hz : { 190.0, 205.0, 220.0, 262.0, 275.0, 310.0 })
+    {
+        const auto x = sig::voice (sig::steady (hz, 0.8, fs), fs,
+                                   formantOnHarmonic (hz, 4.0, 40.0, -20.0, 4400u + (unsigned) hz)).samples;
+        const auto r = readDetector (x, hz);
+
+        const auto name = label ("%.0f Hz, F1 at %.0f Hz", hz, hz * 4.0);
+        report (name + ": on the note", 100.0 * r.right, "%");
+        report (name + ": spread inside 10 ms", r.spreadCents, "c");
+
+        check (r.voiced > 0 && r.right >= 0.99, name + ": the detector reads the fundamental on 99 % of voiced evaluations");
+        check (r.spreadCents <= 20.0, name + ": and its estimate holds within 20 cents inside 10 ms");
+    }
+
+    //== 2. A first formant on the fourth harmonic: through the plugin ========
+    // The same voice through the whole plugin, which is where it is heard:
+    // a lost period collapses ClassicEngine's window under the read pointer
+    // and forces a splice by a period that is a fraction of the real cycle.
+    // A3 held 30 cents sharp in A major, retune 0, should come out on A3.
+    std::printf ("a first formant on the fourth harmonic: a held A3, 30 cents sharp, A major, 0.0 ms\n");
+    {
+        const auto sung = 220.0 * std::exp2 (30.0 / 1200.0);
+        const auto x = sig::voice (sig::steady (sung, 1.2, fs), fs,
+                                   formantOnHarmonic (sung, 4.0, 40.0, -20.0, 9700u)).samples;
+
+        TuneParams p;
+        p.key = 9;                  // A
+        p.scale = ScaleType::major;
+        const auto y = render (x, p);
+
+        double worst = 0.0;
+        int frames = 0, off = 0;
+        for (size_t a = (size_t) (0.25 * fs); a + (size_t) (0.04 * fs) < y.size() - (size_t) (0.1 * fs); a += (size_t) (0.01 * fs))
+        {
+            const auto hz = an::measureHz (y, a, (size_t) (0.04 * fs), fs, 150.0, 330.0);
+            const auto c = hz > 0.0 ? an::cents (hz, 220.0) : 1.0e3;
+            worst = std::max (worst, std::abs (c));
+            off += std::abs (c) > 5.0 ? 1 : 0;
+            ++frames;
+        }
+
+        report ("held A3 over a fourth-harmonic formant: worst output frame off A3", worst, "c");
+        report ("held A3 over a fourth-harmonic formant: output frames more than 5 c off", (double) off);
+        check (worst <= 5.0, "held A3 over a fourth-harmonic formant: every 10 ms frame comes out within 5 cents of A3");
     }
 
     return finish ("voice");
