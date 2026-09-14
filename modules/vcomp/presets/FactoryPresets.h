@@ -64,7 +64,15 @@ inline const std::vector<FactoryPreset>& factory()
 
         // The two that use the band split, which is the thing this module has
         // that a one-knob vocal compressor normally does not.
-        { "Keep The Chest", { { kComplex, 1.0f }, { kAmount, 70.0f },
+        // **AMOUNT 35 and not 70, because of what the makeup does here.** The
+        // thru band takes the makeup along with everything else, so an
+        // uncompressed low end rises by the whole makeup figure: at 70 that is
+        // about 19 dB and the preset came out 7.3 dB loud, at 45 it was still
+        // 3.8. The level-matching test caught both. This preset is where a
+        // user meets LOW THRU for the first time, so it has to sit where the
+        // feature works rather than where it is most obvious -- and how far
+        // that is, is the open question in AGENTS.md.
+        { "Keep The Chest", { { kComplex, 1.0f }, { kAmount, 35.0f },
                               { kLowThru, 160.0f } } },   // body levelled, weight left alone
 
         { "Keep The Air", { { kComplex, 1.0f }, { kAmount, 70.0f },

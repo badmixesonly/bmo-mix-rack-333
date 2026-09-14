@@ -134,6 +134,43 @@ is now engaged independently, and the clamp is 0.98 of Nyquist so the whole
 range is reachable at 44.1 and 48 kHz. `testOneSideEngagedLeavesTheOtherAlone`
 is the test that was missing.
 
+### The limiter is instantaneous because it refuses to spend latency
+
+Built 2026-09-14, after the ear pass. It exists because the makeup clips: at
+the top of AMOUNT it adds nearly 29 dB, and `measure_vcomp presets` had two
+factory presets peaking above 0 dBFS on a source whose RMS was -18.
+
+**Zero latency was treated as non-negotiable**, which decides the topology. A
+brickwall limiter looks ahead so it can start reducing before the transient
+lands; that costs latency and would take away the property the whole module is
+built around. So the attack is instantaneous instead -- each sample's gain is
+computed from that same sample -- which guarantees the ceiling with no delay
+and pays in distortion rather than in overshoot.
+
+Three consequences worth knowing before touching it:
+
+- **The knee has to be narrow.** A knee K wide and centred on the ceiling
+  starts pulling down K/2 below it. At 3 dB that reached -1.6 dBFS and broke
+  the module's wire claim at AMOUNT 0, which `testAmountZeroIsInert` caught on
+  a -1 dBFS tone. It is 1 dB now, and the claim reads "a wire for anything not
+  already at the edge of full scale".
+- **The colour is odd-order only.** Measured with `measure_vcomp colour`: THD
+  runs 0.015% at the threshold to 0.8% driven 18 dB in, and the **second
+  harmonic is at -180 dB, i.e. absent**. The gain stage is symmetric -- it acts
+  on `|peak|` -- so it cannot generate even harmonics. That means what colour
+  there is reads as edge rather than warmth. Adding warmth would mean
+  deliberate asymmetry, which is a product decision and has to be weighed
+  against BMO Saturator already existing for that job.
+- **Every test that compares two renders must stay off the ceiling.** The
+  limiter is last and pins whatever reaches it to the same level, so two
+  different settings measure identical and the check goes quietly vacuous.
+  Eight tests carry an OUTPUT trim for exactly this reason; do not remove them
+  because "the level does not matter here".
+
+It has no parameters, like RVox's. **How RVox implements theirs is unknown** --
+Waves do not publish it and nothing here is modelled on it beyond the chain
+order.
+
 ### Three bars, not a needle
 
 BMO Opto's `DynamicsMeter` is a period instrument -- VU ballistics on a 1940s
@@ -177,6 +214,43 @@ Two things came out of fixing it:
 The lesson worth carrying: a green suite after adding a module is not evidence
 the module was tested. Check the module's name actually appears in the output.
 
+## Open: the THRU bands run away, and there are three ways out
+
+**This is the first thing to pick up in BMO Vcomp's own pass.** Deferred on
+2026-09-14 to get the limiter to CI, not because it is settled.
+
+The spec is that everything outside LOW/HIGH THRU is uncompressed and
+*everything* takes the makeup. That is implemented and correct, and it has an
+arithmetic consequence nobody can tune away: a band that is not compressed but
+is given the full makeup can only get louder, by the whole makeup figure. That
+is +6 dB of low end at AMOUNT 30 and +25 at 90 (`measure_vcomp balance`), so
+the feature works at the bottom of the knob and defeats itself at the top.
+
+It already costs something real: "Keep The Chest" had to come down from AMOUNT
+70 to 35 to pass the level-matching test, which means the preset that
+introduces the feature is demonstrating it at a third of the strength the
+module is capable of.
+
+Three candidate fixes, none of which costs latency:
+
+1. **Partial compression on the thru bands** -- apply half (or some fraction)
+   of the compressor's gain reduction to them instead of none. They stay
+   livelier than the compressed band without being free to run, and the makeup
+   then partially matches what was taken. Frosty's suggestion, and the one
+   that keeps a single mental model: THRU becomes a *degree* rather than an
+   on/off.
+2. **A cap on the thru makeup** -- give the thru path `min(makeup, N dB)`.
+   Bounds the tilt predictably at every AMOUNT, no dynamics, no distortion,
+   trivially testable. Departs from "both get the makeup" at high AMOUNT.
+3. **A separate zero-latency limiter on the thru path** -- the Limiter class
+   already does this with no latency, so it is nearly free to try. But it only
+   bites near full scale, and the balance problem starts far below that: at
+   AMOUNT 45 the boosted low band peaks around -9 dBFS and no sensible ceiling
+   would touch it. Useful as a belt-and-braces addition, not as the fix.
+
+Whatever is chosen, `measure_vcomp balance` is the report that judges it: the
+tilt column should stay near zero across the AMOUNT range rather than growing.
+
 ## What waits on an ear
 
 Nothing here has been heard on real programme material. `tools/measure/vcomp`
@@ -210,8 +284,7 @@ Specifically open:
   `latencyForParams` and the module's place in a tracking chain, so it is a
   product decision rather than a feature to slip in. The band split does not
   change this: the crossover is IIR, so it costs phase rather than samples.
-- **No limiter.** RVox is gate -> compressor -> limiter and this is the missing
-  third. See the output peaks above; this is the likeliest next addition.
+  Neither does the limiter -- see below.
 - **No parallel MIX.** Neither RVox nor DC1A has one.
 - **No stereo LINK switch.** Stereo is always linked, because two channels of
   one voice compressed independently is a wandering image rather than a stereo

@@ -34,16 +34,30 @@ namespace bmo::vcomp
 // for this and so does BMO Vcomp.
 //
 // **Fast to open, slow to close, with a hold.** Opening is the direction that
-// costs you a syllable if it is wrong, so it is ~0.5 ms; closing is the
-// direction that chatters if it is wrong, so it is ~150 ms with a 40 ms hold
-// after the last time the signal was over threshold. The hold is what keeps it
-// from starting to close inside a word.
+// costs you a syllable if it is wrong, so it is 3 ms; closing is the direction
+// that chatters if it is wrong, so it is ~150 ms with a 40 ms hold after the
+// last time the signal was over threshold. The hold is what keeps it from
+// starting to close inside a word.
+//
+// **3 ms and not 0.5, because a gate that opens too fast clicks.** Frosty heard
+// it pop on the way in, 2026-09-14. The open time had not changed -- the depth
+// it opens *from* had: at 3:1 into a 50 dB floor the gate was only ever a
+// little way shut, and at 6:1 into 60 it sits nearly 58 dB down between words.
+// Same ramp, much longer drop, and the step in the gain envelope becomes a
+// click. The number that predicts it is the slew, and 0.5 ms was moving the
+// gain at 113 dB per millisecond (measure_vcomp gateopen).
+//
+// 3 ms brings that to 19 dB/ms and costs nothing at the front of a word: the
+// onset column of measure_vcomp's gate report reads 0.00 dB at every threshold
+// a voice would use and -0.33 dB at the most extreme. Slower still is
+// available -- 5 ms halves the slew again -- but it takes 20 ms to open, which
+// is inside the length of a consonant and is where syllables start to go.
 //==============================================================================
 
-inline constexpr float kGateRatio      = 3.0f;    ///< downward expansion below threshold
+inline constexpr float kGateRatio      = 6.0f;    ///< downward expansion below threshold
 inline constexpr float kGateKneeDb     = 6.0f;
-inline constexpr float kGateRangeDb    = 50.0f;   ///< the most it will ever shut
-inline constexpr float kGateOpenMs     = 0.5f;
+inline constexpr float kGateRangeDb    = 60.0f;   ///< the most it will ever shut
+inline constexpr float kGateOpenMs     = 3.0f;
 inline constexpr float kGateCloseMs    = 150.0f;
 inline constexpr float kGateHoldMs     = 40.0f;
 

@@ -388,6 +388,237 @@ void printGate (const std::string& outdir)
 }
 
 //==============================================================================
+//==============================================================================
+/** Does engaging a THRU band keep that band where it was, or move it?
+
+    The claim on the panel is "everything below LOW THRU is untouched". What a
+    listener actually judges is the *balance*: whether the low end still sits
+    where it did against the midrange. Those are not the same claim, and this
+    report is what tells them apart.
+
+    Measured on the harness voice, which is a harmonic stack on a 150 Hz
+    fundamental, so 150 Hz is squarely in a 300 Hz thru band and 1500 Hz is
+    squarely in the compressed one. */
+void printBalance()
+{
+    const auto source = voice ((int) (4.0 * kSampleRate));
+
+    std::printf ("\nBand balance. The voice at each AMOUNT, with LOW THRU off and at\n"
+                 "300 Hz. 'low' is 150 Hz and 'mid' is 1500 Hz, each as a change from\n"
+                 "the dry source. 'tilt' is low minus mid: 0 means engaging LOW THRU\n"
+                 "left the balance alone, negative means the low end receded.\n\n");
+
+    std::printf ("%7s  %-22s  %-22s %8s\n", "", "LOW THRU off", "LOW THRU 300", "");
+    std::printf ("%7s %10s %10s %10s %10s %8s\n",
+                 "amount", "low dB", "mid dB", "low dB", "mid dB", "tilt dB");
+
+    const auto dryLow  = magnitudeAt (source, 150.0, 0.2, 1.4);
+    const auto dryMid  = magnitudeAt (source, 1500.0, 0.2, 1.4);
+
+    for (const auto amountPercent : { 30.0f, 50.0f, 70.0f, 90.0f })
+    {
+        double reading[2][2];
+
+        for (int withThru = 0; withThru < 2; ++withThru)
+        {
+            DspCore::Params p;
+            p.amountPercent = amountPercent;
+            p.complex = true;
+            p.lowThruHz = withThru ? 300.0f : kLowThruOffHz;
+
+            const auto out = renderMono (source, p);
+
+            reading[withThru][0] = db (magnitudeAt (out, 150.0, 0.2, 1.4)) - db (dryLow);
+            reading[withThru][1] = db (magnitudeAt (out, 1500.0, 0.2, 1.4)) - db (dryMid);
+        }
+
+        const auto tiltOff = reading[0][0] - reading[0][1];
+        const auto tiltOn  = reading[1][0] - reading[1][1];
+
+        std::printf ("%6.0f%% %10.2f %10.2f %10.2f %10.2f %8.2f\n",
+                     (double) amountPercent,
+                     reading[0][0], reading[0][1], reading[1][0], reading[1][1],
+                     tiltOn - tiltOff);
+    }
+}
+
+//==============================================================================
+/** Is ARC earning its place?
+
+    testArcIsProgrammeDependent proves the mechanism works on a synthetic pair
+    of hits at matched level. That is not the same question as whether it does
+    anything you can hear on a voice at the settings the module actually ships
+    with, which is what this measures: the same source rendered with ARC on and
+    off, and how far apart the two results get.
+
+    'peak diff' is the largest sample-for-sample difference between the two
+    renders expressed in dB relative to full scale -- a proxy for "is there
+    anything there at all". 'GR spread' is the difference in how much reduction
+    each was holding at the same moments, which is the thing ARC is supposed to
+    change. If both are small at the default RELEASE, ARC is a mechanism
+    without an audible consequence and the switch is decoration. */
+void printArc()
+{
+    const auto source = voice ((int) (6.0 * kSampleRate));
+
+    std::printf ("\nARC on against ARC off, same source, same RELEASE.\n"
+                 "peak diff is the loudest disagreement between the two renders;\n"
+                 "RMS diff is the overall one. Both are relative to the rendered\n"
+                 "signal, so -60 dB means the two are effectively the same sound.\n\n");
+
+    std::printf ("%7s %10s %12s %12s\n", "release", "amount", "peak diff", "RMS diff");
+
+    for (const auto releaseMs : { 50.0f, 200.0f, 600.0f })
+    {
+        for (const auto amountPercent : { 40.0f, 70.0f })
+        {
+            DspCore::Params p;
+            p.amountPercent = amountPercent;
+            p.complex = true;
+            p.releaseMs = releaseMs;
+
+            p.arc = true;
+            const auto withArc = renderMono (source, p);
+
+            p.arc = false;
+            const auto without = renderMono (source, p);
+
+            std::vector<float> difference (withArc.size());
+
+            for (size_t i = 0; i < withArc.size(); ++i)
+                difference[i] = withArc[i] - without[i];
+
+            const auto reference = rms (withArc);
+
+            std::printf ("%6.0fms %9.0f%% %12.1f %12.1f\n",
+                         (double) releaseMs, (double) amountPercent,
+                         db (peak (difference)) - db (peak (withArc)),
+                         db (rms (difference)) - db (reference));
+        }
+    }
+}
+
+//==============================================================================
+/** How violently the gate opens.
+
+    A gate that opens too fast clicks, and the click is a step in the gain
+    envelope rather than anything in the audio -- so the number that predicts
+    it is the *slew*: how many dB of gain the gate moves through per
+    millisecond at the moment a word arrives.
+
+    This got worse when the gate went from 3:1/50 dB to 6:1/60 dB. The open
+    time did not change; the distance it has to open *from* did, because a
+    deeper gate is further shut when the word starts. Same ramp, longer drop,
+    louder click.
+
+    Driven straight at the Gate rather than through the whole module, so the
+    figure is the gate's own behaviour with nothing else in front of it:
+    hold it fully closed on silence, then hand it a sudden loud onset and
+    watch the gain. */
+void printGateOpen()
+{
+    std::printf ("\nHow the gate opens. 'peak slew' is the fastest the gain moves,\n"
+                 "in dB per millisecond -- the number that predicts a click. 'to -1 dB'\n"
+                 "is how long until it is essentially all the way open, which is what\n"
+                 "costs you the front of a word if it is too long.\n\n");
+
+    std::printf ("open ms is kGateOpenMs = %.2f, ratio %.0f:1, floor %.0f dB\n\n",
+                 (double) kGateOpenMs, (double) kGateRatio, (double) kGateRangeDb);
+
+    std::printf ("%10s %12s %12s %12s\n", "threshold", "shut dB", "peak slew", "to -1 dB");
+
+    for (const auto thresholdDb : { -45.0f, -40.0f, -35.0f, -30.0f })
+    {
+        Gate gate;
+        gate.prepare (kSampleRate);
+        gate.setThreshold (thresholdDb);
+
+        // Sit on silence long enough to be fully shut.
+        for (int i = 0; i < (int) (0.5 * kSampleRate); ++i)
+            gate.process (-90.0f);
+
+        const auto shut = gate.currentAttenuationDb();
+
+        // Then a word arrives, well above threshold.
+        auto previous = shut;
+        auto worstSlewPerMs = 0.0;
+        auto openedAt = -1;
+
+        for (int i = 0; i < (int) (0.2 * kSampleRate); ++i)
+        {
+            gate.process (-8.0f);
+
+            const auto now = gate.currentAttenuationDb();
+            const auto perMs = std::abs ((double) (previous - now)) * (kSampleRate / 1000.0);
+
+            worstSlewPerMs = std::max (worstSlewPerMs, perMs);
+            previous = now;
+
+            if (openedAt < 0 && now <= 1.0f)
+                openedAt = i;
+        }
+
+        std::printf ("%9.0f %12.1f %12.1f %10.2f ms\n",
+                     (double) thresholdDb, (double) shut, worstSlewPerMs,
+                     openedAt < 0 ? -1.0 : (double) openedAt * 1000.0 / kSampleRate);
+    }
+}
+
+//==============================================================================
+/** Does the limiter add colour, and how much?
+
+    A zero-latency limiter cannot see a transient coming, so it holds its
+    ceiling by moving the gain within the sample that asked for it. That is
+    waveshaping by another name, and it is the price of not spending latency --
+    so the honest question is not "is it clean" but "how much does it add, and
+    where does it stop being a safety net and start being a sound".
+
+    Measured as harmonic distortion on a steady tone driven progressively
+    further into the ceiling. THD is the total of harmonics 2 to 8 against the
+    fundamental. The second and third are reported separately because they are
+    what an ear calls warmth and edge respectively: mostly-second is the sound
+    people pay for, mostly-third is the sound people complain about. */
+void printColour()
+{
+    constexpr double hz = 220.0;
+
+    std::printf ("\nLimiter distortion on a %.0f Hz tone, driven into the ceiling with\n"
+                 "OUTPUT. 'into' is how far past the ceiling the tone would have been\n"
+                 "without the limiter. AMOUNT is 0 throughout, so the compressor is a\n"
+                 "wire and everything here is the limiter.\n\n", hz);
+
+    std::printf ("%8s %10s %10s %10s %10s\n", "into dB", "THD %", "2nd dB", "3rd dB", "out dBFS");
+
+    const auto in = sine (hz, 1.0, std::pow (10.0, -6.0 / 20.0));
+
+    for (const auto driveDb : { 0.0f, 1.0f, 3.0f, 6.0f, 12.0f, 18.0f })
+    {
+        // OUTPUT pushes the tone at the ceiling; AMOUNT stays at 0.
+        DspCore::Params p;
+        p.outputDb = driveDb + 5.9f;   // AMOUNT stays 0: this is the limiter alone
+        const auto out = renderMono (in, p);
+
+        const auto fundamental = magnitudeAt (out, hz, 0.3, 0.9);
+        auto harmonicPower = 0.0;
+
+        for (int h = 2; h <= 8; ++h)
+        {
+            const auto m = magnitudeAt (out, hz * h, 0.3, 0.9);
+            harmonicPower += m * m;
+        }
+
+        const auto second = magnitudeAt (out, hz * 2.0, 0.3, 0.9);
+        const auto third  = magnitudeAt (out, hz * 3.0, 0.3, 0.9);
+
+        std::printf ("%8.0f %10.3f %10.1f %10.1f %10.2f\n",
+                     (double) driveDb,
+                     100.0 * std::sqrt (harmonicPower) / std::max (fundamental, 1.0e-12),
+                     db (second) - db (fundamental),
+                     db (third) - db (fundamental),
+                     db (peak (out, at (0.3), at (0.9))));
+    }
+}
+
 void printBands (const std::string& outdir)
 {
     std::printf ("\nLOW THRU and HIGH THRU.\n\n"
@@ -503,6 +734,10 @@ int main (int argc, char** argv)
     if (command == "presets") { printPresets (outdir); return 0; }
     if (command == "gate")    { printGate (outdir);    return 0; }
     if (command == "bands")   { printBands (outdir);   return 0; }
+    if (command == "balance") { printBalance();        return 0; }
+    if (command == "arc")     { printArc();            return 0; }
+    if (command == "gateopen"){ printGateOpen();       return 0; }
+    if (command == "colour")  { printColour();          return 0; }
 
     if (command == "gen")
     {

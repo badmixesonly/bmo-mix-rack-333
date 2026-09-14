@@ -47,14 +47,21 @@ voice. Drag the handle on the IN meter.
 - **Does it ever bite the front of a word?** This is the expensive
   failure and the one to hunt for. Offline it moves the first 20 ms by at
   most 0.06 dB at every threshold, but a synthetic phrase is not a singer.
-- Is 3:1 decisive enough? At a threshold 8 dB above the noise it shuts by
-  16 dB. On a bleedy track that may be too polite — say so and it changes.
+- **Heard 2026-09-14 and kept**: 6:1 into a 60 dB floor, opening over 3 ms.
+  It was 3:1/50 dB opening in 0.5 ms, which was too polite; going deeper then
+  made the fast open *click*, because the gate suddenly had 58 dB to open
+  from rather than 16. If it still ticks, the structural fix is a slew limit
+  rather than a longer ramp — see `Gate.h`.
 - Does putting the threshold *on the meter* work as an interaction, or
   would you rather have a knob? This is the first control in the suite
   that is neither knob nor switch.
 
 ## 4. ARC, and the timing controls
 
+- **ARC was made bolder on 2026-09-14 and kept.** Slow branch 1 s -> 2 s,
+  charge 400 ms -> 240. At the shipped default it had been sitting about
+  20 dB below the signal, which is why it could not be heard at all; it is
+  now around 12 dB at AMOUNT 70.
 - With COMPLEX off, ARC is always on. Does the release feel like it is
   paying attention — quick after a consonant, slower after a long held
   line? That difference is the whole of it.
@@ -68,7 +75,11 @@ voice. Drag the handle on the IN meter.
 
 ## 5. LOW THRU / HIGH THRU
 
-These split bands out of the compressor's reach — not a sidechain filter.
+These split bands out of the compressor's reach — not a sidechain filter. The
+makeup applies to **everything**, compressed or not (Frosty's spec,
+2026-09-14), so an uncompressed band rises with it: +6 dB of low end at
+AMOUNT 30, +25 dB at 90. Usable low to middling and self-defeating above
+that, which is a property of the request rather than of the build.
 
 - **LOW THRU** on a chesty male vocal: does the weight stay while the
   midrange levels? Preset **Keep The Chest**.
