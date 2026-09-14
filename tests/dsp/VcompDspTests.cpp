@@ -760,6 +760,60 @@ void testOneSideEngagedLeavesTheOtherAlone()
                "LOW THRU alone leaves the top end as compressed as it was");
 }
 
+/** The thru bands cannot run away with the makeup.
+
+    A band that is passed through uncompressed and then handed the whole makeup
+    can only get louder, by the whole makeup figure. That is not a voicing
+    choice anybody could tune around; it is what "both bands get the makeup"
+    means arithmetically, and it made LOW THRU a control that worked at the
+    bottom of AMOUNT and defeated itself at the top. With the cap taken out of
+    DspCore.h this test prints the mechanism exactly: the three lifts below come
+    out 12.44, 18.92 and 25.51 dB, which is the makeup column of
+    `measure_vcomp curve` to the second decimal.
+
+    What is checked is the design claim rather than the formula -- that the
+    lift is bounded and stops growing, while the makeup over the same span of
+    the knob goes on growing by 13 dB. Asserting the figure the same expression
+    produces would only prove the expression was copied correctly twice.
+
+    OUTPUT is trimmed 24 dB so the limiter is nowhere near the result -- the
+    same reason the two pumping tests trim it -- and the trim is added back
+    before the comparison. 80 Hz against a 300 Hz split is nearly two octaves
+    clear, which at 24 dB/octave leaves the compressed band's copy of the tone
+    far enough down to ignore. */
+void testThruMakeupCannotRunAway()
+{
+    const auto tone = sine (80.0, 2.0, dbToLin (-20.0));
+    const auto dry  = linToDb (magnitudeAt (tone, 80.0, 0.5, 1.9));
+
+    const auto liftAt = [&] (float amountPercent)
+    {
+        auto p = standard (amountPercent, -24.0f);
+        p.complex   = true;
+        p.lowThruHz = 300.0f;
+
+        return linToDb (magnitudeAt (render (tone, p), 80.0, 0.5, 1.9)) - dry + 24.0;
+    };
+
+    const auto at10 = liftAt (10.0f);
+    const auto at50 = liftAt (50.0f);
+    const auto at90 = liftAt (90.0f);
+
+    check (at50 > 0.0 && at50 < 7.0, "the thru band is lifted, and by well under its makeup, at AMOUNT 50");
+    check (at90 > 0.0 && at90 < 7.0, "and still by well under its makeup at AMOUNT 90");
+
+    // 12.44 dB of makeup at AMOUNT 50 against 25.55 at 90. The thru band's
+    // share of that has to stop climbing or the feature eats itself.
+    check (at90 - at50 < 1.5,
+           "the thru band's lift stops growing while the makeup it comes from grows 13 dB");
+
+    // A cap that clamped everything to one figure would pass the three checks
+    // above and make LOW THRU do the same thing at every AMOUNT. It is derived
+    // from the curve, so at the bottom of the knob there is barely any of it.
+    check (at10 > 0.0 && at10 < at50,
+           "at a low AMOUNT the thru band takes a correspondingly small lift");
+}
+
 /** At both rails the crossover is bypassed outright, not run with empty outer
     bands. The difference is invisible in a magnitude plot and real all the
     same: a crossover left in circuit still costs its allpass phase shift, so a
@@ -916,6 +970,7 @@ int main()
     testLowThruStopsTheLowEndBeingPumped();
     testHighThruStopsTheTopBeingPumped();
     testOneSideEngagedLeavesTheOtherAlone();
+    testThruMakeupCannotRunAway();
     testRailsAreExactlyOff();
     testLimiterHoldsTheCeiling();
     testLimiterIsInertBelowItsKnee();

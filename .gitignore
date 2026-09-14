@@ -36,3 +36,11 @@ snapshots/
 # deliberately outside CMake; see each one's README.
 tools/measure/renders/*.exe
 tools/inspect/*.exe
+
+# The corpus scorer's working folders (scripts/score-corpus.sh): the generator is
+# the source of truth and regenerates the same bytes, and renders/ holds
+# renders of the field takes, which are never committed. Nothing enforced
+# this until a commit on 2026-09-14 swept all three in.
+corpus/
+renders/
+reports/

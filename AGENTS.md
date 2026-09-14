@@ -1,8 +1,81 @@
 # Working in this repository
 
-This is the BMO plugin suite by LT3a: three modules (EQ, Saturator, Util),
-one rack, and the shared code under `core/`. Read this first; then the
-`AGENTS.md` in whichever of `core/`, `modules/`, `products/` you are touching.
+This is the BMO plugin suite by LT3a: seven modules (EQ, Saturator, Util,
+Opto, Dimension, DEQ, Vcomp), one rack, BMO Tune RT alongside them, and the
+shared code under `core/`. Read this first; then the `AGENTS.md` in whichever
+of `core/`, `modules/`, `products/` you are touching.
+
+## Before your first commit: never commit audio
+
+**Check `.gitignore` before the first commit of any session that renders,
+scores or measures anything.** This has gone wrong twice, both times on
+2026-09-14, both times within minutes of a render tool being run for the first
+time on a branch:
+
+- `corpus/`, `renders/` and `reports/` — the corpus scorer's working folders
+  (`scripts/score-corpus.sh`). `renders/` held renders of Frosty's field takes.
+- `renders/` and `opto_measurements/` again, on a branch cut from a base that
+  did not yet carry the first fix.
+
+Both were rewritten and force-pushed within minutes, but **a force-push does
+not delete anything from GitHub** — unreachable objects stay until GitHub
+garbage-collects them, and only a support request removes them sooner.
+
+The rule, in order:
+
+1. **Field audio, blind sets, renders of the takes, the corpus and the
+   licensed fonts never enter the repository.** Not in any branch, not
+   temporarily, not "it will be rewritten".
+2. **Render into a gitignored folder, or check `git status --short` before
+   `git add -A`.** `git add -A` after a tool run is where both incidents
+   happened. If you are about to stage everything, read the list first.
+3. **When you cut a branch, check that its base has the ignores.** The second
+   incident happened because the fix was sitting on one branch and the new
+   branch came off another. `grep -c 'renders/' .gitignore` is the whole check.
+4. **If it happens anyway:** rewrite the commit to the files you meant, add the
+   ignores, force-push with `--force-with-lease`, and say so plainly — in the
+   commit message, to Frosty, and in `testing-notes/`. Then check that the
+   objects cannot reach Kevin (see below).
+
+### The objects already on the fork must not reach Kevin
+
+Two rewritten commits left audio objects unreachable but present on
+`badmixesonly/bmo-mix-rack-333`:
+
+| commit | what it swept in | when |
+|---|---|---|
+| `6f504bc` | `corpus/`, `renders/`, `reports/` — renders of the Failure and Fuji takes | 2026-09-14 |
+| `dd04f8f` | `renders/` of the Failure take, `opto_measurements/` | 2026-09-14 |
+
+Both are unreachable from every branch, so **no merge or rebase can carry them
+forward** — a merge moves reachable history only, and an unreachable commit is
+not in any branch's history to move. Audited on AURORA, 2026-09-14:
+
+```
+git log --all --oneline --diff-filter=A --name-only -- '*.wav' '*.otf' '*.ttf'
+git branch -a --contains 6f504bc      # and dd04f8f
+```
+
+The first prints **nothing** — no reachable commit on any branch has ever
+added audio or a font — and the second prints nothing for both commits. So as
+things stand **nothing that reaches Kevin can contain the leaked audio**, and
+the head tree of every branch (`integration`, `review-0.2.4`, `vcomp-thru-cap`,
+`opto-attack-b`, `field-quiet-splices`, `tune-phrase-end`, `add-bmo-deq`,
+`add-bmo-tune`) carries zero audio or font files.
+
+Re-run the first command before stage 5 rather than trusting this paragraph:
+it is a statement about 2026-09-14, and the whole point is that it stopped
+being true twice in one day.
+
+What could still carry audio there is a *new* mistake, so **at stage 5, before
+any pull request to `kevkloud/bmo-mix-rack`, check the diff for audio**:
+
+```
+git diff --stat main...<branch> | grep -iE '\.(wav|aif|aiff|flac|mp3|otf|ttf)$'
+```
+
+It must print nothing. Do this per branch, on the rebased branch, and record
+the result in the PR checklist. `WORKFLOWS.md` stage 5 carries the same check.
 
 ## Which machine you are on
 
@@ -54,9 +127,11 @@ binary on that machine by date and SHA-256.
 A saved session references these, so they are permanent once shipped:
 
 - Parameter IDs, their **order** in `specs()`, ranges, steps and defaults.
-- Plugin codes (`Fsty`, `Bsat`, `Butl`, `Brck`), bundle IDs
-  (`com.lt3audio.*`), the manufacturer code `LT3a`, and product names.
-- Module ids (`eq`, `sat`, `util`) and the state tags `PARAMS`, `RACK`, `SLOT`.
+- Plugin codes (`Fsty`, `Bsat`, `Butl`, `Bopt`, `Bdim`, `Bpar`, `Bvcp`, `Btun`,
+  `Brck`), bundle IDs (`com.lt3audio.*`), the manufacturer code `LT3a`, and
+  product names. `products/AGENTS.md` is the registry and has the full table.
+- Module ids (`eq`, `sat`, `util`, `opto`, `dim`, `deq`, `vcomp`, `tune`) and
+  the state tags `PARAMS`, `RACK`, `SLOT`.
 - The rack grid: 8 slots x 32 parameters, spec index `i` on `slotN_p(i+1)`.
   That is a count of host lanes, not a cap on a module: one with more than
   32 parameters keeps the rest off the grid (`core/rack/SlotOverflow.h`),
@@ -160,6 +235,15 @@ scripts/build.sh --snapshots  # then look at snapshots/*.png
 Both must pass. If a panel changed, look at the snapshot. If DSP changed,
 `build/tools/measure_<module>` prints the curves; the DSP tests say what
 the numbers are supposed to be.
+
+```
+git status --short
+```
+
+**Read that list before `git add -A`**, every time, and especially the first
+time in a session that a render or measurement tool has run. See "Before your
+first commit: never commit audio" above -- twice now a tool has written WAVs
+into the working tree and the next commit swept them to the fork.
 
 ## Documenting new work
 

@@ -130,7 +130,17 @@ attack the way a photocell has. Nothing changes until he has heard them.
   almost no energy above 6 kHz. "Keep The Chest" was cut from 70 to 35 for
   exactly this reason and the comment says so; "Keep The Air" was not.
   Fixed here the same way, to 35. Frosty may want it elsewhere.
-- **S** The THRU runaway, quantified from code and `measure_vcomp balance`:
+- **S** ~~The THRU runaway~~ — **done on 2026-09-14**, on branch
+  `vcomp-thru-cap` off this one, exactly as recommended below: the thru path
+  takes `makeup − kneeReductionDb(kReferenceDb − kThruBodyOffsetDb, curve)`.
+  Measured against the three candidates in `modules/vcomp/AGENTS.md` and
+  against a flat cap at 3, 6 and 9 dB; it wins on tilt and on pumping at once.
+  Tilt 4.6/8.8/12.9/17.7 dB across the knob becomes 2.4/1.7/1.1/0.6, pumping
+  −1.5 becomes −0.03, and "Keep The Chest" at AMOUNT 70 goes +8.14 dB to
+  +1.36. `testThruMakeupCannotRunAway` holds it; 59 checks green, 7 of 7 DSP
+  suites. **Not heard, and the presets were left at 35.** The original
+  recommendation, which stands as written:
+  The THRU runaway, quantified from code and `measure_vcomp balance`:
   tilt +17.7 dB at AMOUNT 90, and the mid band recedes 2.65 dB because the
   boosted low end is what the limiter now acts on. Of the three candidates
   in `modules/vcomp/AGENTS.md`, the review recommends a curve-derived cap:
@@ -330,11 +340,11 @@ attack the way a photocell has. Nothing changes until he has heard them.
   gate (which strands anyone who saved one preset before the copy ran),
   `products/eq/Product.h` lists BMO EQ then FrostyEQ, and the sandbox that
   the tests use disables migration entirely, so the chain is untested today.
-- **S** `README.md:4-14` says "three modules today" and its table omits
-  Opto, Dimension and DEQ; root `AGENTS.md:3, 57-59` lists three modules and
-  four plugin codes as the permanence list. `products/AGENTS.md:93` says DEQ
-  has 158 parameters; the schema table, `modules/deq/AGENTS.md` and
-  `RackTests.cpp` say 159. Kevin reads these first.
+- **S** ~~`README.md:4-14` says "three modules today"~~ -- **fixed on
+  2026-09-14** on `vcomp-thru-cap`. The README table now lists all seven
+  modules with their widths, root `AGENTS.md` lists seven modules and all nine
+  plugin codes, and `products/AGENTS.md:93` says 159 parameters, agreeing with
+  the schema table, `modules/deq/AGENTS.md` and `RackTests.cpp`.
 - **S** `.github/workflows/build.yml:78-115` — the plugin jobs fail at
   "Restore fonts" on a pull request from a fork, by design of the step. Every
   stage-5 PR from the fork to Kevin's repo will show macOS and Windows red
