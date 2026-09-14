@@ -168,3 +168,40 @@ the two it discounted here are the two that went.
 - *"still clearly audible"* -- guard 6 at Failure 20 ms. Better is not done.
 - Failure 20 ms is where the work goes next. It is the one group Antares still
   wins and the one where guard 6's remaining pops are loudest.
+
+---
+
+## The ratchet, in full -- the one thing still waiting on Frosty
+
+`tune_hardtune` carries a check that is not a physical requirement but a
+trip-wire: *"BMO's correction lag and vibrato residue are no worse than the
+2026-09-11 baseline."* Two numbers are written into the test, and any change
+that makes either worse by any margin fails it. It exists because the ratchet
+was once two generations stale and would not have noticed the 4 ms rest being
+reverted.
+
+Guard 6 moves three numbers. All three move the wrong way, and all three are
+small:
+
+| | baseline | guard 6 | change | for scale |
+|---|---:|---:|---:|---|
+| correction lag, mean | 0.70613 ms | 0.75893 ms | +0.053 ms | about 2 samples at 44.1 kHz |
+| vibrato residue, RMS | 1.236 c | 1.2604 c | +0.024 c | a listener notices 5-10 c on a held note; Antares is 1.30 c, so BMO is still ahead of it |
+| true latency | 10.262 ms | 10.427 ms | +0.165 ms | headroom under the Waves ceiling goes 8.9476 -> 8.7828 ms |
+
+**Correction to the record:** commit `c130422`'s message says true latency
+*improves* to 10.427 ms. It does not -- 10.427 is 0.165 ms LATER than 10.262,
+and later is worse. The latency rule is not in danger either way, but the
+direction was stated backwards there and this note is the correct record.
+
+**Where the cost comes from:** A2 alone, 110 Hz. Guard 6 correctly vetoes a
+genuine octave error there and holds the period for up to 2 ms; on a 5.5 Hz
+vibrato that brief hold freezes the pitch and costs a fraction of a cent.
+Every other note in the stimulus is unchanged or better.
+
+**The call:** accept three small regressions -- two samples of lag, about a
+three-hundredth of an audible cent, and 0.165 ms of latency with 8.8 ms of
+headroom -- in exchange for the build the ears ranked first in all four groups.
+If accepted, the two constants in `HardTuneTests.cpp` are re-based to the new
+measurements with a line saying why they moved and that it was ears-led, and
+guard 6 comes out of the environment variables into `Detector::Settings`.
