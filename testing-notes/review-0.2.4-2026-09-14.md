@@ -130,7 +130,17 @@ attack the way a photocell has. Nothing changes until he has heard them.
   almost no energy above 6 kHz. "Keep The Chest" was cut from 70 to 35 for
   exactly this reason and the comment says so; "Keep The Air" was not.
   Fixed here the same way, to 35. Frosty may want it elsewhere.
-- **S** The THRU runaway, quantified from code and `measure_vcomp balance`:
+- **S** ~~The THRU runaway~~ — **done on 2026-09-14**, on branch
+  `vcomp-thru-cap` off this one, exactly as recommended below: the thru path
+  takes `makeup − kneeReductionDb(kReferenceDb − kThruBodyOffsetDb, curve)`.
+  Measured against the three candidates in `modules/vcomp/AGENTS.md` and
+  against a flat cap at 3, 6 and 9 dB; it wins on tilt and on pumping at once.
+  Tilt 4.6/8.8/12.9/17.7 dB across the knob becomes 2.4/1.7/1.1/0.6, pumping
+  −1.5 becomes −0.03, and "Keep The Chest" at AMOUNT 70 goes +8.14 dB to
+  +1.36. `testThruMakeupCannotRunAway` holds it; 59 checks green, 7 of 7 DSP
+  suites. **Not heard, and the presets were left at 35.** The original
+  recommendation, which stands as written:
+  The THRU runaway, quantified from code and `measure_vcomp balance`:
   tilt +17.7 dB at AMOUNT 90, and the mid band recedes 2.65 dB because the
   boosted low end is what the limiter now acts on. Of the three candidates
   in `modules/vcomp/AGENTS.md`, the review recommends a curve-derived cap:

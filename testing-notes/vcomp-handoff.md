@@ -172,12 +172,14 @@ Recorded because each has a general lesson.
 
 ## Open, and deliberately not done
 
-- **The THRU bands run away.** First thing to pick up in Vcomp's own pass; the
-  three candidate fixes (partial compression on the thru bands, a cap on their
-  makeup, or a separate zero-latency limiter on that path) are written up at
-  the top of `modules/vcomp/AGENTS.md`. It already costs something: "Keep The
-  Chest" had to come down from AMOUNT 70 to 35 to pass level matching, so the
-  preset introducing the feature demonstrates it at a third strength.
+- **The THRU bands run away.** ~~First thing to pick up in Vcomp's own pass~~
+  -- **done on 2026-09-14**, on branch `vcomp-thru-cap` off `review-0.2.4`, by
+  the fourth candidate rather than any of the three listed here: the thru path
+  takes the gain the curve would have given that content had it been
+  compressed. Tilt 4.6/8.8/12.9/17.7 dB across the knob becomes
+  2.4/1.7/1.1/0.6, pumping -1.5 becomes -0.03, and "Keep The Chest" at AMOUNT
+  70 goes +8.14 dB to +1.36 so the preset can come back up to strength.
+  Measured, not heard. `testing-notes/vcomp-thru-cap-2026-09-14.md`.
 - **Limiter warmth.** Adding second harmonic needs deliberate asymmetry. Worth
   weighing against BMO Saturator already existing for colour.
 - **No lookahead, no oversampling, no parallel MIX, no stereo LINK switch.**

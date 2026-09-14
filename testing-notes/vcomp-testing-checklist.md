@@ -83,6 +83,14 @@ makeup applies to **everything**, compressed or not (Frosty's spec,
 AMOUNT 30, +25 dB at 90. Usable low to middling and self-defeating above
 that, which is a property of the request rather than of the build.
 
+**That is the build you are listening to, and it is already fixed elsewhere.**
+`vcomp-thru-cap` holds the thru band at the gain the curve would have given it,
+which takes the tilt from 4.6/8.8/12.9/17.7 dB across the knob down to
+2.4/1.7/1.1/0.6 — and none of that is in `cbd0939`. So the runaway itself is
+known and does not need reporting twice; everything below is still worth
+hearing, because what a fix has to not break is the feature working at all.
+See `testing-notes/vcomp-thru-cap-2026-09-14.md`.
+
 - **LOW THRU** on a chesty male vocal: does the weight stay while the
   midrange levels? Preset **Keep The Chest**.
 - **HIGH THRU** on a bright/sibilant source: does the air stay open over

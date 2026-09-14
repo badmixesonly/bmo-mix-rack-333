@@ -46,6 +46,50 @@ private:
     float coeff = 1.0f, current = 0.0f, target = 0.0f;
 };
 
+/** How far below the makeup reference the thru bands' content is taken to sit,
+    in dB -- and with it, how much makeup they are given.
+
+    A band that is not compressed but is handed the whole makeup can only get
+    louder, by the whole makeup figure. That was the shipped behaviour, and
+    lifting this out of the code prints it exactly: the thru band's lift came
+    out 12.44, 18.92 and 25.51 dB at AMOUNT 50, 70 and 90, which is the makeup
+    column of `measure_vcomp curve` to the second decimal. Not approximately
+    the makeup -- the makeup. So LOW THRU worked at the bottom of AMOUNT and
+    defeated itself at the top, and "Keep The Chest" was held down at AMOUNT 35
+    because at 70 it came out +8.1 dB hot.
+
+    What the thru path is given instead is the *net* gain the curve would have
+    given that content had it gone through the compressor: the makeup, less the
+    reduction the curve applies at body level. Body level is the reference less
+    this figure, because chest and air sit under the peaks the detector reads,
+    not on them. It is a cap that the curve works out for itself at every
+    AMOUNT rather than a number somebody picked, it costs the thru band no
+    dynamics at all, and the thru band keeps the property it was split off for.
+
+    Measured on AURORA, 2026-09-14, against the two other candidates in this
+    module's notes and against a flat 6 dB cap. Tilt is `measure_vcomp
+    balance`, pumping is the 80 Hz thru band under a 2 kHz burst from
+    `measure_vcomp bands`, and both want to be near zero:
+
+        candidate              tilt 30/50/70/90 dB    pumping   Chest at 70
+        shipped, no cap        4.6 / 8.8 / 12.9 / 17.7   -1.5      +8.14
+        half compression       2.2 / 4.3 /  6.8 /  9.4   -4.3
+        gain tracked, 600 ms   2.2 / 3.8 /  5.4 /  6.9   -1.5, late
+        flat 6 dB cap          4.3 / 2.9 /  1.9 /  1.3   -0.0      +1.96
+        this                   2.4 / 1.7 /  1.1 /  0.6   -0.0      +1.36
+
+    testing-notes/vcomp-thru-cap-2026-09-14.md has the full tables and why the
+    other candidates lose. */
+inline constexpr float kThruBodyOffsetDb = 6.0f;
+
+/** The makeup the thru path is given: the whole makeup less what the curve
+    would have taken off body-level content, which is the net gain that content
+    would have come out with had it been compressed with everything else. */
+inline float thruMakeupDbFor (const Curve& curve) noexcept
+{
+    return autoMakeupDb (curve) - kneeReductionDb (kReferenceDb - kThruBodyOffsetDb, curve);
+}
+
 //==============================================================================
 /** BMO Vcomp.
 
@@ -185,16 +229,23 @@ public:
             //
             // The cost is the other direction and it is bigger: an
             // uncompressed band taking full makeup can only get louder, by the
-            // whole makeup figure. That is +6 dB of low end at AMOUNT 30 and
-            // +25 at 90 (measure_vcomp balance). The feature is therefore
-            // usable at low to middling AMOUNT and self-defeating above it --
-            // a property of what was asked for rather than of this
-            // implementation, and recorded in modules/vcomp/AGENTS.md as
-            // something an ear has to rule on.
+            // whole makeup figure, so the feature worked at the bottom of the
+            // knob and defeated itself at the top. The thru path's makeup is
+            // therefore the net gain the curve would have given that content
+            // had it been compressed -- see kThruBodyOffsetDb for the figures,
+            // and for the two candidates measured and rejected against it.
             //
             // OUTPUT multiplies the sum either way: it is the user's trim on
             // the whole module.
             const auto autoMakeupLin = std::pow (10.0f, autoMakeupDb (curve) / 20.0f);
+
+            // Only when the split is in circuit is there a thru band to give
+            // it to, and the ternary keeps the second std::pow out of the
+            // per-sample path in the ordinary case where there is not.
+            const auto thruMakeupLin = split
+                                     ? std::pow (10.0f, thruMakeupDbFor (curve) / 20.0f)
+                                     : autoMakeupLin;
+
             const auto outputLin     = std::pow (10.0f, outputSmoother.tick() / 20.0f);
 
             // The gate is keyed off the raw input, before anything else.
@@ -254,7 +305,7 @@ public:
                 {
                     float mid = 0.0f, thru = 0.0f;
                     c.bands.process (gated, mid, thru);
-                    out = (mid * compressorGain + thru) * autoMakeupLin * outputLin;
+                    out = (mid * compressorGain * autoMakeupLin + thru * thruMakeupLin) * outputLin;
                 }
                 else
                 {

@@ -218,42 +218,94 @@ Two things came out of fixing it:
 The lesson worth carrying: a green suite after adding a module is not evidence
 the module was tested. Check the module's name actually appears in the output.
 
-## Open: the THRU bands run away, and there are three ways out
+## The THRU bands take the gain the curve would have given them
 
-**This is the first thing to pick up in BMO Vcomp's own pass.** Deferred on
-2026-09-14 to get the limiter to CI, not because it is settled.
+**Settled on 2026-09-14 by measurement, on AURORA; the sound of it has not
+been heard yet.** This section used to be titled "the THRU bands run away,
+and there are three ways out". It is kept here because the arithmetic is the
+part nobody can read off the code.
 
 The spec is that everything outside LOW/HIGH THRU is uncompressed and
-*everything* takes the makeup. That is implemented and correct, and it has an
-arithmetic consequence nobody can tune away: a band that is not compressed but
-is given the full makeup can only get louder, by the whole makeup figure. That
-is +6 dB of low end at AMOUNT 30 and +25 at 90 (`measure_vcomp balance`), so
-the feature works at the bottom of the knob and defeats itself at the top.
+*everything* takes the makeup. The second half of that has a consequence that
+is not a voicing choice: a band that is not compressed but is given the full
+makeup can only get louder, by the whole makeup figure. Taking the cap out of
+`DspCore.h` and running `vcomp_dsp_tests` prints it exactly — the thru band's
+lift comes out 12.44, 18.92 and 25.51 dB at AMOUNT 50, 70 and 90, which is the
+makeup column of `measure_vcomp curve` to the second decimal.
 
-It already costs something real: "Keep The Chest" had to come down from AMOUNT
-70 to 35 to pass the level-matching test, which means the preset that
-introduces the feature is demonstrating it at a third of the strength the
-module is capable of.
+So LOW THRU worked at the bottom of the knob and defeated itself at the top,
+and it cost a preset: "Keep The Chest" was held down at AMOUNT 35 because at
+70 it came out **+8.14 dB** against a level-matching tolerance of 3.
 
-Three candidate fixes, none of which costs latency:
+**The fix is the 0.2.4 review's**: the thru path takes the makeup *less the
+reduction the curve applies at body level* — `thruMakeupDbFor` in `DspCore.h`,
+body level being `kReferenceDb - kThruBodyOffsetDb`. That is the net gain the
+thru content would have come out with had it been compressed along with
+everything else, so the band is neither pumped nor lifted past the rest of the
+voice. The curve works the figure out for itself at every AMOUNT; there is no
+number anybody picked. `testThruMakeupCannotRunAway` holds it.
 
-1. **Partial compression on the thru bands** -- apply half (or some fraction)
-   of the compressor's gain reduction to them instead of none. They stay
-   livelier than the compressed band without being free to run, and the makeup
-   then partially matches what was taken. Frosty's suggestion, and the one
-   that keeps a single mental model: THRU becomes a *degree* rather than an
-   on/off.
-2. **A cap on the thru makeup** -- give the thru path `min(makeup, N dB)`.
-   Bounds the tilt predictably at every AMOUNT, no dynamics, no distortion,
-   trivially testable. Departs from "both get the makeup" at high AMOUNT.
-3. **A separate zero-latency limiter on the thru path** -- the Limiter class
-   already does this with no latency, so it is nearly free to try. But it only
-   bites near full scale, and the balance problem starts far below that: at
-   AMOUNT 45 the boosted low band peaks around -9 dBFS and no sensible ceiling
-   would touch it. Useful as a belt-and-braces addition, not as the fix.
+All four candidates were built and measured rather than argued about. Tilt is
+`measure_vcomp balance`, pumping is the 80 Hz thru band under a 2 kHz burst
+from `measure_vcomp bands`, and both want to be near zero:
 
-Whatever is chosen, `measure_vcomp balance` is the report that judges it: the
-tilt column should stay near zero across the AMOUNT range rather than growing.
+| candidate | tilt 30/50/70/90 | pumping | Chest at 70 |
+|---|---|---|---|
+| shipped, no cap | 4.6 / 8.8 / 12.9 / 17.7 | -1.5 | +8.14 |
+| 1. half compression on the thru band | 2.2 / 4.3 / 6.8 / 9.4 | -4.3 | |
+| 3'. thru gain tracked slowly (600 ms) | 2.2 / 3.8 / 5.4 / 6.9 | -1.5, late | |
+| 2. a flat 6 dB cap | 4.3 / 2.9 / 1.9 / 1.3 | -0.0 | +1.96 |
+| **2'. the curve's own figure, shipped here** | **2.4 / 1.7 / 1.1 / 0.6** | **-0.0** | **+1.36** |
+
+Why the other three lost, since all three were plausible on paper:
+
+- **Partial compression** (Frosty's suggestion, and the one that keeps a single
+  mental model) scales the tilt without bounding it — at half compression
+  AMOUNT 90 still tilts 9.4 dB — and it buys that by putting the compressor's
+  modulation back onto the band that exists to escape it. A fraction high
+  enough to bound the tilt is a fraction high enough that there is no thru
+  feature left.
+- **Tracking the compressor's gain slowly** was the tempting one: it should
+  remove the fast pumping and keep the slow balance. It half works, and it adds
+  a fault the others do not have. The thru band's gain arrives late, so the
+  reduction lands in the quiet *after* a loud phrase rather than during it —
+  visible in the bands report as the pumping figure going *positive* (+1.6 dB
+  at a 1 s time constant, +3.5 at 2 s) because the post-burst reference is the
+  part that got ducked. A low end that dips after the singer stops is a worse
+  artefact than the one being removed.
+- **A flat cap** works, and was built as the control. It bounds the tilt but
+  does not flatten it, and being a number rather than a consequence it has to
+  be argued about: 6 dB lets "Keep The Chest" back up to 70, 9 dB holds a
+  flatter tilt but does not. The curve-derived figure beats it on both counts
+  and settles the argument.
+
+Two things this changed that are worth knowing:
+
+- **Pumping got better, not just no worse**: -1.5 dB to -0.03. The residual on
+  the shipped build was not the crossover leaking; it was the thru band, lifted
+  by the full makeup, driving the limiter, which then rode the burst. With the
+  thru band held at body level it no longer reaches the limiter at all. The
+  `bands` report at AMOUNT 80 has been measuring the limiter as well as the
+  split ever since the limiter shipped, which is worth remembering before
+  reading small figures out of it.
+- **The presets can come back up.** "Keep The Chest" at AMOUNT 70 measures
+  +1.36 dB against +8.14 without, and at its current 35 it goes +3.37 to +1.74.
+  Both THRU presets are still written at 35 here, because raising them changes
+  what a preset sounds like and that is Frosty's call after the ear pass, not a
+  measurement's.
+
+### Still open on the thru path
+
+- **Nobody has heard it.** The narrow listening question is in
+  `testing-notes/vcomp-thru-cap-2026-09-14.md`.
+- **`kThruBodyOffsetDb` is 6 dB, and that one *is* a number somebody picked.**
+  It says how far under the peaks the detector reads the chest and the air
+  actually sit. Larger means more thru lift, smaller means less.
+- **The band-split crossfade.** Unchanged by this: engaging the split still
+  switches the crossover in rather than fading it.
+- **A separate limiter on the thru path** was the third candidate and is not
+  needed now. It only bit near full scale, and the thru band no longer gets
+  anywhere near it.
 
 ## What waits on an ear
 
