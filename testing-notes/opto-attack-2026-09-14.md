@@ -184,3 +184,80 @@ five-line change in `Detector.h` described above, with absolute attack
 assertions on the t63/t90 table and the thirteen preset levels re-solved with
 `BMO_PRINT_PRESET_LEVELS`, because a faster attack takes slightly more average
 gain.
+
+---
+
+# The confirming round, cut 2026-09-14 on AURORA
+
+`field-audio/opto-attack-round2-2026-09-14/` in the main worktree
+(gitignored). **Not heard yet.**
+
+## Why there is a second round
+
+The first round's verdict was candidate B first in both groups — but the Tele
+group turned out to be unrankable: candidate A *is* the shipped build in Tele,
+the two renders are byte-identical, and they were placed one apart. That left
+one real group, Stressed 75, carrying the whole decision. This round is here to
+say whether that margin survives a second hearing, before the thirteen preset
+levels are re-solved, which is the expensive part.
+
+## The design, which is the point
+
+Two groups, **four letters each**: each variant is entered **twice**, from the
+same render, so after the blind tool's gain match the two copies are
+byte-identical.
+
+    Stressed 75:  shipped x2, candidate B x2
+    Stressed 50:  shipped x2, candidate B x2
+
+If the difference is real, the duplicates land together — candidate B taking
+ranks 1 and 2, shipped taking 3 and 4. If it is noise, they interleave. There
+are six ways to arrange two pairs; one of them is clean, so a clean result in
+one group is p = 1/6 by chance and in **both** groups p = 1/36. That is a
+proper test rather than a second opinion, and it costs one render pass.
+
+It also measures the listener's resolution directly instead of inferring it:
+the gap between a duplicate pair *is* the noise floor of this comparison, in
+the same units as the gap between the variants.
+
+CRUSH 50 as the second group rather than another take, because it asks whether
+the preference generalises across how hard the cell is working. The change is
+about the same size in relative terms at both (t63 roughly halved).
+
+Frosty is not told the design in `ANSWERS.md`; the sheet says the set checks
+itself and that ties are a real answer, which is what keeps it from being
+either a hunt for pairs or a forced ordering.
+
+## How it was made
+
+`measure_opto render --mode distressor --crush {75,50} --level 0 --link 1
+--color 0`, input the round-one dry (`0 - Failure DRY.wav`, the same 12.9 s
+excerpt of the Failure take), then `bmo-tune-blind` for the gain match,
+alignment, shuffle and key. Alignment came out at 0.00 ms in every case, as it
+should for a zero-latency module; the gain match is +15.87 dB for shipped and
++16.16 for candidate B, which is candidate B taking 0.29 dB more average
+reduction — the faster attack catching transients the shipped cell let past.
+
+Peak out at CRUSH 75: shipped -17.1 dBFS, candidate B -19.0. At 50: -12.7 and
+-14.4.
+
+## What is implemented here
+
+`attackTauFor` in `modules/opto/dsp/Detector.h`, used by **both** cells:
+
+    tau = nominal / (1 + overdriveDb / 10), floored at 1 ms
+
+where overdrive is how far the rectified sample is above the envelope. At 0 dB
+over it returns the nominal 10 ms unchanged, so a signal already tracked is
+untouched.
+
+**Deliberately not done yet, pending the round:**
+
+- No absolute attack assertions on the t63/t90 table.
+- **The thirteen preset levels have not been re-solved**, and a faster attack
+  takes slightly more average gain, so the presets are off by a little until
+  they are. Do not judge preset levels from this branch.
+- `OptoDspTests` has not been extended.
+
+If the round goes against candidate B, this branch is deleted and the shipped
+attack stands.

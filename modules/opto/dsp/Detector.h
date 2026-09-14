@@ -57,6 +57,37 @@ inline Curve curveForDistressor (float crushPercent) noexcept
 }
 
 //==============================================================================
+/** Candidate B, the attack the ear picked out of the 2026-09-14 round: the
+    cell grabs faster the harder it is being hit, and settles back to its
+    nominal time constant as the envelope catches up.
+
+    `overdriveDb` is how far the rectified sample is above the envelope right
+    now -- the size of the transient the cell has not caught yet. At 0 dB over
+    this returns the nominal tau unchanged, so a signal already tracked is
+    unaffected; 10 dB over halves it, 20 dB over thirds it, and the floor stops
+    it becoming a sample-rate-dependent step on a hard edge.
+
+    A photocell's response time does move with the light falling on it, which
+    is the physical argument the fixed 10 ms never had. What the blind round
+    heard, though, was narrower than "faster": candidate A made the Distressor
+    cell uniformly faster (t63 11 ms -> 3.5) and was ranked level with the
+    shipped build, while this -- fast only on the first millisecond of a hit --
+    was ranked first in both groups. Fast *at the onset* is the audible part.
+
+    testing-notes/opto-attack-2026-09-14.md has the rounds and the figures. */
+inline float attackTauFor (float nominalTauSec, float levelLin, float envelopeLin) noexcept
+{
+    constexpr float kOverdriveScaleDb = 10.0f;  // dB over the envelope that halves the attack
+    constexpr float kAttackTauFloorSec = 0.001f; // 1 ms, and no faster at any overdrive
+
+    const auto overdriveDb = 20.0f * std::log10 (levelLin / std::max (envelopeLin, 1.0e-6f));
+
+    if (! (overdriveDb > 0.0f))
+        return nominalTauSec;
+
+    return std::max (nominalTauSec / (1.0f + overdriveDb / kOverdriveScaleDb), kAttackTauFloorSec);
+}
+
 /** LA-2A: a feedback cell with a genuine dosage-dependent release.
 
     Feedback, not feedforward. `process()` returns `input * gainLin` using
@@ -81,9 +112,12 @@ inline Curve curveForDistressor (float crushPercent) noexcept
     dosage, sliding up toward kReleaseSlowMaxTauSec only after real sustained
     exposure). A short transient barely moves it; a long, loud hit does.
 
-    Attack is fixed at ~10 ms, per every source consulted -- there's no
-    evidence (here or in the digest) that the real cell's attack is
-    level-dependent the way its release is, so this doesn't invent one. */
+    Attack was fixed at ~10 ms until 2026-09-14, on the grounds that no source
+    consulted showed the real cell's attack moving the way its release does.
+    It moves now -- see attackTauFor above, which the blind round picked over
+    both the fixed attack and a uniformly faster one. The nominal 10 ms is
+    unchanged and is what the cell returns to; what changed is how it behaves
+    in the first milliseconds of a transient it has not caught yet. */
 class La2aCell
 {
 public:
@@ -116,7 +150,7 @@ public:
         const auto levelLin = std::abs (y);
         const auto rising   = levelLin > envelopeLin;
 
-        const auto attackCoeff = coeffFor (kAttackTauSec, rate);
+        const auto attackCoeff = coeffFor (attackTauFor (kAttackTauSec, levelLin, envelopeLin), rate);
 
         const auto dosageT      = std::clamp (dosageSec / kDosageGrowthSec, 0.0f, 4.0f);
         const auto dosageAmount = 1.0f - std::exp (-dosageT);
@@ -156,7 +190,7 @@ public:
     float currentGainLin() const noexcept { return gainLin; }
 
 private:
-    static constexpr float kAttackTauSec         = 0.010f;  // ~10 ms, fixed -- no source supports it moving
+    static constexpr float kAttackTauSec         = 0.010f;  // ~10 ms nominal; attackTauFor shortens it on a transient
     static constexpr float kReleaseFastTauSec    = 0.06f;   // ~60 ms to the first 50% of recovery
     static constexpr float kReleaseSlowMinTauSec = 1.0f;    // slow tail floor: a hit just past "sustained"
 
@@ -243,7 +277,7 @@ public:
         const auto levelLin = std::abs (x);
         const auto rising   = levelLin > envelopeLin;
 
-        const auto attackCoeff = coeffFor (kAttackTauSec, rate);
+        const auto attackCoeff = coeffFor (attackTauFor (kAttackTauSec, levelLin, envelopeLin), rate);
 
         const auto depth        = std::clamp (chargeDb / 20.0f, 0.0f, 1.0f);
         const auto releaseTau   = kReleaseFastTauSec + (kReleaseSlowTauSec - kReleaseFastTauSec) * depth;
@@ -264,7 +298,7 @@ public:
     float currentGainLin() const noexcept { return gainLin; }
 
 private:
-    static constexpr float kAttackTauSec       = 0.010f; // ~10 ms, static -- confirmed non-adaptive
+    static constexpr float kAttackTauSec       = 0.010f; // ~10 ms nominal; attackTauFor shortens it on a transient
     static constexpr float kReleaseFastTauSec  = 0.06f;
 
     /** This mode's slow ceiling. 20 s until 0.2.1, for the same reason
