@@ -1,6 +1,72 @@
 #include "modules/tune/dsp/Detector.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
+
+// ---- TEMPORARY PROBE (pop-detector-probe branch): not for merge ----
+namespace bmo::tune::probe
+{
+    inline double lo = -1.0, hi = -1.0;
+    inline bool on = false, inited = false;
+
+    inline bool active (long long n, double fs)
+    {
+        if (! inited)
+        {
+            inited = true;
+            if (const char* w = std::getenv ("BMO_PROBE"))
+                on = std::sscanf (w, "%lf,%lf", &lo, &hi) == 2;
+        }
+        if (! on) return false;
+        const double t = (double) n / fs;
+        return t >= lo && t <= hi;
+    }
+
+    inline double ee = -1.0;
+    inline bool eeInit = false;
+    inline double earlyExit (double fallback)
+    {
+        if (! eeInit) { eeInit = true; if (const char* v = std::getenv ("BMO_EARLYEXIT")) ee = std::atof (v); }
+        return ee >= 0.0 ? ee : fallback;
+    }
+
+    inline int g6 = -1;
+    inline bool guard6()
+    {
+        if (g6 < 0) { const char* v = std::getenv ("BMO_GUARD6"); g6 = (v && std::atoi (v) != 0) ? 1 : 0; }
+        return g6 != 0;
+    }
+
+    inline int g6l = -1;
+    inline bool g6log()
+    {
+        if (g6l < 0) { const char* v = std::getenv ("BMO_G6LOG"); g6l = (v && std::atoi (v) != 0) ? 1 : 0; }
+        return g6l != 0;
+    }
+
+    inline double lc = -1.0;
+    inline bool lcInit = false;
+    inline double leapCents()
+    {
+        if (! lcInit) { lcInit = true; if (const char* v = std::getenv ("BMO_LEAPCENTS")) lc = std::atof (v); }
+        return lc >= 0.0 ? lc : 100.0;
+    }
+    inline double hm = -1.0;
+    inline bool hmInit = false;
+    inline double holdMs()
+    {
+        if (! hmInit) { hmInit = true; if (const char* v = std::getenv ("BMO_HOLDMS")) hm = std::atof (v); }
+        return hm >= 0.0 ? hm : 3.0;
+    }
+
+    inline int tr = -1;
+    inline bool track()
+    {
+        if (tr < 0) { const char* v = std::getenv ("BMO_G6TRACK"); tr = (v && std::atoi (v) != 0) ? 1 : 0; }
+        return tr != 0;
+    }
+}
 
 namespace bmo::tune
 {
@@ -130,6 +196,7 @@ void Detector::reset()
     hopCountdown = baseHop;
     lastHop = baseHop;
     samplesSeen = 0;
+    leapHoldFrom = -1;
     lastOnsetAt = -1'000'000;
     voicedRun = unvoicedRun = 0;
     heldPeriod = 0.0;
@@ -219,6 +286,65 @@ void Detector::evaluate() noexcept
     else
         clarity = 0.0;
 
+    // Guard 6. A leap to a SHORTER period -- the direction a harmonic error
+    // takes -- has to beat the period being held, on a window long enough to
+    // judge them both. It never blocks a move to a longer period: that is
+    // guard 4's direction, and it is how an octave error is recovered from,
+    // so vetoing it would latch the very fault this guard exists to stop.
+    //
+    // The veto expires: a run of them lasts at most kLeapHoldMs, after which
+    // an estimate that keeps insisting is taken. So the guard can delay a
+    // real leap by an evaluation or two, and can never latch.
+    {
+        const auto holdSamples = (std::int64_t) (0.001 * probe::holdMs() * sampleRate);
+        const auto runAllows = leapHoldFrom < 0 || samplesSeen - leapHoldFrom < holdSamples;
+
+        if (probe::guard6() && found && current.voiced && heldPeriod > 1.0 && runAllows
+            && std::log2 (heldPeriod / period) > probe::leapCents() / 1200.0
+            && heldSurvives (period))
+        {
+            if (probe::active (samplesSeen, sampleRate) || probe::g6log())
+                std::fprintf (stderr, "  [guard6] t=%.5f REJECT %.1f Hz, keeping %.1f Hz\n",
+                              (double) samplesSeen / sampleRate, sampleRate / period, sampleRate / heldPeriod);
+
+            // The held period exactly, never a fresh reading near it: a
+            // reading taken on material that no longer repeats at this lag
+            // wanders, and the next evaluation is then compared against the
+            // wandering value. Measured: without this the held period ran
+            // 421 -> 600 Hz over ten evaluations at a note transition in the
+            // reference stimulus.
+            period = heldPeriod;
+
+            // Keeping the held period exactly stops a vibrato dead for the
+            // length of the veto. Re-reading it instead keeps the note
+            // tracking -- bounded to a tone either side of the held period so
+            // that a reading taken on material that no longer repeats at this
+            // lag cannot wander: without the clamp the held period ran
+            // 421 -> 600 Hz over ten evaluations at a note transition.
+            if (probe::track())
+            {
+                double refined = 0.0, refinedClarity = 0.0;
+                if (refine (heldPeriod, refined, refinedClarity)
+                    && std::abs (std::log2 (refined / heldPeriod)) < 200.0 / 1200.0)
+                {
+                    period = refined;
+                    clarity = refinedClarity;
+                }
+            }
+
+            if (leapHoldFrom < 0)
+                leapHoldFrom = samplesSeen;
+        }
+        else
+        {
+            leapHoldFrom = -1;
+        }
+    }
+
+    if (probe::active (samplesSeen, sampleRate))
+        std::fprintf (stderr, "  [eval ] t=%.5f found=%d period=%.2f (%.1f Hz) clarity=%.4f guardFactor=%d voiced=%d\n",
+                      (double) samplesSeen / sampleRate, found ? 1 : 0, period,
+                      period > 0.0 ? sampleRate / period : 0.0, clarity, guardFactor, current.voiced ? 1 : 0);
     const auto rms = std::sqrt (std::max (0.0, energyState));
     const auto gate = dbToGain (settings.gateDb);
     const auto zcrHz = zcrState * sampleRate;
@@ -333,7 +459,7 @@ bool Detector::coarseSearch (double& coarseLag) noexcept
             return false;
 
         candidates[count++] = { lobeLag, lobeValue };
-        return lobeValue >= settings.earlyExit;
+        return lobeValue >= probe::earlyExit (settings.earlyExit);
     };
 
     for (int L = lo; L <= hi; ++L)
@@ -426,6 +552,21 @@ bool Detector::coarseSearch (double& coarseLag) noexcept
             tau = subLag;
     }
 
+
+    if (probe::active (samplesSeen, sampleRate))
+    {
+        std::fprintf (stderr, "[coarse] t=%.5f held=%.2f (%.1f Hz) cont=%d cand=%d best=%.4f thr=%.4f | ",
+                      (double) samplesSeen / sampleRate, heldPeriod,
+                      heldPeriod > 0.0 ? sampleRate / heldPeriod : 0.0,
+                      useContinuity ? 1 : 0, count, best, threshold);
+        for (int i = 0; i < count; ++i)
+            std::fprintf (stderr, "%s{lagF=%d f=%.1f v=%.4f s=%.4f} ",
+                          i == chosen ? "*" : "",
+                          candidates[i].lag * decimation,
+                          sampleRate / (candidates[i].lag * decimation),
+                          candidates[i].value, scores[i]);
+        std::fprintf (stderr, "-> tau=%d (%.1f Hz)\n", tau * decimation, sampleRate / (tau * decimation));
+    }
     coarseLag = tau + parabolicOffset (coarseNsdf[(size_t) tau - 1],
                                        coarseNsdf[(size_t) tau],
                                        coarseNsdf[(size_t) tau + 1]);
@@ -614,6 +755,9 @@ bool Detector::multipleOf (double base, int& factor, int& lag) const noexcept
         // bench from 0.9 % to 1.5 % median at 48 kHz / 128.
         int hereLag = 0, longerLag = 0;
         const auto dHere = 1.0 - lowPeak (base, 2, window, hereLag);
+        if (probe::active (samplesSeen, sampleRate) && dHere <= settings.multipleFloor)
+            std::fprintf (stderr, "      mult k=%d base=%.2f(%.1fHz) dHere=%.5f <= floor %.5f -> GIVE UP (no multiple ever tried)\n",
+                          k, base, sampleRate / base, dHere, settings.multipleFloor);
         if (dHere <= settings.multipleFloor)
             return false;
 
@@ -630,6 +774,12 @@ bool Detector::multipleOf (double base, int& factor, int& lag) const noexcept
                        && std::abs (std::log2 ((double) longerLag / heldPeriod)) < 60.0 / 1200.0
                        && dHere > settings.heldMultipleFloor;
         const auto ratio = held ? settings.heldMultipleRatio : settings.multipleRatio;
+        if (probe::active (samplesSeen, sampleRate))
+            std::fprintf (stderr, "      mult k=%d base=%.2f(%.1fHz) longer=%.2f longerLag=%d(%.1fHz) dHere=%.5f dLonger=%.5f held=%d ratio=%.2f need<%.5f -> %s\n",
+                          k, base, sampleRate / base, longer, longerLag,
+                          longerLag > 0 ? sampleRate / longerLag : 0.0,
+                          dHere, dLonger, held ? 1 : 0, ratio, ratio * dHere,
+                          dLonger < ratio * dHere ? "pass" : "FAIL");
 
         if (dHere > settings.multipleFloor && dLonger < ratio * dHere)
         {
@@ -645,6 +795,10 @@ bool Detector::multipleOf (double base, int& factor, int& lag) const noexcept
             int recentHereLag = 0, recentLongerLag = 0;
             const auto dHereRecent = 1.0 - lowPeak (base, 2, recent, recentHereLag);
             const auto dLongerRecent = 1.0 - lowPeak ((double) longerLag, 1, recent, recentLongerLag);
+        if (probe::active (samplesSeen, sampleRate))
+            std::fprintf (stderr, "        recent: dHereRecent=%.5f dLongerRecent=%.5f need<%.5f -> %s\n",
+                          dHereRecent, dLongerRecent, ratio * dHereRecent,
+                          (dHereRecent > settings.multipleFloor && dLongerRecent < ratio * dHereRecent) ? "TAKE" : "veto");
 
             if (dHereRecent > settings.multipleFloor && dLongerRecent < ratio * dHereRecent)
             {
@@ -658,6 +812,53 @@ bool Detector::multipleOf (double base, int& factor, int& lag) const noexcept
     return false;
 }
 
+
+/** Guard 6: a leap has to beat the period being held, on a window long
+    enough to judge them both.
+
+    Every guard above reads the coarse NSDF, whose window IS the lag (that is
+    MPM's form, and what buys the fast lock). At a short lag that window is a
+    millisecond or so, and a vowel's first formant ringing inside it correlates
+    as well as a period does -- 0.96 on Failure at 17.409 s, where the voice is
+    219 Hz and the lobe sits at 787 Hz, which is no harmonic of it at all. The
+    scan's early exit then ends the search before the real period is ever
+    scored, and guard 4 cannot climb back because 3.67 is not 2 or 3.
+
+    So judge the two lags the one way that is fair: the same window, long
+    enough for the longer of them, at the full rate. A formant lobe collapses
+    there; a real period does not. And ask the most recent stretch as well, so
+    a genuine leap -- where the new note is what the recent material actually
+    repeats at -- is still allowed through, exactly as multipleOf() does. */
+bool Detector::heldSurvives (double candidate) const noexcept
+{
+    if (heldPeriod <= 1.0 || candidate <= 1.0)
+        return false;
+
+    const auto longer = std::max (candidate, heldPeriod);
+    const auto window = std::min ((int) std::lround (2.0 * longer),
+                                  fullMask - (int) std::lround (longer) - 4);
+
+    if (window < 8)
+        return false;
+
+    int a = 0, b = 0;
+    const auto dNew  = 1.0 - lowPeak (candidate, 2, window, a);
+    const auto dHeld = 1.0 - lowPeak (heldPeriod, 2, window, b);
+
+    if (dHeld >= dNew)
+        return false;   // the newcomer is at least as periodic; let it through
+
+    // The long window still holds most of the old note right after a real
+    // leap, so it always prefers the old period there. The most recent long
+    // period alone already hears the new note; if the newcomer wins that, the
+    // leap is real.
+    const auto recent = std::max (8, (int) std::lround (longer));
+    int c = 0, d = 0;
+    const auto rNew  = 1.0 - lowPeak (candidate, 2, recent, c);
+    const auto rHeld = 1.0 - lowPeak (heldPeriod, 2, recent, d);
+
+    return rHeld < rNew;
+}
 void Detector::preferWholeCycle (double& period, double& clarity) noexcept
 {
     // Guard 4, multiples: every guard above looks for a SHORTER period than
@@ -739,6 +940,10 @@ void Detector::preferWholeCycle (double& period, double& clarity) noexcept
             guardPending = 0;
         }
 
+        if (probe::active (samplesSeen, sampleRate))
+            std::fprintf (stderr, "    [guard4] decide: period=%.2f(%.1fHz) found=%d foundLag=%d onHeld=%d pending=%d -> factor=%d lag=%d\n",
+                          period, sampleRate / period, found, foundLag, onHeld ? 1 : 0,
+                          guardPending, found, found > 1 ? foundLag : 0);
         guardFactor = found;
         guardLag = found > 1 ? foundLag : 0;
     }

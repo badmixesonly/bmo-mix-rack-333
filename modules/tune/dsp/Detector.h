@@ -148,6 +148,7 @@ private:
     double fullNsdf (int lag, int window) const noexcept;
     double lowNsdf (int lag, int window) const noexcept;
     bool spansWholeCycles (int lag) const noexcept;
+    bool heldSurvives (double candidate) const noexcept;
     void updateVoicing (bool frameVoiced, bool frameUnvoiced) noexcept;
 
     float fullAt (int d) const noexcept { return fullRing[(size_t) ((fullWrite - 1 - d) & fullMask)]; }
@@ -184,6 +185,7 @@ private:
     int baseHop = 24, hopCountdown = 24, lastHop = 24;
     double candidatePeriod = 0.0;
     std::int64_t samplesSeen = 0, lastOnsetAt = -1'000'000;
+    std::int64_t leapHoldFrom = -1;   // guard 6: when the current veto run began, or -1
 
     // Hysteresis counters, in samples.
     int voicedRun = 0, unvoicedRun = 0;
