@@ -70,7 +70,10 @@ know BMO DEQ exists.
 - [ ] A de-esser (dynamic band, negative range) with AUTO on sounds the same
       as with it off -- AUTO answers to the static curve only.
 - [ ] Set a band to a shelf and turn Q past 2: on release the knob comes back
-      to 2.00, and the curve never shows a resonant shelf. A bell still goes
+      to 2.00. A shelf at Q 2 does overshoot: about +6 dB past the corner and
+      a −6 dB dip before it on ±24 (±4.6 on ±12, measured 2026-09-14). That is
+      the RBJ shelf, not a fault; whether the cap should be nearer 0.7 is the
+      question to answer here. A bell still goes
       to 40.
 
 ## 4. Zero latency, in the host

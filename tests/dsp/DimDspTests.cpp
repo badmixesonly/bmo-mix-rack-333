@@ -335,6 +335,46 @@ int main()
         check (worst == 0.0f, "a mono instance passes through untouched, every stage on");
     }
 
+    //== CENTS at 0 is off, however the knob got there ========================
+    // A voice at 0 cents stops sweeping and freezes wherever it was, so with
+    // DETUNE on the pair used to become two fixed taps of the mid, differenced:
+    // a static comb whose level depended on where the sweep had got to when
+    // the knob arrived -- after CENTS 10 -> 0 it measured louder than at 10
+    // (0.2.4 review, 2026-09-14). The injected difference is scaled by the
+    // first cent of the knob now, so the bottom of the range is silence.
+    {
+        DimDsp dsp;
+        float v[Index::count] { 100.0f, 1.0f, 700.0f, 10.0f, 1.0f,
+                                0.0f, 0.4f, 50.0f, 0.0f, 0.0f };
+
+        dsp.setParams (v, Index::count);
+        dsp.prepare (48000.0, 512, 2);
+        dsp.setParams (v, Index::count);
+
+        int at = 0;   // one continuous tone across the three feeds, no phase jump
+
+        const auto feed = [&] (int n)
+        {
+            std::vector<float> l ((size_t) n), r ((size_t) n);
+            for (int i = 0; i < n; ++i, ++at)
+                l[(size_t) i] = r[(size_t) i] = 0.5f * std::sin (2.0f * 3.14159265f * 220.0f * (float) at / 48000.0f);
+
+            float* ch[2] { l.data(), r.data() };
+            dsp.process (ch, 2, n);
+            return peakSide ({ l, r });
+        };
+
+        const auto atTen = feed (96000);          // two seconds at CENTS 10
+        check (atTen > 0.01f, "CENTS 10 with DETUNE on manufactures side content");
+
+        v[Index::detune] = 0.0f;                  // the knob goes to 0 mid-sweep
+        dsp.setParams (v, Index::count);
+        feed (24000);                             // half a second to fade
+
+        const auto atZero = feed (9600);
+        check (atZero < 1.0e-5f, "CENTS at 0 with DETUNE on leaves no side content, wherever the sweep had got to");
+    }
+
     //== The detune stage does not replay what it last held ===================
     // The voice buffers carry 30 ms. Switching the stage out, letting a second
     // go by and switching it back in used to burst that 30 ms back out at

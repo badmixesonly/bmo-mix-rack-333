@@ -316,10 +316,10 @@ void testArcIsProgrammeDependent()
         buf.insert (buf.end(), probeIn.begin(), probeIn.end());
 
         // OUTPUT trimmed well down so the limiter never engages. Every test that
-    // compares two renders has to stay off the ceiling: the limiter is last
-    // and pins whatever reaches it to the same level, which would make two
-    // different settings measure identical and the check vacuous.
-    auto p = standard (70.0f, -24.0f);
+        // compares two renders has to stay off the ceiling: the limiter is last
+        // and pins whatever reaches it to the same level, which would make two
+        // different settings measure identical and the check vacuous.
+        auto p = standard (70.0f, -24.0f);
         p.complex = true;
         p.arc = true;
         const auto out = render (buf, p);
@@ -355,10 +355,10 @@ void testArcIsProgrammeDependent()
         buf.insert (buf.end(), probeIn.begin(), probeIn.end());
 
         // OUTPUT trimmed well down so the limiter never engages. Every test that
-    // compares two renders has to stay off the ceiling: the limiter is last
-    // and pins whatever reaches it to the same level, which would make two
-    // different settings measure identical and the check vacuous.
-    auto p = standard (70.0f, -24.0f);
+        // compares two renders has to stay off the ceiling: the limiter is last
+        // and pins whatever reaches it to the same level, which would make two
+        // different settings measure identical and the check vacuous.
+        auto p = standard (70.0f, -24.0f);
         p.complex = true;
         p.arc = false;
         const auto out = render (buf, p);
@@ -389,10 +389,10 @@ void testReleaseScalesArc()
         buf.insert (buf.end(), probeIn.begin(), probeIn.end());
 
         // OUTPUT trimmed well down so the limiter never engages. Every test that
-    // compares two renders has to stay off the ceiling: the limiter is last
-    // and pins whatever reaches it to the same level, which would make two
-    // different settings measure identical and the check vacuous.
-    auto p = standard (70.0f, -24.0f);
+        // compares two renders has to stay off the ceiling: the limiter is last
+        // and pins whatever reaches it to the same level, which would make two
+        // different settings measure identical and the check vacuous.
+        auto p = standard (70.0f, -24.0f);
         p.complex = true;
         p.arc = true;
         p.releaseMs = releaseMs;
@@ -417,10 +417,10 @@ void testAttackIsFasterWhenShorter()
     auto peakInFirst = [&in] (float attackMs, double windowSec)
     {
         // OUTPUT trimmed well down so the limiter never engages. Every test that
-    // compares two renders has to stay off the ceiling: the limiter is last
-    // and pins whatever reaches it to the same level, which would make two
-    // different settings measure identical and the check vacuous.
-    auto p = standard (70.0f, -24.0f);
+        // compares two renders has to stay off the ceiling: the limiter is last
+        // and pins whatever reaches it to the same level, which would make two
+        // different settings measure identical and the check vacuous.
+        auto p = standard (70.0f, -24.0f);
         p.complex = true;
         p.attackMs = attackMs;
         return peakBetween (render (in, p), 0.0, windowSec);
@@ -442,10 +442,10 @@ void testSidechainHighpassDeafensTheDetector()
         DspCore core;
 
         // OUTPUT trimmed well down so the limiter never engages. Every test that
-    // compares two renders has to stay off the ceiling: the limiter is last
-    // and pins whatever reaches it to the same level, which would make two
-    // different settings measure identical and the check vacuous.
-    auto p = standard (70.0f, -24.0f);
+        // compares two renders has to stay off the ceiling: the limiter is last
+        // and pins whatever reaches it to the same level, which would make two
+        // different settings measure identical and the check vacuous.
+        auto p = standard (70.0f, -24.0f);
         p.complex = true;
         p.sidechainHz = cutoffHz;
         core.setParams (p);

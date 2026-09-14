@@ -75,7 +75,12 @@ inline const std::vector<FactoryPreset>& factory()
         { "Keep The Chest", { { kComplex, 1.0f }, { kAmount, 35.0f },
                               { kLowThru, 160.0f } } },   // body levelled, weight left alone
 
-        { "Keep The Air", { { kComplex, 1.0f }, { kAmount, 70.0f },
+        // Same figure as Keep The Chest and for the same reason: at 70 the thru
+        // band takes 19 dB of makeup uncompressed, which on a real vocal is a
+        // +19 dB sibilance boost driven into the limiter. The level-matching
+        // test never saw it because the harness voice has almost no energy
+        // above 6 kHz (0.2.4 review, 2026-09-14).
+        { "Keep The Air", { { kComplex, 1.0f }, { kAmount, 35.0f },
                             { kHighThru, 6000.0f } } },   // top stays open over a held-down body
 
         // ARC off is the one preset that hands the release back to the number

@@ -311,12 +311,76 @@ attack the way a photocell has. Nothing changes until he has heard them.
 
 ### The shared layer, packaging and CI
 
-A separate review of `core/`, `products/`, the rack, `build.yml` and the
-packager is still running as this is written and its findings go here when
-it lands. Known already: the packager discovers products by globbing, so
-Vcomp and Tune are in the artifact (confirmed above); the tag run and the
-dispatch run differ on macOS; `gh` resolves to Kevin's repo without
-`--repo`.
+- **B** `CMakeLists.txt:2` — **every plugin reports version 1.0.0.** The
+  project version was 1.0.0 from the first commit and `bmo_add_plugin` passes
+  none of its own, so JUCE stamps `1.0.0` into every bundle; the 0.2.4 tester
+  build calls itself 1.0.0 in Live's plugin info and to Kevin. Fixed here:
+  0.2.4, with a comment. Worth a CI step on tag runs that fails if the tag
+  and the project version differ.
+- **S** No `processBlockBypassed` in `SingleModuleProcessor` or the rack, so
+  the VST3 wrapper's own Bypass parameter passes audio through with no delay
+  while the plugin reports latency (EQ at its 2x default, Sat above Off, any
+  rack holding them): a host that honours it plays the bypassed signal early
+  and the toggle is a splice. Whether Live's device activator routes through
+  that parameter is a test item. The fix is a delay line sized to the max
+  latency in each processor.
+- **S** The CEQ rename's second migration hop, exactly: `PresetInfo` grows a
+  list of (folder, extension) legacy pairs, `migrateLegacy` walks all of
+  them without overwriting and drops its "only if the new folder is empty"
+  gate (which strands anyone who saved one preset before the copy ran),
+  `products/eq/Product.h` lists BMO EQ then FrostyEQ, and the sandbox that
+  the tests use disables migration entirely, so the chain is untested today.
+- **S** `README.md:4-14` says "three modules today" and its table omits
+  Opto, Dimension and DEQ; root `AGENTS.md:3, 57-59` lists three modules and
+  four plugin codes as the permanence list. `products/AGENTS.md:93` says DEQ
+  has 158 parameters; the schema table, `modules/deq/AGENTS.md` and
+  `RackTests.cpp` say 159. Kevin reads these first.
+- **S** `.github/workflows/build.yml:78-115` — the plugin jobs fail at
+  "Restore fonts" on a pull request from a fork, by design of the step. Every
+  stage-5 PR from the fork to Kevin's repo will show macOS and Windows red
+  unless the job is gated on `head.repo == repository` or Kevin pushes the
+  branches himself. `timeout-minutes: 60` against a 46-minute Windows job is
+  thin.
+- **S** `scripts/build.sh:71-76` renders four of seven modules and a
+  four-module chain; `WORKFLOWS.md` says it renders every panel. Fixed here.
+- **S** `core/rack/RackProcessor.cpp:122-193, 466-469` — a rebuild holds the
+  chain lock through teardown, construction, a 159-parameter `applyXml` and
+  `prepare`, while the audio thread passes dry audio at unity; then every
+  engine restarts cold. On the Vocal Chain preset that is a level jump, a
+  time slip of the reported latency, then a click. `core/AGENTS.md` calls it
+  "a few samples of dry signal". Build the new slots outside the lock and
+  swap under it.
+- **S** Session restore fires the parameter storm without the preset
+  manager's `loading` flag, so every reopened set shows "Init *"; the loaded
+  preset's name is not saved at all.
+- **N** `RackProcessor.cpp:189` does call `updateHostDisplay` with parameter
+  info changed when a slot's module changes, but `SlotParameter::assign`
+  resets the value without notifying, and Live is lazy about title changes.
+  Test item; the fallback is a `setValueNotifyingHost` per reassigned lane.
+- **N** Latency is never set from the audio thread; automating EQ's
+  Oversampling resets the oversamplers on the audio thread and clicks
+  (consider making that choice non-automatable). `ParamSpec::text` appends
+  the unit and `label()` returns it too, so Cubase shows "dB dB"; Live shows
+  text only. Vcomp's Gate at its rail prints a dB figure rather than "Off".
+- **N** State versions are written and never read; a 0.2.4 rack set opened in
+  Kevin's `main` build silently drops its DEQ and Vcomp slots on the next
+  save. `RackProcessor::setStateInformation` takes a `MessageManagerLock`.
+- **N** Fonts: embedded at build, silent system-font fallback at runtime if
+  unparseable; nothing checks CI's decoded secrets against the licensed
+  files on either machine. Add a hash to the Restore step.
+- **N** Dimension's VST3 subcategory is "Fx|Tools"; imagers are "Fx|Spatial".
+  Cosmetic in Live.
+- **N** `LayoutTests.cpp` lays out every module standalone, but inside a rack
+  only util, eq, sat, opto and deq; dim and vcomp are never laid out in a
+  rack, and vcomp's OUTPUT row is not checked against the shared rows.
+- Verified from the CI logs: both artifacts carry all nine products (Windows
+  9 VST3 + 9 standalone; macOS 9 VST3 + 9 AU + 9 apps); the tag run's macOS
+  artifact is universal (108 MB) and the dispatch run's arm64 only (52 MB),
+  so an Intel Mac installs from the tag run; Windows binaries identical
+  between runs. Registry size 7, all seven banks, the 40-parameter overflow
+  test, SlotOverflow lifetime ordering, the identity table against every
+  `Product.h` and `CMakeLists.txt`, and the two build switches, all as
+  claimed.
 
 ## The three checklists that did not exist
 

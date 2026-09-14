@@ -270,6 +270,7 @@ public:
         // DETUNE fades out on the same 8 ms, and comes back in instantly.
         // See setParams.
         detuneSm.prepare (sampleRate, 8.0);
+        centsSm.prepare (sampleRate, 8.0);
 
         reset();
     }
@@ -348,6 +349,16 @@ public:
         up  .setCents ( p.detuneCents);
         down.setCents (-p.detuneCents);
 
+        // CENTS at 0 has to mean off. A voice at 0 cents stops sweeping and
+        // freezes wherever it was, so with DETUNE on the pair became two fixed
+        // taps of the mid, differenced: a static comb whose level depended on
+        // where the sweep had got to when the knob arrived (measured
+        // 2026-09-14: after CENTS 10 -> 0, a side signal louder than at 10).
+        // The injected difference is scaled by the first cent of the knob
+        // instead, on the same 8 ms as everything else, so the bottom of the
+        // range fades to exactly nothing.
+        centsSm.setTarget (std::clamp (std::abs (p.detuneCents), 0.0f, 1.0f));
+
         shuffler.setFrequency (p.shuffleFreqHz);
 
         lfoInc = (float) (std::max (p.rateHz, 0.0f) / sampleRate);
@@ -361,6 +372,7 @@ public:
             rotSm.snap (-p.rotationDegrees * kPi / 180.0f);   // sign: see setParams
             asymSm.snap (asymCoeff (p.asymmetryPercent));
             detuneSm.snap (p.detuneOn ? 1.0f : 0.0f);
+            centsSm.snap (std::clamp (std::abs (p.detuneCents), 0.0f, 1.0f));
             primed = true;
         }
     }
@@ -401,7 +413,7 @@ public:
             // settled stage is bit-identical to a gate.
             const auto upOut   = up.process (mid);
             const auto downOut = down.process (mid);
-            const auto detuneGain = detuneSm.tick();
+            const auto detuneGain = detuneSm.tick() * centsSm.tick();
 
             if (detuneGain > 0.0f)
                 side += detuneGain * 0.5f * (upOut - downOut);
@@ -536,7 +548,7 @@ private:
     AllPassChain chain;
     Shuffler     shuffler;
 
-    Smoother widthSm, shuffleSm, diffuseSm, depthSm, rotSm, asymSm, detuneSm;
+    Smoother widthSm, shuffleSm, diffuseSm, depthSm, rotSm, asymSm, detuneSm, centsSm;
 
     float lfoPhase = 0.0f, lfoInc = 0.0f;
     bool  primed = false;
