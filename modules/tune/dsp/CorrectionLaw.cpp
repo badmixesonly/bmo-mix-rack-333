@@ -338,12 +338,24 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
         }
     }
 
-    // Predict the estimate forward to where the engine reads: the estimate
-    // refers to kAnalysisLagPeriods x T behind the newest sample, the engine
-    // reads readDelaySamples behind it, and the gap between them times the
-    // pitch slope is the residue off the note on a moving voice. Clamped, and
-    // never negative -- if the engine already rests past the estimate there
-    // is nothing to predict.
+    // Carry the estimate to where the engine reads: the estimate refers to
+    // kAnalysisLagPeriods x T behind the newest sample, the engine reads
+    // readDelaySamples behind it, and the gap between them times the pitch
+    // slope is the residue off the note on a moving voice.
+    //
+    // The gap goes BOTH ways. Forward when the engine reads newer material
+    // than the estimate describes, backward when it rests past it -- which is
+    // not an exotic case but the ordinary one above about 280 Hz at a 4 ms
+    // rest, and the ordinary one everywhere at a 6 ms one. Extrapolating
+    // backward is the same arithmetic into material already seen, so it is if
+    // anything the safer half.
+    //
+    // It used to refuse the backward half, and that refusal was what made a
+    // deeper rest look bad: swept on 2026-09-13 the residue bottomed at 6 ms
+    // (1.07 c) and then climbed -- 1.72 at 8 ms, 5.10 at 12 -- purely because
+    // more and more of the range fell on the side the law would not correct.
+    // That read as "deeper rests do not work" when it was "half the law was
+    // switched off".
     predicted = pitchIn;
 
     if (havePitch && voiced && haveAnchor && period > 1.0)
@@ -358,12 +370,13 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
                                                         : contract::liveRest (fs, period);
         const auto ahead = Detector::kAnalysisLagPeriods * period - readDelay;
 
-        if (ahead > 0.0)
         {
-            // From the anchor the slope was measured at, forward to what the
-            // engine is about to read: the anchor's own age plus the gap
-            // between the estimate and the read.
+            // From the anchor the slope was measured at, to what the engine
+            // is about to read: the anchor's own age plus the gap between the
+            // estimate and the read. `ahead` may be negative; `span` may not,
+            // since the anchor cannot be read from before it existed.
             const auto span = (double) (samples - slopeAnchorAt) + ahead;
+            // (age is >= 0 and ahead >= -one period, so span stays sane)
             const auto candidate = slopeAnchorPitch + pitchSlope * span;
 
             // Taken only if it lands within predictMaxCents of the estimate.

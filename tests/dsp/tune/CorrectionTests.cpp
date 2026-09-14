@@ -520,22 +520,52 @@ int main()
                    "a read delay N samples deeper predicts exactly rate x N less");
         }
 
-        // Past the analysis lag there is nothing to predict: the engine is
-        // already reading older material than the estimate refers to, and
-        // predicting backwards is not done (see CorrectionSettings).
+        // Past the analysis lag the gap reverses, and the law follows it
+        // BACKWARD: the engine is reading material older than the estimate
+        // describes, so the pitch it needs is the estimate carried back, not
+        // the estimate itself.
+        //
+        // This is the ordinary case, not an exotic one -- above about 280 Hz
+        // at a 4 ms rest, and everywhere at a 6 ms one. Refusing it (which
+        // the law did until 2026-09-13) is what made a deeper rest look bad:
+        // the vibrato residue bottomed at 6 ms and climbed after, purely
+        // because more of the range fell on the side that was not corrected.
         {
             CorrectionSettings s;
-            s.readDelaySamples = 4.0 * fs / hz0;   // four periods back, well past it
+            const auto readDelay = 2.0 * fs / hz0;   // two periods back, past it
+            s.readDelaySamples = readDelay;
 
             const auto with = drive (ramp, (size_t) (1.2 * fs), s, 24, true);
             const auto without = drive (ramp, (size_t) (1.2 * fs), s, 24, false);
 
-            double worst = 0.0;
-            for (size_t i = (size_t) (0.6 * fs); i < (size_t) (1.0 * fs); ++i)
-                worst = std::max (worst, std::abs (100.0 * (with.out[i] - without.out[i])));
+            const auto from = (size_t) (0.6 * fs), to = (size_t) (1.0 * fs);
+            double shift = 0.0, expected = 0.0;
+            size_t counted = 0;
 
-            report ("read delay past the analysis lag: worst difference", worst, "c");
-            check (worst == 0.0, "past the analysis lag nothing is predicted, to the sample");
+            for (size_t i = from; i < to; ++i)
+            {
+                if (with.target[i] != without.target[i])
+                    continue;
+
+                shift += -100.0 * (with.out[i] - without.out[i]);
+                expected += rate * (Detector::kAnalysisLagPeriods * (fs / ramp (i)) - readDelay) / fs;
+                ++counted;
+            }
+
+            shift /= (double) counted;
+            expected /= (double) counted;
+
+            report ("read delay past the analysis lag: the pitch is moved by", shift, "c");
+            report ("...and rate x (analysis lag - read delay), now negative, is", expected, "c");
+            check (counted > (to - from) / 2 && shift < 0.0 && expected < 0.0,
+                   "past the analysis lag the pitch is carried BACKWARD, not left alone");
+
+            const auto hopCents = rate * 24.0 / fs;
+            // Same bound as the forward cases: the anchor is up to three hops
+            // old and its age always adds a FORWARD component, whichever way
+            // the gap itself points.
+            check (shift >= expected - 0.05 && shift <= expected + 3.0 * hopCents,
+                   "and by rate x (analysis lag - read delay), within the age of the estimate");
         }
 
         // A step is not a slope, and the slope must not be read off one.
