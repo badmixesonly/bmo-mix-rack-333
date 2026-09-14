@@ -157,9 +157,9 @@ inline constexpr float kEnvelopeFloorDb = 1.0e-6f;
     RELEASE still means something with ARC on: it scales all three times
     rather than being ignored, so the knob moves the whole behaviour up and
     down instead of switching off. */
-inline constexpr float kArcFastScale   = 0.35f;  //  70 ms at the default 200
-inline constexpr float kArcChargeScale = 2.0f;   // 400 ms
-inline constexpr float kArcSlowScale   = 5.0f;   // 1000 ms
+inline constexpr float kArcFastScale   = 0.35f;  //   70 ms at the default 200
+inline constexpr float kArcChargeScale = 1.2f;   //  240 ms
+inline constexpr float kArcSlowScale   = 10.0f;  // 2000 ms
 
 class ReleaseStage
 {

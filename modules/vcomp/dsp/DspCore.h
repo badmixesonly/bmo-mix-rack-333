@@ -48,8 +48,8 @@ private:
 //==============================================================================
 /** BMO Vcomp.
 
-        in -> gate -> [band split] -> compressor on the mid band -> auto makeup
-           -> + the thru bands -> OUTPUT
+        in -> gate -> [band split] -> compressor on the mid band
+           -> + the thru bands -> auto makeup -> OUTPUT
 
     **The gate is first**, because what it closes has to be closed before the
     makeup amplifies it, and it is keyed off the raw input so its threshold is
@@ -165,13 +165,32 @@ public:
         {
             const auto curve = curveFor (amountSmoother.tick());
 
-            // **The automatic makeup belongs to the compressed band alone.**
-            // It exists to give back what the curve took, and it did not take
-            // anything from the bands passing through -- folding it into a
-            // single gain over the sum would lift an untouched low end by up
-            // to 26 dB at the top of AMOUNT, which is not "untouched by the
-            // compressor" by any reading. OUTPUT is the opposite case: it is
-            // the user's trim on the whole module, so it multiplies the sum.
+            // **The automatic makeup applies to the whole sum, including the
+            // bands the compressor did not touch.** Frosty's spec, 2026-09-14:
+            // LOW THRU picks a frequency, everything above it is compressed
+            // and everything below is not, and *both* get the makeup.
+            //
+            // This was the other way round for one build, on the reasoning
+            // that makeup gives back what the curve took and the thru bands
+            // had nothing taken. That is true and it is not what a listener
+            // judges. With makeup on the compressed band alone the thru band
+            // sits at input level while the compressed band is lifted, so
+            // engaging LOW THRU made the voice *thinner* the harder AMOUNT was
+            // pushed -- measured at -1.3 dB of tilt at AMOUNT 30 and -4.3 dB
+            // at 90. A control called LOW THRU that removes low end is the
+            // opposite of the thing, which is how the ear found it.
+            //
+            // The cost is the other direction and it is bigger: an
+            // uncompressed band taking full makeup can only get louder, by the
+            // whole makeup figure. That is +6 dB of low end at AMOUNT 30 and
+            // +25 at 90 (measure_vcomp balance). The feature is therefore
+            // usable at low to middling AMOUNT and self-defeating above it --
+            // a property of what was asked for rather than of this
+            // implementation, and recorded in modules/vcomp/AGENTS.md as
+            // something an ear has to rule on.
+            //
+            // OUTPUT multiplies the sum either way: it is the user's trim on
+            // the whole module.
             const auto autoMakeupLin = std::pow (10.0f, autoMakeupDb (curve) / 20.0f);
             const auto outputLin     = std::pow (10.0f, outputSmoother.tick() / 20.0f);
 
@@ -223,7 +242,7 @@ public:
                 {
                     float mid = 0.0f, thru = 0.0f;
                     c.bands.process (gated, mid, thru);
-                    out = (mid * compressorGain * autoMakeupLin + thru) * outputLin;
+                    out = (mid * compressorGain + thru) * autoMakeupLin * outputLin;
                 }
                 else
                 {
