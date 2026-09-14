@@ -328,11 +328,44 @@ int main (int argc, char** argv)
     // snapshot is taken. Steady rather than programme-like on purpose: a still
     // image of a moving meter is a picture of one arbitrary instant, and a
     // tone at least makes that instant reproducible.
+    //
+    // "Reproducible" took a second pass to earn, and this is the part to
+    // understand before shortening the loop again. A steady tone fixes the
+    // *level* a meter is fed; it does not fix where the needle has got to on
+    // its way there. `DynamicsMeter::timerCallback` integrates per tick --
+    //
+    //     displayed += 0.28f * (level - displayed)
+    //
+    // -- at 30 Hz, so after n ticks it is at 1 - 0.72^n of the truth. The loop
+    // below settles it by sleeping, and `Thread::sleep` is a floor rather than
+    // a period: when the scheduler overran, one extra 33.3 ms tick fired and
+    // the needle landed 2% further along. Ten renders of BMO Opto at a fixed
+    // `signal=-18` came back as *three* distinct images, on AURORA, 2026-09-14.
+    //
+    // Only Opto showed it, because a bar meter quantises to a whole pixel and
+    // swallows 2% while a needle's angle is continuous and drawn anti-aliased.
+    // That is the trap: the fault was suite-wide and visible on one panel.
+    //
+    // It matters because `tools/inspect hash` is how this project settles
+    // whether a refactor moved anything -- "byte-identical or it was not a
+    // refactor" -- and that test was unsound for the one panel in the suite
+    // with a needle, in both directions: a spurious difference on a pure
+    // refactor, and a real one-pixel regression dismissible as the known
+    // flakiness.
+    //
+    // So the settle now runs long enough to *converge* rather than long enough
+    // to look settled. At 24 ticks the residual is 0.72^24 = 2.4e-4 of full
+    // scale, which moves the needle tip by well under a tenth of a pixel, so
+    // whether a 25th fires cannot change the render. Renders without a signal
+    // were always deterministic -- every meter sits at rest -- and stay on the
+    // short loop, which is what keeps a colour render cheap.
+    const auto settleTicks = signalDb.has_value() ? 24 : 8;
+
     juce::AudioBuffer<float> block (juce::jmax (2, processor->getTotalNumOutputChannels()), 512);
     juce::MidiBuffer midi;
     double phase = 0.0;
 
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < settleTicks; ++i)
     {
         if (signalDb.has_value())
         {
