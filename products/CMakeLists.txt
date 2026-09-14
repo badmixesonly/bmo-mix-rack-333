@@ -9,6 +9,7 @@ if(BMO_BUILD_RACK)
     add_subdirectory(opto)
     add_subdirectory(dim)
     add_subdirectory(deq)
+    add_subdirectory(vcomp)
     add_subdirectory(rack)
 endif()
 

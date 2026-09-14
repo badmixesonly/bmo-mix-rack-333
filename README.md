@@ -10,6 +10,7 @@ new plugin.
 | **BMO EQ** | FrostyEQ, renamed: a Neve-style three-band EQ with low cut, oversampled | 280 |
 | **BMO Saturator** | Drive, tone and blend, with auto-gain | 260 |
 | **BMO Util** | Gain, pan, width, polarity, mono | 160 |
+| **BMO Vcomp** | A modern vocal compressor: AMOUNT, a gate on the meter, and OUTPUT, with timing, sidechain and band-split controls behind COMPLEX | 260 |
 | **BMO Mix Rack** | Up to eight of the above in series, re-orderable, with chain presets | as wide as its modules |
 | **BMO Tune RT** | A low-latency monophonic pitch corrector. In this repository, **not in the rack** | 360 |
 

@@ -1,7 +1,7 @@
 // Renders a product's editor to a PNG without a display, so a layout change
 // can be reviewed in a pull request rather than described in one.
 //
-//   snapshot <eq|sat|util|opto|dim|deq|rack> out.png [width height] [param=value ...]
+//   snapshot <eq|sat|util|opto|dim|deq|vcomp|rack> out.png [width height] [param=value ...]
 //
 // For the rack, "chain=util,eq,sat,opto" sets the modules and "N.id=value"
 // sets a parameter of the module in slot N (1-based), e.g. 2.mid_gain=4.
@@ -14,6 +14,10 @@
 // only: it neither writes nor reads the machine-wide preference, so it cannot
 // flip the look of plugins that happen to be open.
 //
+// "signal=<dBFS>" runs a 1 kHz tone through the processor before capturing,
+// so a metering panel renders with its meters reading something instead of at
+// rest. Needed for any module whose meters are the thing being reviewed.
+//
 // "ui.<key>=<value>" sets panel state that has no parameter behind it. BMO
 // Opto takes "ui.meter=IN|GR|OUT", which is the only way to render its VU in
 // anything but OUT. Offered to every panel; refused by all of them is fatal.
@@ -22,6 +26,7 @@
 #include "products/dim/Product.h"
 #include "products/eq/Product.h"
 #include "products/opto/Product.h"
+#include "products/vcomp/Product.h"
 #include "products/sat/Product.h"
 #include "products/util/Product.h"
 #include "products/rack/Product.h"
@@ -46,6 +51,7 @@ namespace
         if (product == "opto") return createOpto();
         if (product == "dim")  return createDim();
         if (product == "deq")  return createDeq();
+        if (product == "vcomp") return createVcomp();
         if (product == "rack") return createRack();
         return nullptr;
     }
@@ -204,7 +210,7 @@ int main (int argc, char** argv)
 
     if (argc < 3)
     {
-        std::cerr << "usage: snapshot <eq|sat|util|opto|dim|deq|rack> out.png [width height] [param=value ...]\n";
+        std::cerr << "usage: snapshot <eq|sat|util|opto|dim|deq|vcomp|rack> out.png [width height] [param=value ...]\n";
         return 2;
     }
 
@@ -237,6 +243,7 @@ int main (int argc, char** argv)
     // UI state is held back: it lives on the panel, which does not exist until
     // the editor does.
     std::vector<std::pair<juce::String, juce::String>> uiState;
+    std::optional<float> signalDb;
 
     for (int i = first; i < argc; ++i)
     {
@@ -272,6 +279,14 @@ int main (int argc, char** argv)
             continue;
         }
 
+        // Not a parameter either: how loud a tone to run through the processor
+        // so the meters have something to read. See the capture loop below.
+        if (key == "signal")
+        {
+            signalDb = value.getFloatValue();
+            continue;
+        }
+
         if (! set (*processor, key, value))
             std::cerr << "unknown parameter: " << key << '\n';
     }
@@ -300,8 +315,41 @@ int main (int argc, char** argv)
         editor->setSize (width, height);
 
     // Parts of the panel refresh on timers, so let those fire before capturing.
+    //
+    // A meter refreshes on a timer *from a source the audio thread feeds*, so
+    // for a metering panel that is only half of it: with no audio ever
+    // processed every meter in the suite renders at rest, and a render at rest
+    // cannot show what a meter does. BMO Vcomp's GR bar is the case that
+    // forced this -- it grows leftward from zero, which is a decision worth
+    // reviewing and is invisible in an empty well.
+    //
+    // `signal=<dBFS>` runs a 1 kHz tone through the processor between the
+    // timer ticks, so the meters are reading something real by the time the
+    // snapshot is taken. Steady rather than programme-like on purpose: a still
+    // image of a moving meter is a picture of one arbitrary instant, and a
+    // tone at least makes that instant reproducible.
+    juce::AudioBuffer<float> block (juce::jmax (2, processor->getTotalNumOutputChannels()), 512);
+    juce::MidiBuffer midi;
+    double phase = 0.0;
+
     for (int i = 0; i < 8; ++i)
     {
+        if (signalDb.has_value())
+        {
+            const auto amplitude = juce::Decibels::decibelsToGain (*signalDb);
+
+            for (int n = 0; n < block.getNumSamples(); ++n)
+            {
+                const auto v = (float) (amplitude * std::sin (phase));
+                phase += 2.0 * juce::MathConstants<double>::pi * 1000.0 / 48000.0;
+
+                for (int ch = 0; ch < block.getNumChannels(); ++ch)
+                    block.setSample (ch, n, v);
+            }
+
+            processor->processBlock (block, midi);
+        }
+
         juce::Thread::sleep (40);
         juce::Timer::callPendingTimersSynchronously();
     }
