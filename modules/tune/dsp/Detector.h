@@ -18,6 +18,7 @@ struct PitchEstimate
     bool   voiced  = false;  ///< the hysteretic decision, not the raw per-frame test
     bool   onset   = false;  ///< true on the one sample voicing opened
     double candidate = 0.0;  ///< this evaluation's raw period, before voicing and hold; 0 if none
+    bool   fresh   = true;   ///< false while `period` is the frozen hold rather than this evaluation's measurement; the detector sets it every evaluation, and an estimate built by hand is a measurement
 };
 
 /** The pitch detector the two engines share (spec §3).

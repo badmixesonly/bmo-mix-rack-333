@@ -283,7 +283,17 @@ void Detector::evaluate() noexcept
 
     // On unvoiced, the period freezes where it was (spec §3.4): the engines
     // keep free-running on it, and the correction amount is what fades.
-    if (found && current.voiced && clarity >= settings.clarityLo)
+    //
+    // The estimate says whether its period is this evaluation's or the hold.
+    // The law needs the difference: a frozen period re-presented every
+    // evaluation is not an estimate, and until 2026-09-14 the law's "confirm
+    // a jump by the next estimate agreeing" was satisfied by the previous
+    // estimate echoing back -- which at a phrase end, where clarity has gone
+    // and the hold is whatever the last lobe read, confirmed leaps of an
+    // octave and more and drove the worst-landing splices in the Failure take.
+    current.fresh = found && current.voiced && clarity >= settings.clarityLo;
+
+    if (current.fresh)
     {
         heldPeriod = period;
         current.period = period;

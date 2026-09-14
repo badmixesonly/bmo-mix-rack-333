@@ -231,7 +231,12 @@ double CorrectionLaw::tick (const PitchEstimate& e, bool evaluated) noexcept
     {
         clarity = e.clarity;
 
-        if (e.voiced && e.period > 0.0)
+        // Only a period measured this evaluation is an estimate. While the
+        // detector holds a frozen period (voiced, but clarity under its floor)
+        // the law keeps the pitch, the note and the correction it has, and
+        // neither confirms a pending jump nor feeds the slope history from
+        // the echo. See Detector::evaluate for what that echo was doing.
+        if (e.voiced && e.period > 0.0 && e.fresh)
         {
             const auto fresh = pitch::semitonesFromHz (fs / e.period, s.refA);
 
