@@ -124,5 +124,71 @@ int main()
                            + "' does not set " + s.id + ", which has no control");
     }
 
+    //== A preset must not change how loud the track is ======================
+    // The rule every other module's test already holds (modules/AGENTS.md,
+    // step 6); this file had no such block until the 0.2.4 review, and Wide
+    // Vocal measured +3.5 dB peak over Init on a mono vocal with nothing
+    // downstream to catch it. Measured as stereo power, because the module
+    // manufactures side content from a mono source: the left channel alone
+    // would read the width, and the mono sum cannot move by construction, so
+    // the sum of both channels' power is the figure that says whether a
+    // preset is louder. Print every figure with BMO_PRINT_PRESET_LEVELS.
+    {
+        auto proc = createDim();
+        proc->setPlayConfigDetails (2, 2, 48000.0, 512);
+        proc->prepareToPlay (48000.0, 512);
+
+        const auto source = voice (512 * 300);
+        const auto sourceDb = rmsDb (source);
+        const auto& factory = proc->getPresets().getFactory();
+        const bool print = std::getenv ("BMO_PRINT_PRESET_LEVELS") != nullptr;
+
+        const auto stereoPowerDb = [&] (const std::vector<float>& in, int block, int skip)
+        {
+            juce::AudioBuffer<float> buffer (2, block);
+            juce::MidiBuffer midi;
+            const auto blocks = (int) in.size() / block;
+            double sum = 0.0;
+            int counted = 0;
+
+            for (int b = 0; b < blocks; ++b)
+            {
+                for (int ch = 0; ch < 2; ++ch)
+                    buffer.copyFrom (ch, 0, in.data() + (size_t) (b * block), block);
+
+                proc->processBlock (buffer, midi);
+
+                if (b < skip)
+                    continue;
+
+                for (int ch = 0; ch < 2; ++ch)
+                {
+                    const auto* read = buffer.getReadPointer (ch);
+                    for (int i = 0; i < block; ++i)
+                        sum += (double) read[i] * read[i];
+                }
+
+                counted += 2 * block;
+            }
+
+            return juce::Decibels::gainToDecibels (std::sqrt (sum / (double) counted));
+        };
+
+        for (int index = 1; index < (int) factory.size(); ++index)
+        {
+            proc->getPresets().loadFactory (index);
+            proc->reset();
+
+            const auto outDb = stereoPowerDb (source, 512, 20);
+
+            if (print)
+                std::cout << factory[(size_t) index].name << ": " << (outDb - sourceDb) << " dB\n";
+
+            checkClose (outDb - sourceDb, 0.0, 2.5,
+                        juce::String ("preset '") + factory[(size_t) index].name
+                            + "' comes out near the level it went in, as stereo power");
+        }
+    }
+
     return finish ("BMO Dimension");
 }

@@ -1,14 +1,16 @@
 # BMO Vcomp — listening checklist
 
-Build under test: `integration`, which carries BMO Vcomp (`dc59c0c` on
-`add-bmo-vcomp`) alongside BMO DEQ and BMO Tune RT. Built on **AURORA**.
-One round of listening covers all three.
+Build under test: `v0.2.4` / `cbd0939` on `integration`, CI run
+34834557823 (`BMO-Windows`), installed on **AURORA** 2026-09-14; the SHA-256 is
+in `review-0.2.4-2026-09-14.md`. One round of listening covers DEQ, Vcomp and
+Tune together.
 
-**Nothing in this module has been heard on programme material.** Every
-number in it is a round number at a shape — the curve, the ARC scales,
-the gate's ratio, all eight presets. So this is not a regression pass
-looking for faults; it is the pass that decides what the module sounds
-like. Disagreeing with a number here is the point, not a bug report.
+**Heard once, 2026-09-14, on AURORA: "flying colors"**, with five changes asked
+for and made the same day (`vcomp-handoff.md` has the table). Every number in
+it is still a round number at a shape — the curve, the ARC scales, the gate's
+ratio, all eight presets — so this is not yet a regression pass looking for
+faults; it is the pass that decides what the module sounds like. Disagreeing
+with a number here is the point, not a bug report.
 
 Offline renders and the numbers behind them are in
 `packages/vcomp-listening/` (local, gitignored). Regenerate with
@@ -113,10 +115,15 @@ of them set OUTPUT or GATE.
 - Anything obviously louder or quieter than the others? They are
   level-matched by construction rather than by hand, so a preset that
   sounds off means the *auto makeup* is off, not the preset.
-- **Watch for clipping.** `report-presets.txt` shows In Front and Keep
-  The Chest peaking above 0 dBFS on a −18 dBFS RMS source. Full makeup
-  with no limiter does that. If you hear it, that is the argument for
-  building the limiter RVox has and this does not.
+- **Push OUTPUT into the limiter.** It exists now (instantaneous, zero
+  latency, last in the chain, ceiling −0.1 dBFS). What colour it has is
+  odd-order edge, never warmth. Note whether OUT pinned at −0.1 with a
+  quiet GR bar reads as "working" or "broken": the limiter's own reduction
+  is not metered.
+- **Keep The Air** sat at AMOUNT 70 in the 0.2.4 build, which is a +19 dB
+  boost of everything above 6 kHz into the limiter; it is 35 on
+  `review-0.2.4`, the same figure and the same reason as Keep The Chest.
+  If the installed build is 0.2.4, expect esses to spit.
 
 ## 8. Against the references
 

@@ -89,10 +89,14 @@ one-knob compressor usable, which is why RVox ships the same pairing.
 - **An expander with a floor**, not a hard gate: a hard gate chatters on
   breaths and bites the tails off words, and both are audible on a voice in a
   way they are not on a tom.
-- **Fast to open (0.5 ms), slow to close (150 ms) with a 40 ms hold.** Opening
-  is the direction that costs a syllable if it is wrong. `measure_vcomp gate`
-  prints the first 20 ms of the phrase separately for exactly that reason; at
-  every threshold in the table the onset moves by at most 0.06 dB.
+- **Fast to open (3 ms), slow to close (150 ms) with a 40 ms hold, 6:1 into a
+  60 dB floor.** Opening is the direction that costs a syllable if it is
+  wrong. `measure_vcomp gate` prints the first 20 ms of the phrase separately
+  for exactly that reason; at every threshold in the table the onset moves by
+  at most 0.06 dB. It opened in 0.5 ms at 3:1 into 50 dB until the 2026-09-14
+  ear pass; going deeper made that open *click*, because the gate suddenly had
+  58 dB to open from rather than 16, so the ramp went to 3 ms (peak slew
+  113 -> 19 dB/ms, `measure_vcomp gateopen`).
 
 ### LOW THRU and HIGH THRU are not the sidechain filter
 
@@ -253,28 +257,33 @@ tilt column should stay near zero across the AMOUNT range rather than growing.
 
 ## What waits on an ear
 
-Nothing here has been heard on real programme material. `tools/measure/vcomp`
-exists for that pass: `curve`, `presets`, `gate` and `bands` each print a table
-and write WAVs of the same render, so a number and a listen are never of
-different things, and `gen` exports the harness's own signals so the same file
-can be fed through RVox or RComp for comparison.
+Heard once, on AURORA on 2026-09-14, in Ableton on real material: "flying
+colors", with five changes asked for and made the same day (the makeup on the
+whole sum, ARC bolder, the gate deeper and slower to open, and the limiter).
+`testing-notes/vcomp-handoff.md` has the table. `tools/measure/vcomp` exists
+for the next pass: `curve`, `presets`, `gate`, `gateopen`, `bands`, `balance`,
+`arc` and `colour` each print a table and write WAVs of the same render, so a
+number and a listen are never of different things, and `gen` exports the
+harness's own signals so the same file can be fed through RVox or RComp for
+comparison.
 
-Specifically open:
+Still open, having been heard once:
 
 - **The curve's three sweeps** are round numbers at a shape, not tuned figures.
 - **The eight factory presets** are AMOUNT positions with names on them.
-- **`kArcFastScale` / `kArcChargeScale` / `kArcSlowScale`** (0.35 / 2 / 5 x
-  RELEASE). The charge scale decides how much material counts as "sustained"
-  and is the first knob to turn if ARC feels wrong.
+- **`kArcFastScale` / `kArcChargeScale` / `kArcSlowScale`** (0.35 / 1.2 / 10 x
+  RELEASE since the ear pass; they were 0.35 / 2 / 5 and could not be heard).
+  The charge scale decides how much material counts as "sustained" and is the
+  first knob to turn if ARC feels wrong.
 - **`kStandardAttackMs` = 5** is the single number standard mode's whole feel
   rests on, since a user in standard mode cannot change it.
-- **The gate's `kGateRatio` = 3:1 and `kGateRangeDb` = 50.** 3:1 is gentle; at
-  a threshold 8 dB above the noise it shuts by 16 dB, which may not be decisive
-  enough on a bleedy track.
-- **Output peaks.** `measure_vcomp presets` shows "In Front" and "Keep The
-  Chest" peaking above 0 dBFS on a -18 dBFS RMS source. That is what full
-  makeup with no limiter does, and it is the strongest argument for the
-  limiter below.
+- **The gate's `kGateRatio` = 6:1 and `kGateRangeDb` = 60** (3:1 into 50 until
+  the ear pass, which was too polite: at GATE -40 it shut by 16 dB, now 41).
+- **Output peaks** were the argument for the limiter, and it exists now.
+  Before it, `measure_vcomp presets` had "In Front" and "Keep The Chest"
+  peaking above 0 dBFS on a -18 dBFS RMS source. What is left of that item is
+  that the limiter's own reduction is not metered, so OUT pinned at -0.1 with a
+  quiet GR bar is what pushing OUTPUT looks like.
 
 ## Open, and deliberately not built
 

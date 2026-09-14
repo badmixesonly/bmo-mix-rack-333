@@ -8,6 +8,10 @@ This file lives on the **fork** (`badmixesonly/bmo-mix-rack-333`), on the
 integration branch. It is not for Kevin's repository: it describes how Frosty's
 two machines work, not how the suite is built.
 
+**Start from `testing-notes/session-handoff-2026-09-14.md`** — the state after
+the 0.2.4 review, what is installed, the two blind sets waiting on ears, and
+the order of everything that follows.
+
 ---
 
 ## The rules that apply to every workflow below
@@ -245,34 +249,14 @@ Jobs: **DSP** (Linux, seconds), **Each side alone** (Linux, the two switches),
 **macOS** and **Windows** (the plugins, ~20-25 min). The Windows job's
 `BMO-Windows` artifact is what ICE QUEEN installs, by hash.
 
-#### Waiting to be batched — as of 2026-09-12
+#### The last green run on `integration`
 
-**DEQ's work is on `integration` with no CI run behind it, on purpose**
-(Frosty). A round trip is ~22 minutes and the concurrency group cancels a run
-in progress on the same ref, so DEQ and Tune go through together: **whoever
-pushes Tune's branch dispatches once, on `integration`**, and that run is the
-one both machines install from.
-
-**This is a one-off, not a standing rule** (Frosty, 2026-09-12). Normally a
-branch dispatches its own run as soon as it is ready to be looked at. The
-batching here is only because DEQ and Tune are landing within hours of each
-other, and one 22-minute round trip beats two.
-
-Green locally on AURORA and waiting for that run — 6 of 6 DSP-only suites and
-14 of 14 full, in Release:
-
-- `33e940b` solo, and the analyser tap
-- `a933500` the decisions behind them
-- `0af087a` serial settled by ear, no topology switch
-- `546dd02` `measure_deq --match`
-- `2150ddd` only a band that is on gets a node
-
-The last green run on `integration` is **34662591052**, at `7341a39` — all
-four jobs, artifacts good until 11 December. Everything listed above landed
-after it and has not been through CI.
-
-**Delete this section once the batched run is green**, and put its id on the
-line above.
+**34834557823** (dispatched) and **34834687703** (started by the `v0.2.4`
+tag), both at `cbd0939`, 2026-09-14, all four jobs. They are not
+byte-identical on macOS: the tag run builds universal, the dispatch arm64
+only. AURORA installed the `BMO-Windows` artifact of 34834557823 the same
+day; the hashes are in `testing-notes/review-0.2.4-2026-09-14.md`. The
+DEQ-plus-Tune batching that this section used to describe is done.
 
 ### Finishing a workflow
 
