@@ -118,3 +118,69 @@ candidate wins, it goes in as a constant (A) or a five-line change (B) in
 assertions on the table above, and the thirteen preset levels re-solved
 with `BMO_PRINT_PRESET_LEVELS` because a faster attack takes slightly more
 average gain.
+
+---
+
+# Heard, 2026-09-14, on AURORA — candidate B wins, and the control fired
+
+Frosty's rankings, written before `KEY.txt` was opened; the sheet is
+`field-audio/opto-attack-2026-09-14/ANSWERS.md`. Decoded:
+
+| group | 1st | 2nd | 3rd |
+|---|---|---|---|
+| Tele 75 | **candidate B** "best, slight advantage" | candidate A "almost best, tie" | shipped "slight pumping" |
+| Stressed 75 | **candidate B** "best" | shipped = candidate A, tied | — |
+
+**Candidate B placed first in both groups.** Candidate A never beat the shipped
+build anywhere it differs from it.
+
+## The Tele group is a null, and it says so itself
+
+Candidate A changes the Distressor cell only, so in **Tele** it is the shipped
+build. The two files were rendered separately and are byte-identical:
+
+    Tele 75/B.wav  4034f625b1f48e2e89d3e848c51c39d2b2fa4620f6210c22bdea74c3da6d7e29
+    Tele 75/C.wav  4034f625b1f48e2e89d3e848c51c39d2b2fa4620f6210c22bdea74c3da6d7e29
+
+They were ranked 3rd ("slight pumping") and 2nd ("almost best, tie"). One file,
+two placings, one position apart — which is the same margin that separated
+candidate B from them. **So the Tele separation is at or below the resolution
+of this comparison and cannot carry a decision.** That is the control working
+exactly as a control is supposed to: it did not tell us the listener is
+unreliable, it told us this particular difference is too small to rank, which
+is a fact about the change and not about the ear.
+
+## The Stressed group is real
+
+Three genuinely different files, and the ranking is 1 / 2 = 2:
+
+- **candidate B best** — the light-dependent attack, both cells.
+- **shipped and candidate A tied for second.** Candidate A is the Distressor
+  attack at 3 ms against the shipped 10 ms, which is the larger change of the
+  two on paper (t63 11 ms → 3.5 ms, t90 42 ms → 12.5 ms). Heard flat against
+  the shipped build.
+
+That last line is the finding worth keeping: **the big simple number did
+nothing and the small programme-dependent one was heard.** Candidate A makes
+the cell uniformly faster; candidate B is fast only on the first millisecond of
+a hit and back to 10 ms as it settles. What was audible was not "faster", it
+was "faster *at the onset only*".
+
+## Recommendation
+
+Take candidate B, on one group's evidence and a null in the other. It won where
+the comparison is trustworthy, it was never ranked below the shipped build in
+either group, and it is the variant with the physical argument behind it — a
+photocell's attack does move with light.
+
+It is not a strong result. One confirming round on Stressed alone, three
+letters, shipped against candidate B twice, would settle whether the margin
+survives a second hearing — and would cost one render pass. Worth it before the
+thirteen preset levels are re-solved, since that re-solve is the expensive part
+and is wasted if the margin evaporates.
+
+**Not implemented.** Nothing in any tree has changed. When it goes in it is the
+five-line change in `Detector.h` described above, with absolute attack
+assertions on the t63/t90 table and the thirteen preset levels re-solved with
+`BMO_PRINT_PRESET_LEVELS`, because a faster attack takes slightly more average
+gain.
