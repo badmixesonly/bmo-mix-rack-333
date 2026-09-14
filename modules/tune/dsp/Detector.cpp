@@ -66,6 +66,13 @@ namespace bmo::tune::probe
         if (tr < 0) { const char* v = std::getenv ("BMO_G6TRACK"); tr = (v && std::atoi (v) != 0) ? 1 : 0; }
         return tr != 0;
     }
+
+    inline int ls = -2;
+    inline int lowStride (int decimation)
+    {
+        if (ls == -2) { const char* v = std::getenv ("BMO_LOWSTRIDE"); ls = v ? std::atoi (v) : -1; }
+        return ls < 0 ? 1 : (ls == 0 ? decimation : ls);
+    }
 }
 
 namespace bmo::tune
@@ -622,7 +629,17 @@ double Detector::lowNsdf (int lag, int window) const noexcept
 {
     double r = 0.0, m = 0.0;
 
-    for (int j = 0; j < window; ++j)
+    // Stepped, not every sample. lowRing carries the anti-alias lowpass's
+    // output, which is band-limited to 3 kHz, so summing it at the host rate
+    // oversamples the correlation by rate/6000 -- 7x at 44.1 kHz and 32x at
+    // 192 kHz -- for an answer that does not change. The cost of the guards
+    // that read it therefore grew with the SQUARE of the sample rate: guard 6
+    // took the 192 kHz / 128 bench p99 from 20 % to 32 %. Stepping by the
+    // decimation factor is the same factor the coarse pass already uses, and
+    // makes the cost flat across the range.
+    const auto step = std::max (1, probe::lowStride (decimation));
+
+    for (int j = 0; j < window; j += step)
     {
         const double a = lowAt (j);
         const double b = lowAt (j + lag);
