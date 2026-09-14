@@ -215,17 +215,17 @@ void VcompPanel::resized()
         // **Two knobs across the full width, not two thirds of a three-column
         // grid.** These carry the longest captions in the module, and in an
         // 80 px column "LOW THRU" and "HIGH THRU" rendered as "LOW THR" and
-        // "HIGH TH" -- clipped at the component edge, because a caption is
-        // drawn into a box the width of its own control.
+        // "HIGH TH": Graphics::drawText curtails what will not fit rather than
+        // spilling it, so a caption wider than its own control loses its tail
+        // silently. They need 90.7 and 93.3 px at the trim caption size.
         //
-        // ui_layout passed with them clipped, which is worth knowing:
-        // PlainKnob::captionOverflow measures the same font into the same box
-        // and reported that they fit. The measurement and the render disagree
-        // for these two strings and the render is the one that matters, so
-        // they get half the panel each rather than the arithmetic being argued
-        // with. Whatever captionOverflow is missing is a shared-code question
-        // and is recorded in modules/vcomp/AGENTS.md rather than patched from
-        // inside a module's layout.
+        // ui_layout passed with them clipped, and the reason is worth keeping:
+        // not because PlainKnob::captionOverflow was wrong -- it reports 10.7
+        // and 13.3 px, correctly -- but because this module had not been added
+        // to that test's product list, so its panel was never looked at. That
+        // list is one of the shared files modules/AGENTS.md tells a new module
+        // to edit, and missing it fails exactly this way: silently, with a
+        // green suite.
         const auto each = row.getWidth() / 2;
 
         lowThruKnob .setBounds (row.removeFromLeft (each));
