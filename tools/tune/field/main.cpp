@@ -27,10 +27,36 @@
       splices     the engine's whole-period jumps, and how badly each one LANDS:
                   the two reads either side of a jump are meant to be one
                   cycle apart on the same waveform, so what they differ by
-                  across the crossfade is the step a listener hears. Split by
-                  whether the ruler calls the material periodic there, since
-                  on noise two unrelated reads differ a lot and sound the
-                  same. --splices lists every one with its level.
+                  across the crossfade is the step a listener hears. Split two
+                  ways, because a big step is only a pop if it is both on
+                  pitched material and loud enough to hear:
+
+                    ON PITCH            periodic, and within kQuietBelowVoiceDb
+                                        of the take's median voiced level. The
+                                        only column that predicts a pop.
+                    on pitch, in a gap  periodic but far under the voice. A
+                                        step in near-silence is arithmetic,
+                                        not a sound.
+                    on noise            the ruler finds no pitch: a consonant,
+                                        a breath, a stretch where the detector
+                                        has lost the voice. Two unrelated
+                                        noisy reads differ a lot and sound the
+                                        same.
+
+                  --splices lists every one with its level and its column.
+
+                  The level split arrived on 2026-09-14 and changed what the
+                  take looks like. Landing error is normalised by the reads'
+                  own RMS, so it says how big the step is *relative to the
+                  waveform it sits in* and nothing about whether that waveform
+                  is audible. On Failure one splice at -54 dB lands at 1.26 and
+                  was the worst figure on the whole take; with it in its own
+                  column, Failure's audible splices are 0 of 18 over 0.5, worst
+                  0.49 -- and Fuji, which had looked comparable, is 5 of 11
+                  over 0.5 with a worst of 1.52 and nothing in a gap at all.
+                  Several rounds were spent driving down a Failure number that
+                  was mostly one inaudible splice, while the take with the real
+                  problem sat next to it (testing-notes/tune-field-levels-2026-09-14.md).
 
                   Count and landing error are different questions: on Failure
                   the median jump lands at 0.10 and is inaudible, which is why
@@ -60,6 +86,13 @@ using namespace bmo::tune;
 
 namespace
 {
+    /** How far under the take's own median voiced level a splice has to sit
+        before its landing error is reported apart from the rest. 25 dB is well
+        past where a step in the waveform stops competing with the voice around
+        it, and is measured against the take rather than full scale so a quietly
+        recorded one does not read as all gaps. */
+    constexpr double kQuietBelowVoiceDb = 25.0;
+
     struct Row { long long n; double f0, pitchIn; bool voiced; int note; bool splice, evaluated; double mismatch; };
 
     struct Collector
@@ -183,13 +216,22 @@ int main (int argc, char** argv)
     // unreported, and that is where the detector reads 580 to 1837 Hz on a
     // 60-400 Hz singer (testing-notes/tune-blind-2026-09-12.md).
     std::vector<std::pair<long long, bool>> periodic;
+    std::vector<double> frameLevels;
 
     for (size_t a = 0; a + len < dry.size(); a += hop)
     {
         double e = 0.0;
         for (size_t i = a; i < a + len; ++i) e += (double) dry[i] * dry[i];
-        if (10.0 * std::log10 (e / (double) len + 1.0e-20) < -45.0)
+        const auto frameDb = 10.0 * std::log10 (e / (double) len + 1.0e-20);
+
+        if (frameDb < -45.0)
             continue;
+
+        // Kept so the splice statistics below have something to call loud. A
+        // landing error is a step in the waveform relative to the reads either
+        // side of it, so it says nothing at all about whether the step is
+        // above the noise the listener is hearing it in.
+        frameLevels.push_back (frameDb);
 
         const auto truth = analysis::measureHz (dry, a, len, fs, rulerMin, rulerMax);
         periodic.emplace_back ((long long) (a + len / 2), truth > 0.0);
@@ -272,12 +314,51 @@ int main (int argc, char** argv)
     // it, from one that lands anywhere, which steps the waveform.
     if (! mismatches.empty())
     {
+        // Level over 50 ms around a splice, against the take's own peak --
+        // the same window the per-splice listing shows, computed once here so
+        // the listing and the statistics can never disagree about how loud a
+        // moment was.
+        const auto levelAt = [&dry, fs] (long long at)
+        {
+            const auto half = (size_t) std::lround (0.025 * fs);
+            const auto from = (size_t) std::max<long long> (0, at - (long long) half);
+            const auto to = std::min (dry.size(), (size_t) at + half);
+            double e = 0.0;
+            for (size_t i = from; i < to; ++i) e += (double) dry[i] * dry[i];
+            return 10.0 * std::log10 (e / (double) std::max<size_t> (1, to - from) + 1.0e-20);
+        };
+
         // Split by whether the RULER calls the material periodic there. On
         // aperiodic material -- a consonant, a breath, the stretch where the
         // detector loses the voice entirely -- a high landing error is not a
         // pop: two unrelated noisy reads differ a lot and sound the same.
-        // Only the periodic column is a prediction about what is heard.
-        std::vector<double> onPitch, onNoise;
+        //
+        // The second split is LEVEL, and it was missing until 2026-09-14.
+        // Landing error is normalised by the reads' own RMS, so it measures
+        // the step relative to the waveform it is in and not relative to the
+        // take. A splice in a phrase gap can therefore land at 1.26 -- the
+        // worst figure on the whole of Failure -- while sitting at -54 dB,
+        // where nothing is audible at all. Round nine turned on a "worst
+        // landing 1.95 -> 0.76" that was partly this: a quiet-gap splice
+        // setting the headline number for a take whose voice sits 30 dB above
+        // it. Quiet splices are still counted and still listed; they are just
+        // not allowed to be the number anyone reads.
+        //
+        // The line is drawn against the take's own voice rather than against
+        // full scale, so it travels to a quietly recorded take without being
+        // retuned.
+        std::vector<double> onPitch, onPitchQuiet, onNoise;
+
+        auto voiceDb = -20.0;
+
+        if (! frameLevels.empty())
+        {
+            auto sorted = frameLevels;
+            std::sort (sorted.begin(), sorted.end());
+            voiceDb = sorted[sorted.size() / 2];
+        }
+
+        const auto quietBelowDb = voiceDb - kQuietBelowVoiceDb;
 
         for (const auto& [at, err] : mismatches)
         {
@@ -290,7 +371,9 @@ int main (int argc, char** argv)
                 if (best < 0 || d < best) { best = d; isPeriodic = p; }
             }
 
-            (isPeriodic ? onPitch : onNoise).push_back (err);
+            if (! isPeriodic)                       onNoise.push_back (err);
+            else if (levelAt (at) < quietBelowDb)   onPitchQuiet.push_back (err);
+            else                                    onPitch.push_back (err);
         }
 
         const auto line = [] (const char* what, std::vector<double> m)
@@ -311,7 +394,11 @@ int main (int argc, char** argv)
         };
 
         line ("ON PITCH:", onPitch);
+        line ("on pitch, in a gap:", onPitchQuiet);
         line ("on noise:", onNoise);
+
+        std::printf ("  (the take's median voiced level is %.1f dB, so 'in a gap' is under %.1f)\n",
+                     voiceDb, voiceDb - kQuietBelowVoiceDb);
 
         // WHETHER THE DETECTOR HAD THE PERIOD when the jump was taken, which
         // is the one thing so far that separates the splices Frosty hears
@@ -363,16 +450,13 @@ int main (int argc, char** argv)
                     if (best < 0 || d < best) { best = d; isPeriodic = p; }
                 }
 
-                // Level over 50 ms around it, against the take's own peak.
-                const auto half = (size_t) std::lround (0.025 * fs);
-                const auto from = (size_t) std::max<long long> (0, at - (long long) half);
-                const auto to = std::min (dry.size(), (size_t) at + half);
-                double e = 0.0;
-                for (size_t i = from; i < to; ++i) e += (double) dry[i] * dry[i];
-                const auto db = 10.0 * std::log10 (e / (double) std::max<size_t> (1, to - from) + 1.0e-20);
+                const auto db = levelAt (at);
 
                 std::printf ("    %7.3f s   landing %.2f   %6.1f dB   %s\n",
-                             (double) at / fs, err, db, isPeriodic ? "on pitch" : "ON NOISE");
+                             (double) at / fs, err, db,
+                             ! isPeriodic         ? "ON NOISE"
+                                 : db < quietBelowDb ? "on pitch, in a gap"
+                                                     : "on pitch");
             }
         }
     }
