@@ -20,6 +20,7 @@ Permanent. Allocate here before the first build of anything new.
 | BMO Mix Rack | -- | `Brck` | `com.lt3audio.bmomixrack` | `.bmorack` |
 | BMO DEQ | `deq` | `Bpar` | `com.lt3audio.bmodeq` | `.bmodeq` |
 | BMO Tune RT -- **not in the rack** | `tune` | `Btun` | `com.lt3audio.bmotunert` | `.bmotune` |
+| BMO Vcomp | `vcomp` | `Bvcp` | `com.lt3audio.bmovcomp` | `.bmovcomp` |
 
 Manufacturer code `LT3a`, company "LT3 Audio", preset root `LT3 Audio/`.
 BMO EQ keeps FrostyEQ's code and bundle id on purpose: that is what makes
@@ -58,6 +59,36 @@ and preset extension, which were `com.lt3audio.bmoparametric` and `.bmopar`,
 were re-derived from the new name, and the module id is `deq` rather than
 `par`. None of these had shipped, so changing them cost nothing. The row has
 been permanent since the product's first build, on `add-bmo-deq`.
+
+**BMO Vcomp** is the vocal compressor, and it is not BMO Opto's replacement or
+its successor -- the two are opposite products that happen to share a category.
+Opto models two pieces of hardware and wears their behaviour, feedback topology
+and all; Vcomp is modern, feedforward and predictable, and its whole claim is
+that a vocal needs one knob for how hard and one for how loud. Frosty named the
+reference points, 2026-09-13: the sound of Waves RVox and RComp, the simplicity
+of RVox and Klanghelm DC1A.
+
+AMOUNT sweeps threshold, knee and ratio together and pays for its own makeup,
+so the knob buys density rather than level, and a gate ahead of it -- dragged
+as a handle along the IN meter, not set on a knob -- cleans up what that makeup
+would otherwise do to the silences. COMPLEX reveals attack, release, a detector
+high-pass and a pair of THRU controls that split the low and high bands out of
+the compressor's reach entirely; with it off the DSP does not read those six at
+all. ARC is the programme-dependent release and is always on in standard mode.
+See `modules/vcomp/AGENTS.md`.
+
+**The periwinkle `#a2a8ff` was picked against this table, not off a screen.**
+Hue 236.1 degrees sits in the widest gap that was left: 37.3 degrees clear of
+the utility azure and 35.5 clear of BMO Dimension's lavender, which is a wider
+separation than the lime. Its 6.17 on the dark plate is inside the 5.87-7.19
+the shipped accents run, and its 1.91 on the pale plate is second only to BMO
+EQ's 2.00 -- so unlike the lime it costs nothing in the pale appearance. The
+figures were computed by the WCAG formula on AURORA.
+
+**Frosty has not yet signed this row off.** It was allocated during the build so
+the module could have a colour at all, on the argument above; the accent, the
+plugin code `Bvcp` and the name are all cheap to change until the first build
+ships and none of it has, which is exactly the window the BMO DEQ row describes.
 
 BMO DEQ has 158 parameters. A rack slot still has 32 host lanes; the
 module's first 32 parameters take them and the rest are kept in the slot's
@@ -171,6 +202,7 @@ there are distinguishable ones.
 | *(not an accent)* utility azure `#4fb8e8` | | 198.8° | 6.02 | -- |
 | BMO DEQ | `#5ecfc0` teal | 172.0° | **7.19** | 1.64 |
 | BMO Tune RT (not in the rack) | `#b6e35d` lime | 80.1° | **9.10** | **1.29** |
+| BMO Vcomp | `#a2a8ff` periwinkle | 236.1° | 6.17 | 1.91 |
 
 **The lime was picked outside this table**, while Tune was still its own
 repository, and its two figures are computed by the WCAG formula on AURORA

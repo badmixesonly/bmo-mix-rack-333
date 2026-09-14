@@ -5,6 +5,7 @@
 #include "modules/opto/Module.h"
 #include "modules/sat/Module.h"
 #include "modules/util/Module.h"
+#include "modules/vcomp/Module.h"
 
 namespace bmo::products
 {
@@ -18,6 +19,7 @@ const std::vector<const ModuleDef*>& registry()
         &opto::module(),
         &dim::module(),
         &deq::module(),
+        &vcomp::module(),
     };
 
     return defs;

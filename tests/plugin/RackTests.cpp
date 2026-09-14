@@ -61,6 +61,8 @@ namespace
                     "active" } },
         { "dim",  { "width", "shuffle", "shuffle_freq", "detune", "detune_on",
                     "diffuse", "rate", "depth", "rotation", "asymmetry" } },
+        { "vcomp", { "amount", "gate", "output", "complex", "attack", "release",
+                     "arc", "sidechain", "low_thru", "high_thru" } },
     };
 
     std::vector<juce::String> chainIds (RackProcessor& rack)
@@ -200,7 +202,7 @@ int main()
         auto rack = createRack();
         const auto& registry = rack->getRegistry();
 
-        check (registry.size() == 6, "the registry holds util, eq, sat, opto, dim and deq");
+        check (registry.size() == 7, "the registry holds util, eq, sat, opto, dim, deq and vcomp");
 
         // A bank is a module's host lanes, so it stops at 32 even if the
         // module does not. Past that, its golden schema test pins the order.

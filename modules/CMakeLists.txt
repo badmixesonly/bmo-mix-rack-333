@@ -74,6 +74,14 @@ bmo_add_module(deq
         ${CMAKE_CURRENT_SOURCE_DIR}/deq/panel/ResponseView.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/deq/Module.cpp)
 
+bmo_add_module(vcomp
+    DSP_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/vcomp/dsp/DspCore.cpp
+    UI_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/vcomp/panel/VcompPanel.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/vcomp/panel/LevelBars.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/vcomp/Module.cpp)
+
 endif()
 
 # BMO Tune RT. The same two targets as a rack module -- bmo_tune_dsp for the
