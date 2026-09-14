@@ -6,8 +6,12 @@ it went to CI, and what is open.
 
 ## What it is
 
-`integration` at **`cbd0939`**, tagged **`v0.2.4`**, CI run
-**34834557823**. Three products land together:
+`v0.2.4` tags **`cbd0939`**, which is the commit both CI runs build and the
+commit AURORA verified. Integration's tip moves past it with docs commits like
+this one, which start no build (`paths-ignore` covers `**.md`). CI run
+**34834557823** (dispatched) and **34834687703** (started by the tag itself --
+see `WORKFLOWS.md`, the triggers include `tags: ['v*']`). Same commit, so
+either one going green is the answer. Three products land together:
 
 | | what changed |
 |---|---|

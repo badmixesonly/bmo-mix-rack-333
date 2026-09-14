@@ -227,6 +227,15 @@ build/tools/tune/Release/bmo-tune-field.exe
 CI does not run itself on a feature branch. Dispatch it, and give Frosty the
 run id:
 
+**But it DOES run itself on a version tag.** `build.yml`'s triggers are `push`
+on `branches: [main]` **and `tags: ['v*']`**, plus pull requests and
+`workflow_dispatch`, all with `paths-ignore: ['**.md']` — so a docs-only push
+starts nothing, and pushing `v0.2.4` on 2026-09-14 started a second full build
+beside the dispatched one, on the same commit. That is the workflow behaving as
+written; this file had never said so. The concurrency group is keyed on
+`github.ref`, so a tag run and a branch run do **not** cancel each other.
+Expect two, and cancel one yourself if the runner time matters.
+
 ```
 gh workflow run build.yml --repo badmixesonly/bmo-mix-rack-333 --ref <branch>
 gh run list --repo badmixesonly/bmo-mix-rack-333 --limit 5
