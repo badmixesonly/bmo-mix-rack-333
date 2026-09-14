@@ -21,6 +21,7 @@
 #include "products/dim/Product.h"
 #include "products/eq/Product.h"
 #include "products/opto/Product.h"
+#include "products/vcomp/Product.h"
 #include "products/sat/Product.h"
 #include "products/util/Product.h"
 #include "products/rack/Product.h"
@@ -662,6 +663,7 @@ int main (int argc, char** argv)
         { "util", +[] () -> std::unique_ptr<juce::AudioProcessor> { return createUtil(); } },
         { "opto", +[] () -> std::unique_ptr<juce::AudioProcessor> { return createOpto(); } },
         { "dim",  +[] () -> std::unique_ptr<juce::AudioProcessor> { return createDim(); } },
+        { "vcomp", +[] () -> std::unique_ptr<juce::AudioProcessor> { return createVcomp(); } },
 
         // BMO DEQ twice, once per width: standalone opens it full, and the
         // compact one is what a rack shows. Both are the same panel laid out
@@ -675,6 +677,23 @@ int main (int argc, char** argv)
                          } },
     };
 
+
+    // Addressed by name, not by index. These were all[0], all[1], all[5] and
+    // all[6] until BMO Vcomp was added to the list above -- inserting a row
+    // anywhere but the end silently re-pointed every one of them, so DEQ's
+    // width assertions ran against the new module and failed talking about
+    // "deq". The list is one of the shared files every new module is told to
+    // edit (modules/AGENTS.md), so it has to survive being edited in the
+    // middle.
+    const auto named = [&all] (const char* who) -> const Product&
+    {
+        for (const auto& p : all)
+            if (juce::String (p.who) == who)
+                return p;
+
+        check (false, juce::String ("no product called ") + who + " in the layout list");
+        return all[0];
+    };
     if (dumping)
     {
         for (const auto& product : all)
@@ -696,7 +715,7 @@ int main (int argc, char** argv)
         });
 
     // BMO EQ and the Saturator take both sections.
-    for (const auto& product : { all[0], all[1] })
+    for (const auto& product : { named ("eq"), named ("sat") })
         withPanel (product, [&] (bmo::ui::ModulePanel& panel)
         {
             checkInputSection  (panel, product.who);
@@ -706,7 +725,7 @@ int main (int argc, char** argv)
 
     // BMO EQ: Hi-Q joined the output switch row in 0.2.3, and the band column
     // between the two shared sections is pinned row by row.
-    withPanel (all[0], [] (bmo::ui::ModulePanel& panel)
+    withPanel (named ("eq"), [] (bmo::ui::ModulePanel& panel)
     {
         checkOutputSwitch (panel, "HI-Q", "eq");
         checkEqBandColumn (panel);
@@ -714,7 +733,7 @@ int main (int argc, char** argv)
 
     // BMO DEQ takes the output section at both widths, so its OUTPUT knob and
     // its DEQ switch sit on the same lines as every other module's in a rack.
-    for (const auto& product : { all[5], all[6] })
+    for (const auto& product : { named ("deq"), named ("deq compact") })
         withPanel (product, [&] (bmo::ui::ModulePanel& panel)
         {
             checkOutputRule    (panel, product.who);
@@ -723,12 +742,12 @@ int main (int argc, char** argv)
             checkDeqPanel      (panel, product.who);
         });
 
-    withPanel (all[5], [] (bmo::ui::ModulePanel& panel) { checkEquals (panel.getWidth(), 600, "deq opens full standalone"); });
-    withPanel (all[6], [] (bmo::ui::ModulePanel& panel) { checkEquals (panel.getWidth(), 320, "deq compact width"); });
+    withPanel (named ("deq"), [] (bmo::ui::ModulePanel& panel) { checkEquals (panel.getWidth(), 600, "deq opens full standalone"); });
+    withPanel (named ("deq compact"), [] (bmo::ui::ModulePanel& panel) { checkEquals (panel.getWidth(), 320, "deq compact width"); });
 
     // BMO Util reserves the output section and adopts neither half of it. This
     // is the case that proves a reservation is worth anything.
-    withPanel (all[2], [] (bmo::ui::ModulePanel& panel)
+    withPanel (named ("util"), [] (bmo::ui::ModulePanel& panel)
     {
         checkOutputRule             (panel, "util");
         checkReservesWithoutAdopting (panel, "util");
