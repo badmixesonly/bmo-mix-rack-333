@@ -340,11 +340,11 @@ attack the way a photocell has. Nothing changes until he has heard them.
   gate (which strands anyone who saved one preset before the copy ran),
   `products/eq/Product.h` lists BMO EQ then FrostyEQ, and the sandbox that
   the tests use disables migration entirely, so the chain is untested today.
-- **S** `README.md:4-14` says "three modules today" and its table omits
-  Opto, Dimension and DEQ; root `AGENTS.md:3, 57-59` lists three modules and
-  four plugin codes as the permanence list. `products/AGENTS.md:93` says DEQ
-  has 158 parameters; the schema table, `modules/deq/AGENTS.md` and
-  `RackTests.cpp` say 159. Kevin reads these first.
+- **S** ~~`README.md:4-14` says "three modules today"~~ -- **fixed on
+  2026-09-14** on `vcomp-thru-cap`. The README table now lists all seven
+  modules with their widths, root `AGENTS.md` lists seven modules and all nine
+  plugin codes, and `products/AGENTS.md:93` says 159 parameters, agreeing with
+  the schema table, `modules/deq/AGENTS.md` and `RackTests.cpp`.
 - **S** `.github/workflows/build.yml:78-115` — the plugin jobs fail at
   "Restore fonts" on a pull request from a fork, by design of the step. Every
   stage-5 PR from the fork to Kevin's repo will show macOS and Windows red

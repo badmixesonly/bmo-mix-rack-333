@@ -90,10 +90,11 @@ the module could have a colour at all, on the argument above; the accent, the
 plugin code `Bvcp` and the name are all cheap to change until the first build
 ships and none of it has, which is exactly the window the BMO DEQ row describes.
 
-BMO DEQ has 158 parameters. A rack slot still has 32 host lanes; the
-module's first 32 parameters take them and the rest are kept in the slot's
-state, off the host grid -- see `modules/AGENTS.md`, step 2. Which 32 is
-Frosty's allocation, recorded in `modules/deq/params.h`.
+BMO DEQ has 159 parameters -- 158 of Frosty's allocation plus AUTO, appended
+at index 158 on 2026-09-11 before any release. A rack slot still has 32 host
+lanes; the module's first 32 parameters take them and the rest are kept in
+the slot's state, off the host grid -- see `modules/AGENTS.md`, step 2. Which
+32 is Frosty's allocation, recorded in `modules/deq/params.h`.
 
 It is also the one module with **two widths**: 320 compact and 600 full. A
 rack opens it compact and standalone opens it full; the switch between them

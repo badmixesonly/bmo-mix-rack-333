@@ -1,8 +1,9 @@
 # Working in this repository
 
-This is the BMO plugin suite by LT3a: three modules (EQ, Saturator, Util),
-one rack, and the shared code under `core/`. Read this first; then the
-`AGENTS.md` in whichever of `core/`, `modules/`, `products/` you are touching.
+This is the BMO plugin suite by LT3a: seven modules (EQ, Saturator, Util,
+Opto, Dimension, DEQ, Vcomp), one rack, BMO Tune RT alongside them, and the
+shared code under `core/`. Read this first; then the `AGENTS.md` in whichever
+of `core/`, `modules/`, `products/` you are touching.
 
 ## Which machine you are on
 
@@ -54,9 +55,11 @@ binary on that machine by date and SHA-256.
 A saved session references these, so they are permanent once shipped:
 
 - Parameter IDs, their **order** in `specs()`, ranges, steps and defaults.
-- Plugin codes (`Fsty`, `Bsat`, `Butl`, `Brck`), bundle IDs
-  (`com.lt3audio.*`), the manufacturer code `LT3a`, and product names.
-- Module ids (`eq`, `sat`, `util`) and the state tags `PARAMS`, `RACK`, `SLOT`.
+- Plugin codes (`Fsty`, `Bsat`, `Butl`, `Bopt`, `Bdim`, `Bpar`, `Bvcp`, `Btun`,
+  `Brck`), bundle IDs (`com.lt3audio.*`), the manufacturer code `LT3a`, and
+  product names. `products/AGENTS.md` is the registry and has the full table.
+- Module ids (`eq`, `sat`, `util`, `opto`, `dim`, `deq`, `vcomp`, `tune`) and
+  the state tags `PARAMS`, `RACK`, `SLOT`.
 - The rack grid: 8 slots x 32 parameters, spec index `i` on `slotN_p(i+1)`.
   That is a count of host lanes, not a cap on a module: one with more than
   32 parameters keeps the rest off the grid (`core/rack/SlotOverflow.h`),

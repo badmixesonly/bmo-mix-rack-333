@@ -1,7 +1,7 @@
 # BMO Mix Rack
 
 **BMO (Bad Mixes Only)** is a set of mixing plugins by **LT3a**. This
-repository holds the whole suite: three modules today, one rack that chains
+repository holds the whole suite: seven modules today, one rack that chains
 them, and the shared code that makes a new module a few files rather than a
 new plugin.
 
@@ -10,6 +10,9 @@ new plugin.
 | **BMO EQ** | FrostyEQ, renamed: a Neve-style three-band EQ with low cut, oversampled | 280 |
 | **BMO Saturator** | Drive, tone and blend, with auto-gain | 260 |
 | **BMO Util** | Gain, pan, width, polarity, mono | 160 |
+| **BMO Opto** | A two-knob opto-style leveller, CRUSH and LEVEL, with a feedback detector | 220 |
+| **BMO Dimension** | A stereo imager in three stages, all of them on the side signal only | 220 |
+| **BMO DEQ** | A zero-latency dynamic parametric EQ; the one module with two widths | 320 compact, 600 full |
 | **BMO Vcomp** | A modern vocal compressor: AMOUNT, a gate on the meter, and OUTPUT, with timing, sidechain and band-split controls behind COMPLEX | 260 |
 | **BMO Mix Rack** | Up to eight of the above in series, re-orderable, with chain presets | as wide as its modules |
 | **BMO Tune RT** | A low-latency monophonic pitch corrector. In this repository, **not in the rack** | 360 |
