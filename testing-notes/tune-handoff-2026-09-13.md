@@ -1,8 +1,10 @@
-# Handoff: BMO Tune RT after rounds five and six
+# Handoff: BMO Tune RT after rounds five, six and seven
 
 Written on **AURORA**, 2026-09-13, at the end of a session that reviewed the
-2026-09-11 handoff, found what was wrong with it, fixed one thing, and
-**measured four other things and threw them away**. This supersedes
+2026-09-11 handoff, found what was wrong with it, and **measured six things
+and threw five of them away**. The one that survived is not a fix -- it is a
+diagnosis, and it is the first thing in a week that has agreed with Frosty's
+ears on the first try. This supersedes
 `tune-handoff.md` for everything after `9b18577`; that file still has rounds
 three and four and is still worth reading first for how the engine works.
 
@@ -18,9 +20,22 @@ map and the stages.
 no prediction.** Nothing built since has beaten it by ear. One change since
 is a draw and stays in; three are losses and are out.
 
-The day's real finding is not a fix. It is that **two different measures of
-the pops both improved while the sound did not**, so neither is the thing,
-and the next person should not bring a third.
+**And the pops are now diagnosed.** Round seven swept the rest from 2 to
+8 ms; Frosty heard all four as *"audible pops at an unacceptable level,
+almost indistinguishable from one another"*. That closed the axis three
+rounds had been spent on -- and it pointed at what was left. Five of the six
+pops he timestamped fire at the **same millisecond at every rest**, and in the
+40 ms before each of them the detector's own f0 spans a ratio of 1.76 to
+3.94, against 1.00 to 1.02 before the quiet ones.
+
+**The audible pops are the detector losing the period, and the engine
+splicing on a period that is not the singer's.** Six against six, cleanly
+separated, first try -- where the splice count and the splice landing error
+were each refuted against these same ears.
+
+So the work is in `Detector`, not `ClassicEngine`, and not in any constant.
+Nothing in the engine can fix it: the search reach that would rescue an
+octave-wrong period is exactly the reach that thrashes (see the table below).
 
 ---
 
@@ -58,6 +73,23 @@ Antares, round four, prediction + splice landing (`1a289c9`), and that plus a
 **Round four: 3 wins, 1 tie, 0 losses.** The 1 ms transition was worst of
 four in all four groups.
 
+### Round seven, 2026-09-13 -- the rest, from 2 to 8 ms
+
+Four arms, same build, nothing differing but the rest.
+
+> *"all provided options have audible pops at an unacceptable level, almost
+> indistinguishable from one another"*
+
+No ranking, and none needed. Across those arms the splice count runs
+49 / 36 / 31 / 31 on Failure and 33 / 22 / 10 / 11 on Fuji -- a fourfold
+change in window room and better than a threefold change in splices on Fuji
+-- and they cannot be told apart. **The rest is not what makes a pop.**
+
+It also settles the deeper rest: 6 ms measures best on correction (residue
+0.94 c against 1.24, Fuji's splices halved) but the difference is inaudible,
+so there is no case for spending 1.7 ms of latency on it. **The rest stays at
+4 ms.**
+
 ### Standing
 
 - **Best BMO by ear: round four (`31b30ef`).** Never beaten.
@@ -89,6 +121,8 @@ numbers in the commit that tried it.
 | **A full period of search reach** | Every period multiple correlates equally, so shimmer picks a different cycle: landing error on a *correct* period 3e-10 -> 0.13, splices 8 -> 15, sine THD+N to +46 dB. | `1a289c9` |
 | **A one-pole on the prediction slope** | Only ever cost, monotonically (0.97 ms / 1.23 c at 0; 1.15 / 1.47 at 5 ms). `predictSlopeMs = 0`. | `b4bfc73` |
 | **A flat 1.5-hop staleness correction** | Overshoots every vibrato into negative lag, residue back to 1.46 c. Replaced by anchoring the slope to the estimate it was measured at. | `b4bfc73` |
+| **The REST as a lever on the pops** (2, 4, 6, 8 ms) | Splices 49/36/31/31 on Failure and 33/22/10/11 on Fuji; **heard as indistinguishable, all unacceptable.** Window room is not what makes a pop. Closes three rounds of work. | `7790c8d` |
+| **Confirming the period before the engine acts on it** | A real inconsistency, and fixed -- but not the cure. The octave errors last several hops, so confirmPitch rightly accepts them after one. Landing error worst 1.97 -> 1.51; the pops all still there. | `94648f0` |
 
 ---
 
@@ -96,9 +130,13 @@ numbers in the commit that tried it.
 
 1. **Every pop is a splice.** Frosty timestamped seven on Failure; all seven
    landed on one, six within 61 ms. There is no second mechanism.
-2. **Only 7 of 38 splices are audible.** Four in five make no sound. This is
-   why the count never tracked the pops, and it is still the central puzzle:
-   **what separates them is unknown.**
+2. **Only 7 of 38 splices are audible** -- and what separates them is now
+   known. In the 40 ms before an audible one the detector's f0 spans a ratio
+   of 1.76 to 3.94; before a quiet one, 1.00 to 1.02. **The audible splices
+   are the ones taken while the detector has lost the period.**
+   `bmo-tune-field` reports it: 12 of 37 on Failure at 20 ms, 4 of 16 on
+   Fuji. It is the third measure tried against these ears and the first that
+   agreed with them, so it is the one to drive work from.
 3. **The correction was landing late because the read and the detector were
    not aligned.** The detector's estimate refers to 1.07 x T behind the
    newest sample; the engine read a flat 4 ms behind. The residue is
@@ -119,15 +157,22 @@ numbers in the commit that tried it.
 
 ## Open, in the order worth doing
 
-1. **What makes a splice audible.** The blocker for everything else. Two
-   metrics refuted. Start from the five splices Frosty hears that did NOT
-   improve -- 1.560, 6.080, 7.002, 14.438, 17.360 s on Failure -- and ask
-   what is physically different about them, rather than inventing a third
-   number.
-2. **The detector's octave and twelfth errors.** 15 of 38 splices sit within
-   50 ms of a note change of 7+ semitones, and they are disproportionately
-   the audible ones (5 of 15 against 3 of 23). Untouched. The engine cannot
-   fix them -- the search reach that would is the one that thrashes.
+1. **The detector's octave and twelfth errors. This is the whole job now.**
+   It is what the audible pops are, and everything else on this list is
+   smaller. On Failure the detector reads 303 Hz as 683, 186 as 734, 219 as
+   809 -- and 12 of 37 splices are taken while it is doing so.
+
+   Where to start: `bmo-tune-field --splices` and the "LOST the period" line
+   locate them; the five that Frosty hears are at 2.893, 6.135, 7.019, 14.455
+   and 17.410 s on Failure at retune 20 ms. `Detector::preferWholeCycle` and
+   guard 4 (`modules/tune/AGENTS.md`, "Where the code departs from the spec")
+   are where the existing octave work lives, and the shoot-out notes record
+   what guard 4 already bought: 8.5 % of frames reading a twelfth up, down to
+   0.7 %. What is left is the residue of that, on scoops.
+
+   **Do not try to fix this in the engine.** The search reach that would
+   rescue an octave-wrong period is exactly the reach that lets shimmer pick
+   the wrong cycle and thrash -- measured, `1a289c9`.
 3. **The live-monitoring budget.** Frosty's to set. Until it exists the
    per-note latency rule can never be green; it is now an open check under
    `--target` rather than a build blocker.
@@ -160,6 +205,16 @@ numbers in the commit that tried it.
   reverted. Now 0.71 / 1.24.
 - **The law copied the engine's rest once** at `applyParams`; correct only
   while that rest was constant. Both read `contract::liveRest` now.
+- **The law confirmed the pitch but not the period.** `period` was written
+  from `e.period` unconditionally, so on an unconfirmed jump the law ignored
+  the pitch while the engine was handed a period half as long -- and a halved
+  T collapses the window under the read pointer and forces a splice on the
+  spot. Both come from the accepted estimate now. (`94648f0`)
+- **The prediction only worked forward.** The gap between the estimate and
+  the read points backward whenever the engine rests past it, which is the
+  ordinary case above ~280 Hz. Refusing that half is what made a deeper rest
+  look bad: residue at 12 ms was 5.10 c and is 1.82 with both halves.
+  (`5fa6f97`)
 
 ---
 

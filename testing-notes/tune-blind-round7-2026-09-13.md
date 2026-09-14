@@ -101,3 +101,62 @@ Fewer pops on any of them than you are used to?
 The single worst thing left: 
 
 Listened on: AURORA, 
+
+---
+
+## Answered, 2026-09-13
+
+Frosty, on all four groups at once rather than per letter:
+
+> **all provided options have audible pops at an unacceptable level**
+> **almost indistinguishable from one another**
+
+No ranking was given, and none was needed: the four arms were not
+distinguishable, so there is nothing to rank.
+
+## What the key said
+
+| group | A | B | C | D |
+|---|---|---|---|---|
+| Failure 0 ms | 8 ms | 4 ms | 2 ms | 6 ms |
+| Failure 20 ms | 4 ms | 6 ms | 2 ms | 8 ms |
+| Fuji 0 ms | 2 ms | 6 ms | 4 ms | 8 ms |
+| Fuji 20 ms | 6 ms | 4 ms | 2 ms | 8 ms |
+
+## What that settles
+
+**The rest is not what makes a pop.** Across those four arms the splice count
+runs 49 / 36 / 31 / 31 on Failure and 33 / 22 / 10 / 11 on Fuji -- a fourfold
+change in window room, better than a threefold change in splice count on Fuji
+-- and they are indistinguishable. That closes the axis the last three rounds
+have been spent on.
+
+It also closes the case for the deeper rest on correction grounds. 6 ms
+measures best (residue 0.94 c against 1.24 at 4 ms, Fuji's splices halved),
+but if the difference is inaudible there is no reason to spend 1.7 ms of
+latency on it. **The rest stays at 4 ms.**
+
+## What it opened
+
+Five of the six pops Frosty timestamped on 2026-09-12 fire at the SAME
+MILLISECOND at every rest -- 42, 55, 16, 17 and 49 ms from his marks, constant
+across the whole sweep. Something fires them at a fixed instant, and it is
+the detector:
+
+| splice | detector f0 over the 40 ms before | ratio |
+|---|---|---:|
+| audible, 2.893 s | 166 -> 594 Hz | **3.58** |
+| audible, 6.135 s | 281 -> 558 Hz | **1.98** |
+| audible, 7.019 s | 286 -> 504 Hz | **1.76** |
+| audible, 14.455 s | 186 -> 734 Hz | **3.94** |
+| audible, 17.410 s | 219 -> 809 Hz | **3.69** |
+| quiet, 0.300 s | 300 -> 306 Hz | 1.02 |
+| quiet, 2.616 s | 168 -> 169 Hz | 1.00 |
+| quiet, 5.027 s | 182 -> 182 Hz | 1.00 |
+| quiet, 11.079 s | 182 -> 182 Hz | 1.00 |
+
+Six against six, cleanly separated, first try -- where the splice count and
+the splice landing error were each refuted against these same ears. **The
+audible pops are the detector losing the period and the engine splicing on a
+period that is not the singer's.** `bmo-tune-field` reports it now: 12 of 37
+on Failure at 20 ms, 4 of 16 on Fuji.
