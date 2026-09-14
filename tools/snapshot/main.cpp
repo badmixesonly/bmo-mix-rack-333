@@ -14,6 +14,13 @@
 // only: it neither writes nor reads the machine-wide preference, so it cannot
 // flip the look of plugins that happen to be open.
 //
+// "theme=<file.json>" overlays a palette, the same flat token -> hex file an
+// editor watches, so a candidate colour can be rendered without writing the
+// machine-wide Themes/Default.json -- a file the user owns and every open
+// plugin is polling. Read before "appearance", whatever order they are given
+// in. A missing file is fatal, not ignored: a theme that did not load renders
+// the built-in palette, which looks like a good render of the wrong thing.
+//
 // "signal=<dBFS>" runs a 1 kHz tone through the processor before capturing,
 // so a metering panel renders with its meters reading something instead of at
 // rest. Needed for any module whose meters are the thing being reviewed.
@@ -245,6 +252,35 @@ int main (int argc, char** argv)
     std::vector<std::pair<juce::String, juce::String>> uiState;
     std::optional<float> signalDb;
 
+    // `theme=` is read in its own pass, before anything else, because
+    // `appearance=` loads the theme as part of choosing the palette. Left in
+    // argument order, "appearance=dark theme=candidate.json" would read the
+    // machine's theme and only pick the candidate up on the editor's next
+    // poll, while "theme=candidate.json appearance=dark" worked -- an ordering
+    // that happens to matter is exactly the kind of thing nobody discovers
+    // until a render is quietly wrong.
+    for (int i = first; i < argc; ++i)
+    {
+        const juce::String arg { argv[i] };
+
+        if (! arg.startsWith ("theme="))
+            continue;
+
+        const auto path = arg.substring (6);
+        const juce::File file { juce::File::getCurrentWorkingDirectory().getChildFile (path) };
+
+        // Fatal for the same reason an unknown ui. key is: a theme that did not
+        // load renders the built-in palette, which looks like a perfectly good
+        // render of the wrong thing.
+        if (! file.existsAsFile())
+        {
+            std::cerr << "theme file not found: " << file.getFullPathName() << '\n';
+            return 2;
+        }
+
+        bmo::ui::overrideThemeFile (file);
+    }
+
     for (int i = first; i < argc; ++i)
     {
         const juce::String arg { argv[i] };
@@ -272,6 +308,9 @@ int main (int argc, char** argv)
 
             continue;
         }
+
+        if (key == "theme")
+            continue;               // taken in the pass above
 
         if (key.startsWith ("ui."))
         {

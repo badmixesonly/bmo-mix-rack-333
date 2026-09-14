@@ -50,6 +50,11 @@ namespace
     // being touched or read.
     bool appearanceOverridden = false;
 
+    // Set by overrideThemeFile, and the same idea one level along: a tool can
+    // render a candidate palette without writing over the machine-wide theme,
+    // which is a file the user owns and which every open plugin is watching.
+    juce::File themeOverride;
+
     bool parseColour (const juce::var& v, juce::Colour& out)
     {
         if (! v.isString())
@@ -264,7 +269,21 @@ juce::Colour accentInk (juce::Colour accent) noexcept
 }
 
 juce::File themeDirectory() { return suitePresetRoot().getChildFile ("Themes"); }
-juce::File themeFile()      { return themeDirectory().getChildFile ("Default.json"); }
+
+juce::File themeFile()
+{
+    // A tool may point this somewhere else for the length of its own run; see
+    // overrideThemeFile. Everything downstream -- overrideAppearance, the poll,
+    // setDarkMode -- goes through here, so one override covers all of them.
+    return themeOverride != juce::File {} ? themeOverride
+                                          : themeDirectory().getChildFile ("Default.json");
+}
+
+void overrideThemeFile (const juce::File& file)
+{
+    themeOverride = file;
+}
+
 juce::File uiPreferenceFile() { return suitePresetRoot().getChildFile ("UI.json"); }
 
 bool isDarkMode() noexcept { return dark; }

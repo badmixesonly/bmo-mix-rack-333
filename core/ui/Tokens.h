@@ -342,6 +342,17 @@ juce::File themeDirectory();
 /** The file an editor watches. */
 juce::File themeFile();
 
+/** Points `themeFile()` somewhere else for the rest of the process.
+
+    For tools that render a *candidate* palette. Without it the only way to see
+    one is to write the machine-wide `Themes/Default.json`, which is a file the
+    user owns and which every open plugin is watching on a 1 Hz poll -- so
+    rendering a colour you were only considering would recolour the session
+    going on in the next window. Pass an empty File to go back to the default.
+
+    Tools only. Nothing in a plugin should call this. */
+void overrideThemeFile (const juce::File& file);
+
 /** Re-reads the theme if the file has changed since the last look. True when
     the tokens changed, in which case the caller repaints. */
 bool pollTheme();
