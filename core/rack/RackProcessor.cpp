@@ -80,6 +80,7 @@ ui::ModuleContext RackProcessor::makeContext (int slot)
              [engine] { return engine->inputMeter().maxPeak(); },
              [engine] { return engine->inputMeter().maxRms(); },
              [engine] { return engine->gainReduction().get(); },
+             [engine] { return engine->sampleRate(); },
              [engine] (int band) { engine->setSolo (band); },
              engine->analyser() };
 }

@@ -84,7 +84,8 @@ DeqPanel::DeqPanel (ui::ModuleContext ctx)
     : ModulePanel (std::move (ctx)),
       curve (context.params, context.def.accent,
              [this] { return selected; },
-             [this] (int b) { selectBand (b); }),
+             [this] (int b) { selectBand (b); },
+             context.sampleRate),
       tabs (kBands,
             [this] (int b) { return context.params.getReal (indexOf (b, Control::on)) > 0.5f; },
             [this] (int b) { return context.params.getReal (indexOf (b, Control::dyn)) > 0.5f

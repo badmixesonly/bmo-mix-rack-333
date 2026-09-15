@@ -27,8 +27,13 @@ class ResponseView final : public juce::Component,
                            private juce::Timer
 {
 public:
+    /** `hostRate` is the rate the module is actually running at, polled on the
+        same timer as everything else here -- `ModuleContext::sampleRate`. Null,
+        or returning 0, both mean "not prepared yet" and leave the curve on
+        `kDesignRate`. */
     ResponseView (ParamSet& params, juce::Colour accent,
-                  std::function<int()> selectedBand, std::function<void (int)> selectBand);
+                  std::function<int()> selectedBand, std::function<void (int)> selectBand,
+                  std::function<double()> hostRate = {});
     ~ResponseView() override;
 
     void paint (juce::Graphics&) override;
@@ -88,15 +93,28 @@ private:
     juce::Colour accent;
     std::function<int()> selected;
     std::function<void (int)> select;
+    std::function<double()> hostRate;
 
     std::array<Band, kBands> bands;
     juce::Path curve, selectedFill;
-    DesignGrid grid = DesignGrid::make (kDisplayRate);
+
+    /** The grid the curve is evaluated on, at whatever rate the module is
+        running. Rebuilt when the host re-prepares -- `DesignGrid::make` is a
+        handful of trig and this happens once per rate change, so it is done on
+        the timer rather than cached per rate. */
+    double drawnAt = kDesignRate;
+    DesignGrid grid = DesignGrid::make (kDesignRate);
     bool compact = false;
 
     int dragging = -1;
     int lastSelected = -2;   ///< per instance: two DEQs in a session each have their own
-    static constexpr double kDisplayRate = 48000.0;
+
+    /** The rate assumed before the host has said otherwise. It was the rate
+        the curve was drawn at *always* until 2026-09-15, which put the drawn
+        response up to 1 dB from the audible one in the top octave at 44.1 and
+        96 k -- the curve is built from the same matched-Z design the DSP runs,
+        and that design is rate-dependent by construction. */
+    static constexpr double kDesignRate = 48000.0;
 };
 
 } // namespace bmo::deq

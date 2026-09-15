@@ -108,6 +108,7 @@ ui::ModuleContext SingleModuleProcessor::makeContext()
              [this] { return engine.inputMeter().maxPeak(); },
              [this] { return engine.inputMeter().maxRms(); },
              [this] { return engine.gainReduction().get(); },
+             [this] { return engine.sampleRate(); },
              [this] (int band) { engine.setSolo (band); },
              engine.analyser() };
 }

@@ -16,7 +16,7 @@ that led to it. Seven decisions put to Frosty — four answered the same day.**
 | GR bar blind to upward bands | **fixed**, `d7aba69` — taken reads down from the top, added up from the bottom. §3 |
 | a horizontal GR bar | raised by Frosty, **not taken**; its constraint measured and left with the next DSP edit. §3 |
 | solo and the analyser | open. §6 |
-| the 48 kHz response view | open. §6 |
+| the 48 kHz response view | **fixed** — `ModuleContext` carries the rate; `snapshot` grew `rate=`. §9 |
 | the compact 320 in a rack | open. §6 |
 
 Every settled call is recorded at the call site, in
@@ -41,10 +41,14 @@ and says the 320 "is a separate baseline nobody has taken yet". It is taken —
 and it has not moved once across this whole session, because both commits grew
 the GR cell and the compact panel prints no figure in it.
 
-**The rest of the suite has not moved either**, which the second commit had to
-prove because it touched a DSP file and two shared headers: eq, sat, util,
-opto, dim and ltvcomp rendered in both appearances and hashed against the
-`1c5299f` baselines, twelve of twelve byte-identical.
+**The rest of the suite has not moved either** — the check every commit here
+that touches shared code has to pass. eq, sat, util, dim and ltvcomp rendered
+in both appearances and hashed against the `1c5299f` baselines: **ten of ten
+byte-identical.**
+
+**BMO Opto is excluded, and that is not the same as passing.** Its render is
+not reproducible run to run, so a matching hash from it is a coin flip rather
+than evidence — see §9, which corrects the claim `d7aba69` made.
 
 `signal=-18` renders **byte-identically to a bare render** on this module, in
 both views. That is correct rather than a broken flag: every band ships off, so
@@ -317,11 +321,8 @@ one costs to leave alone.
    preference, a right-click on the analyser's own toggle. Wire them in this
    pass, or say in the decisions file that they wait. Shipping a decisions file
    that reads as if they exist is the one option that is not defensible.
-2. **The response view draws the 48 kHz design whatever the rate.**
-   `ResponseView.h:99` is `static constexpr double kDisplayRate = 48000.0`, and
-   the view has no path to the real rate — `ModuleContext` does not carry one.
-   Up to about 1 dB out in the top octave at 44.1 or 96 k. The rate in
-   `ModuleContext`, or a note.
+2. ~~**The response view draws the 48 kHz design whatever the rate.**~~
+   **Fixed** — see §9. `ModuleContext` carries the rate now.
 3. **The compact 320 in a rack.** Rendered next to BMO EQ and BMO Util, both
    appearances (`snapshots/_dq-rack-dark.png`, `_dq-rack-light.png`). It holds
    its width and reads as its own module. Two things to look at rather than
@@ -394,3 +395,75 @@ Dimension's inherited copy of the same question; §3 is done. Nothing on this
 module holds module 3 up.
 
 *Everything above measured on **AURORA**.*
+
+---
+
+## 9. Fixed: the curve was drawn at 48 kHz whatever the rate
+
+`ResponseView` built its `DesignGrid` from a hardcoded `kDisplayRate = 48000.0`,
+and had no way to do otherwise: a panel sees `ModuleContext`, and
+`ModuleContext` had no sample rate in it. The curve is evaluated from the same
+matched-Z design the DSP runs, and that design is rate-dependent by
+construction, so the drawn response and the audible one parted company at every
+rate that was not 48 k.
+
+**This could not be fixed inside `modules/deq/`.** Five files outside it move,
+all additive, and no other panel reads any of it:
+
+| file | what |
+|---|---|
+| `core/product/ModuleEngine.h` | publishes the rate it was prepared at, atomic |
+| `core/ui/ModulePanel.h` | `ModuleContext::sampleRate`, polled, 0 = not prepared |
+| `SingleModuleProcessor.cpp`, `RackProcessor.cpp` | fill it in |
+| `tools/snapshot/main.cpp` | `rate=<Hz>`, or none of this can be rendered |
+
+Polled rather than read once in the constructor, because a host can re-prepare
+a plugin with its editor open — change the device rate, or render offline at
+96 k with the window up — and the curve has to follow it there.
+
+**`rate=` had to exist before the fix could be checked**, which is why a tool
+change rides along. It is read ahead of the flag loop because `prepareToPlay`
+happens before it, the same out-of-order handling `theme=` already needs, and
+the 1 kHz test tone's phase increment now follows it too — otherwise `rate=`
+would quietly move the tone as well as the rate and a meter reading would be
+answering a different question from the one asked.
+
+### What it measures
+
+Curve row at render column 1050, band 11 as a high shelf at 16 kHz, +18 dB,
+Q 1.4:
+
+| rate | rows |
+|---|---|
+| 22 050 | 270..274 |
+| 44 100 | 335..337 |
+| 48 000 | 335..337 |
+| 96 000 | 333..336 |
+
+**Read these honestly.** 22 050 is the proof the rate is plumbed at all — 65 px
+away, and no amount of coincidence puts it there. 96 k moves 2 px. **44.1 and
+48 k measure identically at this column**: their difference is real but
+sub-pixel here, so the fix is not visible at the rate most people work at, and
+the checklist's "up to about 1 dB in the top octave" is a dB claim that this
+render neither confirms nor refutes. What is now true is that the curve is
+drawn at the rate the module is running at, instead of at a number.
+
+- `rate=48000` and no flag at all hash identically (`f7a588b54e043285`), so the
+  flag is not a silent behaviour change.
+- DEQ's four Init baselines are **unmoved** by this commit, which is what a
+  48 kHz default has to mean.
+
+### A correction to §3's verification
+
+§3's commit claimed "eq, sat, util, opto, dim and ltvcomp all twelve
+byte-identical". That was true of that run and is **not sound evidence for
+Opto**: rendered four times here, `snapshot opto` comes back as two alternating
+images (`5a0d3617a9160788` and `784ca005ff68a747`, the latter being the recorded
+baseline). So the run happened to land on the baseline.
+
+The other five are reproducible and their half of the claim stands. **Opto is
+not this pass's module and was not touched** — this is recorded only because a
+byte-identical check is the evidence every commit here leans on, and for one
+panel that evidence is a coin flip. `ui-pass-2026-09-14.md` records this
+non-reproducibility as fixed in `7ae1b51` by settling to convergence; whatever
+that fixed, it is back or was never complete. For whoever owns BMO Opto.

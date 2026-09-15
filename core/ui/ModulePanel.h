@@ -61,6 +61,16 @@ struct ModuleContext
         and not on this declaration. */
     std::function<float()> gainReductionDb;
 
+    /** The rate the module is running at, or 0 before the host has prepared it.
+
+        For a panel that draws something rate-dependent. BMO DEQ's response
+        curve is the only one today: its bands are designed at the running rate
+        and it drew the 48 kHz design at every rate until 2026-09-15, which is
+        up to 1 dB out in the top octave at 44.1 and 96 k. Poll it rather than
+        reading it once -- a host can re-prepare a plugin with its editor open,
+        and 0 means "not yet", not "no audio". */
+    std::function<double()> sampleRate;
+
     // The panel-to-DSP direction, and the only one that is not a parameter.
     // `setSolo` is momentary: the panel calls it while a control is held and
     // calls it with -1 on release. Nothing saves it and nothing automates it.

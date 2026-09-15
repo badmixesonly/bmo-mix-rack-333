@@ -15,8 +15,9 @@ namespace
     constexpr float kNodeRadius = 8.0f, kNodeRadiusCompact = 4.0f;
 }
 
-ResponseView::ResponseView (ParamSet& p, juce::Colour a, std::function<int()> sel, std::function<void (int)> choose)
-    : params (p), accent (a), selected (std::move (sel)), select (std::move (choose))
+ResponseView::ResponseView (ParamSet& p, juce::Colour a, std::function<int()> sel, std::function<void (int)> choose,
+                            std::function<double()> rate)
+    : params (p), accent (a), selected (std::move (sel)), select (std::move (choose)), hostRate (std::move (rate))
 {
     setMouseCursor (juce::MouseCursor::CrosshairCursor);
     readBands();
@@ -113,7 +114,7 @@ void ResponseView::rebuildPaths()
     {
         const auto x  = r.getX() + r.getWidth() * (float) k / (float) points;
         const auto hz = hzFor (x);
-        const auto w  = 2.0 * kPi * hz / kDisplayRate;
+        const auto w  = 2.0 * kPi * hz / drawnAt;
 
         std::complex<double> h = 1.0;
         for (int i = 0; i < kBands; ++i)
@@ -149,7 +150,26 @@ void ResponseView::timerCallback()
 {
     const auto sel = selected ? selected() : -1;
 
-    if (readBands() || sel != lastSelected)
+    // The rate the module is actually running at. Polled rather than read once
+    // in the constructor, because a host can re-prepare a plugin while its
+    // editor is open -- change the device rate, or render offline at 96 k with
+    // the window up -- and the curve has to follow it there. 0 means "not
+    // prepared yet" and keeps the design rate rather than dividing by it.
+    auto rateMoved = false;
+
+    if (hostRate != nullptr)
+    {
+        const auto now = hostRate();
+
+        if (now > 0.0 && now != drawnAt)
+        {
+            drawnAt = now;
+            grid = DesignGrid::make (drawnAt);
+            rateMoved = true;
+        }
+    }
+
+    if (readBands() || sel != lastSelected || rateMoved)
     {
         lastSelected = sel;
         rebuildPaths();

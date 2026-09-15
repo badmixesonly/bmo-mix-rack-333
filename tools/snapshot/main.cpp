@@ -231,7 +231,35 @@ int main (int argc, char** argv)
 
     const juce::File out = juce::File::getCurrentWorkingDirectory().getChildFile (argv[2]);
 
-    processor->prepareToPlay (48000.0, 512);
+    // `rate=<Hz>` has to be read before the flag loop, because prepareToPlay
+    // happens here and a panel that draws something rate-dependent reads the
+    // rate from the prepared processor. Scanned out of argument order for the
+    // same reason `theme=` is: the thing it configures is set up before the
+    // loop that would otherwise have handled it.
+    //
+    // It exists because BMO DEQ's response curve is designed at the running
+    // rate, and without this there is no way to render the difference and so
+    // no way to check the curve follows it. Default 48 k, which is what every
+    // baseline in testing-notes/ui-pass-render-loop.md was taken at.
+    auto rate = 48000.0;
+
+    for (int i = 3; i < argc; ++i)
+    {
+        const juce::String arg (argv[i]);
+
+        if (arg.startsWith ("rate="))
+        {
+            rate = arg.fromFirstOccurrenceOf ("=", false, false).getDoubleValue();
+
+            if (rate < 8000.0 || rate > 768000.0)
+            {
+                std::cerr << "rate is 8000..768000 Hz, got " << arg.fromFirstOccurrenceOf ("=", false, false) << '\n';
+                return 2;
+            }
+        }
+    }
+
+    processor->prepareToPlay (rate, 512);
 
     // Parameters first, editor second. Attachments read the current value in
     // their constructors, synchronously; setting parameters afterwards relies
@@ -326,6 +354,11 @@ int main (int argc, char** argv)
             continue;
         }
 
+        // Already applied, above prepareToPlay. Swallowed here so it does not
+        // come back as "unknown parameter", which is fatal by design.
+        if (key == "rate")
+            continue;
+
         if (! set (*processor, key, value))
             std::cerr << "unknown parameter: " << key << '\n';
     }
@@ -413,7 +446,12 @@ int main (int argc, char** argv)
             for (int n = 0; n < block.getNumSamples(); ++n)
             {
                 const auto v = (float) (amplitude * std::sin (phase));
-                phase += 2.0 * juce::MathConstants<double>::pi * 1000.0 / 48000.0;
+                // The tone is 1 kHz at whatever rate the processor was
+                // prepared at, not at a hardcoded 48 k -- otherwise `rate=`
+                // silently moves the test tone as well as the rate, and a
+                // meter reading would be answering a different question from
+                // the one asked.
+                phase += 2.0 * juce::MathConstants<double>::pi * 1000.0 / rate;
 
                 for (int ch = 0; ch < block.getNumChannels(); ++ch)
                     block.setSample (ch, n, v);
