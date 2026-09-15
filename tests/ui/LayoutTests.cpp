@@ -278,6 +278,43 @@ void checkEqBandColumn (bmo::ui::ModulePanel& panel)
                      "eq band column should end flush against the output rule, and its foot");
 }
 
+/** Every trim knob is the shared trim height, wherever it appears.
+
+    **This exists because a panel that runs out of room fails silently.**
+    juce::Rectangle::removeFromTop *clamps* when the rectangle is shorter than
+    the amount asked for: it hands back what is left and leaves the rest empty.
+    So a layout whose rows no longer fit does not overflow, it squashes -- and
+    every other assertion in this file still passes, because nothing has
+    escaped the panel and nothing overlaps.
+
+    LTV Comp did exactly that on 2026-09-15. Its meter block grew a printed
+    scale and a tag row for the gate flag, the content stopped fitting in 688,
+    and LOW and HIGH came out **40 px tall against the 78 a trim knob is**.
+    The suite was green and the render was obviously wrong.
+
+    A trim knob is the right thing to pin because it is the one control with a
+    size the suite fixes rather than the panel: ModulePanel::styleTrimKnob sets
+    it, kTrimKnobRow is the number, and any panel that hands one less than that
+    has run out of room somewhere above it. */
+void checkTrimKnobHeights (bmo::ui::ModulePanel& panel, const juce::String& who,
+                           const juce::StringArray& captions)
+{
+    for (const auto& caption : captions)
+    {
+        auto* knob = findNamed (panel, caption);
+
+        if (knob == nullptr)
+        {
+            check (false, who + " has no " + caption + " knob");
+            continue;
+        }
+
+        checkEquals (knob->getHeight(), bmo::ui::ModulePanel::kTrimKnobRow,
+                     who + " " + caption + " is a trim knob and should be the trim height"
+                         + " -- a short one means the panel ran out of room above it");
+    }
+}
+
 /** Util reserves the output section without adopting it: the rule is on the
     shared line and there is nothing below it that belongs to an output stage. */
 void checkReservesWithoutAdopting (bmo::ui::ModulePanel& panel, const juce::String& who)
@@ -729,6 +766,16 @@ int main (int argc, char** argv)
     {
         checkOutputSwitch (panel, "HI-Q", "eq");
         checkEqBandColumn (panel);
+    });
+
+    // LTV Comp is the fullest panel in the suite -- two character knobs, three
+    // metered bars with printed scales, two switches and a five-knob drawer in
+    // 688 px -- so it is the one that runs out of room first, and it has
+    // already done so once. See checkTrimKnobHeights.
+    withPanel (named ("ltvcomp"), [] (bmo::ui::ModulePanel& panel)
+    {
+        checkTrimKnobHeights (panel, "ltvcomp",
+                              { "ATTACK", "RELEASE", "SC HPF", "LOW", "HIGH" });
     });
 
     // BMO DEQ takes the output section at both widths, so its OUTPUT knob and

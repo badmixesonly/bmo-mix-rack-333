@@ -116,7 +116,8 @@ void PlainKnob::paint (juce::Graphics& g)
     // knob's colour. Nothing changes for a BMO panel.
     const auto system = knob.getStyle() == Knob::Style::character
                             ? panelAccentFor (knob, accentColour)
-                            : tokens().track;
+                            : (knob.getUtilityTint().isTransparent() ? tokens().track
+                                                                     : knob.getUtilityTint());
 
     // The colour system as it stands, not stepped for contrast. A caption is
     // the larger of a panel's two labels -- 15 pt against a section legend's
@@ -187,6 +188,12 @@ void PlainKnob::setAccent (juce::Colour accent)
 {
     accentColour = accent;
     knob.setAccent (accent);
+    repaint();
+}
+
+void PlainKnob::setUtilityTint (juce::Colour tint)
+{
+    knob.setUtilityTint (tint);
     repaint();
 }
 

@@ -32,6 +32,18 @@ public:
     void setAccent (juce::Colour c) noexcept { accent = c; }
     juce::Colour getAccent() const noexcept  { return accent; }
 
+    /** What a *utility* knob draws in, when it should not be the suite azure.
+
+        Transparent by default, meaning `tokens().track` -- which is what a
+        trim knob has always used and what every INPUT and OUTPUT still uses.
+
+        It exists for a drawer: LTV Comp reveals five trim knobs behind its
+        COMPLEX switch, and they take the colour of the switch that revealed
+        them, so the drawer reads as one thing rather than as five controls
+        that happen to have turned up. Set it and the caption follows. */
+    void setUtilityTint (juce::Colour c) noexcept { utilityTint = c; }
+    juce::Colour getUtilityTint() const noexcept  { return utilityTint; }
+
     void setDetents (int count) noexcept { detents = count; }
     int  getDetents() const noexcept     { return detents; }
 
@@ -62,6 +74,7 @@ public:
 private:
     Style style = Style::utility;
     juce::Colour accent { tokens().accent };
+    juce::Colour utilityTint;
     bool  circularHit = false;
     int   detents = 0;
     float faceScale = 1.0f;

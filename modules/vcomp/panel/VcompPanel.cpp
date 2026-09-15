@@ -11,7 +11,11 @@ namespace
     // BMO Opto case that forced the distinction.
     constexpr int kKnobSide   = 92;
     constexpr int kKnobWidth  = 136;
-    constexpr int kKnobHeight = 150;
+    // 133, not the 150 it was until 2026-09-15. The panel ran out of room --
+    // see the note in resized() -- and this is where the 34 px came from: the
+    // caption needs 19 of the 41 px under a 92 px knob face, so the two
+    // headline knobs give up air rather than size.
+    constexpr int kKnobHeight = 133;
 
     constexpr int kSwitchWidth  = ui::Tokens::switchWidth;
     constexpr int kSwitchHeight = ui::Tokens::switchHeight;
@@ -29,7 +33,10 @@ namespace
     // The five detector knobs are trim knobs -- ui::ModulePanel::styleTrimKnob
     // sizes and captions them -- in two rows of three and two.
     constexpr int kDetectorRow = ui::ModulePanel::kTrimKnobRow;
-    constexpr int kDetectorBlock = kDetectorRow * 2 + kSwitchGap;
+    /** The rule-and-legend row bracketing LOW and HIGH. */
+    constexpr int kLegendRow = 16;
+
+    constexpr int kDetectorBlock = kDetectorRow * 2 + kSwitchGap + kLegendRow;
 
     /** dBFS from a linear peak, floored at the meters' own bottom so a silent
         input parks the bar at the left rather than at minus infinity. */
@@ -43,6 +50,20 @@ namespace
         disagree about what "a lot of reduction" looks like, and at the top of
         AMOUNT this module reaches about 26. */
     constexpr float kMaxReductionDb = 24.0f;
+
+    /** What COMPLEX and the five controls it reveals are drawn in.
+
+        Red -- Frosty, 2026-09-15, from the drawer rendered in azure, amber and
+        red in both appearances. Azure and amber both look better in the dark
+        one and both fail in the pale: these are knob *captions* as well as
+        faces, and as ink on the silver plate amber measures 1.20:1 and azure
+        1.34, against the 1.72-2.00 band a raw caption is allowed. Red is
+        1.99:1 -- inside it, and the only one of the three that is.
+
+        It costs the distinction from SAUCE, which is the same red. That is the
+        trade: a drawer that opens and a release curve that is running now look
+        alike, and the captions read. */
+    inline juce::Colour drawerTint() { return ui::tokens().meterClip; }
 }
 
 VcompPanel::VcompPanel (ui::ModuleContext ctx)
@@ -64,7 +85,7 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
               [this] { return context.peak ? meterDb (context.peak()) : kGateOffDb; }),
       // COMPLEX is neither a bypass, a mono nor a polarity, so it takes
       // switchAlt -- the table in modules/AGENTS.md, not a free choice.
-      complexSwitch (context.params.param (Index::complex), "COMPLEX", ui::tokens().meterHigh),
+      complexSwitch (context.params.param (Index::complex), "COMPLEX", drawerTint()),
       // SAUCE takes the engaged red rather than switchAlt, which is an
       // exception to the switch table in modules/AGENTS.md and the second one
       // in the suite. BMO Opto is the first, and for the same reason: a panel
@@ -75,8 +96,8 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
       attackKnob    (context.params.param (Index::attack),    "ATTACK"),
       releaseKnob   (context.params.param (Index::release),   "RELEASE"),
       sidechainKnob (context.params.param (Index::sidechain), "SC HPF"),
-      lowThruKnob   (context.params.param (Index::lowThru),   "LOW THRU"),
-      highThruKnob  (context.params.param (Index::highThru),  "HIGH THRU")
+      lowThruKnob   (context.params.param (Index::lowThru),   "LOW"),
+      highThruKnob  (context.params.param (Index::highThru),  "HIGH")
 {
     // The printed scales -- Frosty, 2026-09-14. Not evenly spaced, and that is
     // the point: the figures crowd toward 0 because that is the end a reader
@@ -152,8 +173,14 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
     for (auto* k : { &amount, &output })
         k->setKnobSide (kKnobSide);
 
+    // The drawer takes the colour of the switch that opens it, so COMPLEX and
+    // the five controls it reveals read as one thing rather than as a switch
+    // and five knobs that happened to turn up. Frosty, 2026-09-15.
     for (auto* k : { &attackKnob, &releaseKnob, &sidechainKnob, &lowThruKnob, &highThruKnob })
+    {
         styleTrimKnob (*k);
+        k->setUtilityTint (drawerTint());
+    }
 
     // Reduction is not a fault, so it is not painted in the fault colours. The
     // low/high/clip zones say "you are running out of headroom", which is true
@@ -228,6 +255,38 @@ void VcompPanel::timerCallback()
     }
 }
 
+void VcompPanel::paintPanel (juce::Graphics& g)
+{
+    // The IGNORE legend: the word, and a rule reaching out from each side of
+    // it to the ends of the pair it brackets.
+    //
+    // Drawn here rather than through ModulePanel::addRule because a section
+    // rule is the panel's and takes the panel's ink, and this one belongs to
+    // the drawer -- it appears and disappears with COMPLEX and it carries the
+    // drawer's colour. The panel has no section rules of its own; see the
+    // class comment for why one compressor gets no dividing lines.
+    if (! lastComplex || ignoreRow.isEmpty())
+        return;
+
+    const auto row = ignoreRow.toFloat();
+    const auto ink = drawerTint();
+    const auto font = ui::labelFont (ui::Tokens::gainCaptionSize, true);
+
+    const auto text = juce::String ("IGNORE");
+    const auto textWidth = juce::GlyphArrangement::getStringWidth (font, text);
+    const auto gap = 8.0f;
+
+    ui::drawLabel (g, text, row, juce::Justification::centred, font, ink);
+
+    g.setColour (ink.withAlpha (0.55f));
+
+    const auto y = row.getCentreY();
+    const auto half = textWidth * 0.5f + gap;
+
+    g.drawLine (row.getX(), y, row.getCentreX() - half, y, 1.0f);
+    g.drawLine (row.getCentreX() + half, y, row.getRight(), y, 1.0f);
+}
+
 void VcompPanel::resized()
 {
     auto area = getLocalBounds().reduced (kPad, 4);
@@ -295,15 +354,23 @@ void VcompPanel::resized()
 
     area.removeFromTop (kSwitchGap);
 
+    // The group legend over the pair below -- drawn in paintPanel. It names
+    // what those two knobs do, which neither caption can: LOW and HIGH say
+    // which band, and nothing on either knob says the band is being left out.
+    ignoreRow = area.removeFromTop (kLegendRow);
+
     {
         auto row = area.removeFromTop (kDetectorRow);
 
         // **Two knobs across the full width, not two thirds of a three-column
-        // grid.** These carry the longest captions in the module, and in an
-        // 80 px column "LOW THRU" and "HIGH THRU" rendered as "LOW THR" and
-        // "HIGH TH": Graphics::drawText curtails what will not fit rather than
-        // spilling it, so a caption wider than its own control loses its tail
-        // silently. They need 90.7 and 93.3 px at the trim caption size.
+        // grid.** They carried the longest captions in the module until
+        // 2026-09-15 -- "LOW THRU" and "HIGH THRU", which in an 80 px column
+        // rendered as "LOW THR" and "HIGH TH", because Graphics::drawText
+        // curtails what will not fit rather than spilling it, so a caption
+        // wider than its own control loses its tail silently. They are LOW and
+        // HIGH now and would fit a third of the width, but the pair stays
+        // full-width: the IGNORE legend above brackets these two and nothing
+        // else, and a two-column row is what says so.
         //
         // ui_layout passed with them clipped, and the reason is worth keeping:
         // not because PlainKnob::captionOverflow was wrong -- it reports 10.7

@@ -64,7 +64,14 @@ public:
 
     void resized() override;
 
+protected:
+    void paintPanel (juce::Graphics&) override;
+
 private:
+    /** Where the IGNORE legend and its two rules go, set in resized and drawn
+        in paintPanel. Empty until the drawer is open. */
+    juce::Rectangle<int> ignoreRow;
+
     void timerCallback() override;
 
     /** Shows or hides the five detector knobs and locks or frees ARC. Called

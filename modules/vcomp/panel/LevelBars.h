@@ -150,7 +150,7 @@ public:
         the needle cannot go rather than to give the needle a place to park.
         The default here is the same shape of trap -- the gate rests at -60,
         hard left, on top of the very figure that says so. */
-    static constexpr int kScaleRow     = 16;
+    static constexpr int kScaleRow     = 13;
 
     /** The strip above the well on a bar that carries a threshold, holding the
         flag and the sliding name over it.
@@ -159,7 +159,7 @@ public:
         box this much taller -- so the three wells stay evenly spaced and the
         block still reads as one instrument. Giving all three the strip would
         cost 40 px of empty plate on the two that have nothing to put in it. */
-    static constexpr int kTagRow       = 20;
+    static constexpr int kTagRow       = 16;
 
 private:
     /** 0..1 along the well for a dB reading, before Grow is applied. */

@@ -31,7 +31,7 @@ namespace
 
         Was the gate handle clearance, back when the handle hung below the
         well. It does not any more, so this is only breathing room now. */
-    constexpr float kScaleGap    = 5.0f;
+    constexpr float kScaleGap    = 2.0f;
 
 }
 

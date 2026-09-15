@@ -150,14 +150,24 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
     const auto lineCap = character ? capFor (panelLineFor (slider))
                                    : std::optional<juce::Colour> {};
 
+    const auto tinted = knob != nullptr && ! knob->getUtilityTint().isTransparent();
+
     const auto face       = lineCap ? *lineCap
-                                    : (character ? faceOf (moduleAccent) : t.knobFace);
+                                    : (character ? faceOf (moduleAccent)
+                                                 : (tinted ? knob->getUtilityTint() : t.knobFace));
     const auto pointerInk = lineCap ? onAccentOf (*lineCap) : t.pointer;
     // The dotted track, its plus and minus, and the rest dot. Routed through
     // the line as well as the cap and the pointer: these are the knob's own
     // marks, and leaving them on the module accent is what kept a periwinkle
     // ring around a black LTV knob after the cap and the caption had moved.
-    const auto accent    = character ? panelAccentFor (slider, moduleAccent) : t.track;
+    // A utility knob may be tinted -- see Knob::setUtilityTint. Transparent
+    // means the suite azure, which is what every trim knob outside LTV Comp's
+    // drawer still draws in.
+    const auto utilityInk = knob != nullptr && ! knob->getUtilityTint().isTransparent()
+                                ? knob->getUtilityTint()
+                                : t.track;
+
+    const auto accent    = character ? panelAccentFor (slider, moduleAccent) : utilityInk;
     const auto faceBox   = juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (centre);
 
     // Gain controls carry a dotted track, with the rest position marked on it
