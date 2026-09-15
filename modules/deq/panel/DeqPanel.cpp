@@ -90,7 +90,8 @@ DeqPanel::DeqPanel (ui::ModuleContext ctx)
             [this] (int b) { return context.params.getReal (indexOf (b, Control::on)) > 0.5f; },
             [this] (int b) { return context.params.getReal (indexOf (b, Control::dyn)) > 0.5f
                                   && context.params.getReal (indexOf (b, Control::on)) > 0.5f; },
-            [this] (int b) { selectBand (b); }),
+            [this] (int b) { selectBand (b); },
+            [this] (int b) { toggleBand (b); }),
       reduction (context.gainReductionDb),
 
       // The module's in/out, so it lights in the module's own colour; AUTO is
@@ -152,6 +153,26 @@ void DeqPanel::selectBand (int band)
     repaint();
 }
 
+void DeqPanel::toggleBand (int band)
+{
+    if (band < 0 || band >= kBands)
+        return;
+
+    // A host gesture, like every other parameter move on this panel, so it
+    // automates and undoes the way turning a knob does.
+    const auto index = indexOf (band, Control::on);
+    auto& p = context.params.param (index);
+
+    p.beginChangeGesture();
+    context.params.setReal (index, context.params.getReal (index) > 0.5f ? 0.0f : 1.0f);
+    p.endChangeGesture();
+
+    // The enablement of the strip below follows the band that is selected, and
+    // toggling one is the commonest way to change what it should show.
+    if (band == selected)
+        refreshEnablement();
+}
+
 bool DeqPanel::setUiState (const juce::String& key, const juce::String& value)
 {
     if (key != "band")
@@ -181,13 +202,15 @@ void DeqPanel::bindBand()
     };
 
     shape  = std::make_unique<ShapeDial> (bandParam (Control::shape), context.params.spec (indexOf (selected, Control::shape)), accent);
-    bandOn = std::make_unique<ui::SwitchButton> (bandParam (Control::on), "ON", alt);
     dynOn  = std::make_unique<ui::SwitchButton> (bandParam (Control::dyn), "DYN", alt);
 
     // Direction is a two-way choice (Above, Below) read as one switch: lit is
     // BELOW. A SwitchButton on a choice writes 0 or 1, which are its indices.
     below  = std::make_unique<ui::SwitchButton> (bandParam (Control::dir), "BELOW", alt);
-    place  = std::make_unique<ChoiceRow> (bandParam (Control::place), kPlaceLabels, alt);
+    // Placement offers the two special cases; nothing lit is Stereo, which is
+    // what a band does when it has not been asked for anything. Frosty,
+    // 2026-09-15 -- see ChoiceRow for the argument.
+    place  = std::make_unique<ChoiceRow> (bandParam (Control::place), kPlaceLabels, alt, false, 0);
 
     freq    = knob (Control::freq,    "FREQ");
     gain    = knob (Control::gain,    "GAIN");
@@ -199,7 +222,7 @@ void DeqPanel::bindBand()
     release = knob (Control::release, "RELEASE");
 
     for (auto* c : std::initializer_list<juce::Component*> {
-             shape.get(), bandOn.get(), dynOn.get(), below.get(), place.get(),
+             shape.get(), dynOn.get(), below.get(), place.get(),
              freq.get(), gain.get(), q.get(), thr.get(), range.get(), ratio.get(), attack.get(), release.get() })
         addAndMakeVisible (c);
 
@@ -216,8 +239,20 @@ void DeqPanel::refreshEnablement()
     const auto dynamic = context.params.getReal (indexOf (selected, Control::dyn)) > 0.5f && ! cut;
 
     if (gain != nullptr) gain->setKnobEnabled (! cut);
-    if (dynOn != nullptr) dynOn->setSwitchEnabled (! cut);
     if (below != nullptr) below->setSwitchEnabled (dynamic);
+
+    // **DYN is never dimmed.** Frosty, 2026-09-15: it is one of the three
+    // behaviour switches and it is the one that unlocks the strip below, so a
+    // dimmed DYN read as a control that could not be reached rather than as the
+    // way in. A switch nobody believes they can press is worse than a switch
+    // that does nothing on one shape.
+    //
+    // It is inert on a cut filter, which is the cost of this and is real: a
+    // cut has no gain for the dynamics to move, so pressing DYN there lights
+    // the switch and changes nothing. The knobs below still dim, so the panel
+    // does say the section is asleep -- it just no longer says the door is
+    // locked.
+    if (dynOn != nullptr) dynOn->setSwitchEnabled (true);
 
     for (auto* k : { thr.get(), range.get(), ratio.get(), attack.get(), release.get() })
         if (k != nullptr)
@@ -335,14 +370,15 @@ void DeqPanel::layoutCompact (juce::Rectangle<int> area)
     }
 
     {
-        // Placement and the band's ON. Four switches of the token's 70 and
-        // three gaps are 304, four more than the column has, so these are 66;
-        // the extra space goes between placement and ON, which are not one
-        // control and should not read as one.
-        auto row = at (314, 340);
+        // MID, SIDE, DYN -- what this band does, as opposed to where it does
+        // it. Three switches of 66 and two gaps are 214, centred, which is the
+        // block placement alone used to occupy before the ON switch was
+        // dropped and DYN came up from the dynamics strip.
+        auto row = at (314, 340).withSizeKeepingCentre (66 * 3 + kGap * 2, kSwitchH);
         place->setVertical (false);
-        place->setBounds (row.removeFromLeft (66 * 3 + kGap * 2));
-        bandOn->setBounds (row.removeFromRight (66));
+        place->setBounds (row.removeFromLeft (66 * 2 + kGap));
+        row.removeFromLeft (kGap);
+        dynOn->setBounds (row.removeFromLeft (66));
     }
 
     addRule (at (352, 368));
@@ -355,15 +391,9 @@ void DeqPanel::layoutCompact (juce::Rectangle<int> area)
         reduction.setShowsValue (false);
         const auto h = knobHeight (knobSide, 11.0f);
 
-        // DYN over BELOW: the pair's cell is laid out empty and filled after,
-        // two components in one cell.
-        juce::Component stackCell;
-        spread (at (370, 466), { { &stackCell, kSwitchW, kSwitchH * 2 + kGap }, { thr.get(), 76, h }, { range.get(), 76, h },
+        // BELOW alone now that DYN has gone up to sit with MID and SIDE.
+        spread (at (370, 466), { { below.get(), kSwitchW, kSwitchH }, { thr.get(), 76, h }, { range.get(), 76, h },
                                  { &reduction, 36, reduction.heightFor (62) } }, true);
-
-        auto stack = stackCell.getBounds();
-        dynOn->setBounds (stack.removeFromTop (kSwitchH));
-        below->setBounds (stack.removeFromBottom (kSwitchH));
     }
 
     {
@@ -408,8 +438,17 @@ void DeqPanel::layoutExpanded (juce::Rectangle<int> area)
         const auto h = knobHeight (knobSide, 15.0f);
         place->setVertical (true);
 
+        // MID over SIDE over DYN, in the one cell the three-high placement
+        // stack used to fill. Laid out empty and filled after, the same way the
+        // dynamics strip does it: three switches, two of them one parameter.
+        juce::Component bandCell;
         spread (at (280, 406), { { shape.get(), 110, 108 }, { freq.get(), 84, h }, { gain.get(), 84, h }, { q.get(), 84, h },
-                                 { place.get(), kSwitchW, kSwitchH * 3 + kGap * 2 }, { bandOn.get(), kSwitchW, kSwitchH } }, false);
+                                 { &bandCell, kSwitchW, kSwitchH * 3 + kGap * 2 } }, false);
+
+        auto cell = bandCell.getBounds();
+        place->setBounds (cell.removeFromTop (kSwitchH * 2 + kGap));
+        cell.removeFromTop (kGap);
+        dynOn->setBounds (cell.removeFromTop (kSwitchH));
     }
 
     addRule (at (408, 424));
@@ -436,14 +475,10 @@ void DeqPanel::layoutExpanded (juce::Rectangle<int> area)
         // glyph is why `widestValue` measures both rather than taking the
         // obvious one: this cell was 46 for exactly as long as it took the bar
         // to learn a second sign. checkDeqPanel asserts it at both widths.
-        juce::Component stackCell;   // DYN over BELOW, as on the compact panel
-        spread (row, { { &stackCell, kSwitchW, kSwitchH * 2 + kGap }, { thr.get(), 96, hb }, { range.get(), 88, hb },
+        // BELOW alone, as on the compact panel: DYN now sits with MID and SIDE.
+        spread (row, { { below.get(), kSwitchW, kSwitchH }, { thr.get(), 96, hb }, { range.get(), 88, hb },
                        { ratio.get(), 80, hs }, { attack.get(), 80, hs }, { release.get(), 80, hs },
                        { &reduction, 49, reduction.heightFor (92) } }, false);
-
-        auto stack = stackCell.getBounds();
-        dynOn->setBounds (stack.removeFromTop (kSwitchH));
-        below->setBounds (stack.removeFromBottom (kSwitchH));
     }
 }
 

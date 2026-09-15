@@ -442,6 +442,60 @@ void checkDeqPanel (bmo::ui::ModulePanel& panel, const juce::String& who)
     checkOutputSwitch (panel, "AUTO", who);
 }
 
+/** A mouse event good enough to drive a component's own handler.
+
+    The suite has never needed one: `ui_layout` asserts bounds, and everything
+    else a panel does was reachable through a parameter. BMO DEQ's band on/off
+    is the first control that is a **gesture and nothing else** -- no switch, no
+    affordance -- so it is the first one where "it compiles" is not evidence
+    that it works. */
+juce::MouseEvent clickAt (juce::Component& c, juce::Point<float> p, int clicks)
+{
+    const auto now = juce::Time::getCurrentTime();
+
+    return { juce::Desktop::getInstance().getMainMouseSource(), p, juce::ModifierKeys(),
+             juce::MouseInputSource::defaultPressure, juce::MouseInputSource::defaultOrientation,
+             juce::MouseInputSource::defaultRotation, juce::MouseInputSource::defaultTiltX,
+             juce::MouseInputSource::defaultTiltY, &c, &c, now, p, now, clicks, false };
+}
+
+/** Double-clicking a band's tab switches that band on, and again switches it
+    off.
+
+    This is the whole of band on/off since the ON switch was dropped on
+    2026-09-15, so if it breaks there is no other way to reach the parameter
+    from the panel and nothing else would notice. */
+void checkDeqBandToggle (bmo::ui::ModulePanel& panel, const juce::String& who)
+{
+    bmo::deq::BandTabs* tabs = nullptr;
+
+    for (auto* child : panel.getChildren())
+        if (auto* t = dynamic_cast<bmo::deq::BandTabs*> (child))
+            tabs = t;
+
+    check (tabs != nullptr, who + " has no band tabs");
+
+    if (tabs == nullptr)
+        return;
+
+    auto& params = panel.getContext().params;
+
+    // Band 5, so a failure cannot be the selected band or band 1 by accident.
+    const auto band = 4;
+    const auto onIndex = bmo::deq::indexOf (band, bmo::deq::Control::on);
+    const auto centre = tabs->tabBounds (band).getCentre().toFloat();
+
+    check (params.getReal (onIndex) < 0.5f, who + " band 5 should start off");
+
+    tabs->mouseDoubleClick (clickAt (*tabs, centre, 2));
+    check (params.getReal (onIndex) > 0.5f,
+           who + " double-clicking band 5's tab should switch it on");
+
+    tabs->mouseDoubleClick (clickAt (*tabs, centre, 2));
+    check (params.getReal (onIndex) < 0.5f,
+           who + " double-clicking band 5's tab again should switch it off");
+}
+
 /** Every switch label fits its switch.
 
     Switches are one size across the whole suite -- Tokens::switchWidth -- so a
@@ -815,6 +869,11 @@ int main (int argc, char** argv)
             checkOutputSwitch  (panel, "DEQ", product.who);
             checkDeqPanel      (panel, product.who);
         });
+
+    // Its own panel each time: this one moves parameters, and every check above
+    // reads a panel that has not been touched.
+    for (const auto& product : { named ("deq"), named ("deq compact") })
+        withPanel (product, [&] (bmo::ui::ModulePanel& panel) { checkDeqBandToggle (panel, product.who); });
 
     withPanel (named ("deq"), [] (bmo::ui::ModulePanel& panel) { checkEquals (panel.getWidth(), 600, "deq opens full standalone"); });
     withPanel (named ("deq compact"), [] (bmo::ui::ModulePanel& panel) { checkEquals (panel.getWidth(), 320, "deq compact width"); });

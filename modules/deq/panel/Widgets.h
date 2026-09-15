@@ -8,31 +8,56 @@ namespace bmo::deq
 {
 
 //==============================================================================
-/** A choice parameter as a row of switches, one lit.
+/** A choice parameter as a row of switches, one lit -- or none.
 
     The suite has a switch for a bool (ui::SwitchButton) and a dial for a
     stepped choice (ui::ConcentricBand), and nothing for a short choice that
-    reads best as words side by side -- STEREO / MID / SIDE, ABOVE / BELOW. So
-    these are plain juce::ToggleButtons with the same tint SwitchButton sets,
-    drawn by the same look and feel: they are the suite's switches in every
-    pixel, and only the wiring is new. A ParameterAttachment carries the
-    choice, so a click is one gesture and host automation moves the lit one. */
+    reads best as words side by side. So these are plain juce::ToggleButtons
+    with the same tint SwitchButton sets, drawn by the same look and feel: they
+    are the suite's switches in every pixel, and only the wiring is new. A
+    ParameterAttachment carries the choice, so a click is one gesture and host
+    automation moves the lit one.
+
+    **`implicitChoice` is the option that gets no button of its own.** Pass -1
+    and every choice has one, which is the plain behaviour. Pass an index and
+    that choice is drawn as *nothing lit*, and clicking a lit button returns to
+    it.
+
+    BMO DEQ's placement is why (Frosty, 2026-09-15). STEREO / MID / SIDE read as
+    three modes to pick between, and STEREO is not a mode -- it is what a band
+    does when you have not asked for anything, on a mono source as much as a
+    stereo one. A button for it invites the question "which of these three am I
+    in", and the honest answer is that two of them are the special cases. So the
+    panel offers MID and SIDE, and neither lit is the default behaviour. */
 class ChoiceRow final : public juce::Component
 {
 public:
     ChoiceRow (juce::RangedAudioParameter& parameter, juce::StringArray labels, juce::Colour tint,
-               bool vertical = false)
-        : stacked (vertical),
+               bool vertical = false, int implicitChoice = -1)
+        : stacked (vertical), implicit (implicitChoice),
           attachment (parameter, [this] (float v) { show ((int) std::lround (v)); })
     {
         for (int i = 0; i < labels.size(); ++i)
         {
+            if (i == implicit)
+                continue;
+
             auto b = std::make_unique<juce::ToggleButton> (labels[i]);
             b->setColour (juce::ToggleButton::tickColourId, tint);
             b->setClickingTogglesState (false);
-            b->onClick = [this, i] { attachment.setValueAsCompleteGesture ((float) i); };
+
+            // Clicking the lit one goes back to the implicit choice, so the
+            // default is reachable without a button for it. With no implicit
+            // choice this is a plain radio set and a lit button ignores itself.
+            b->onClick = [this, i]
+            {
+                const auto going = (current == i && implicit >= 0) ? implicit : i;
+                attachment.setValueAsCompleteGesture ((float) going);
+            };
+
             addAndMakeVisible (*b);
             buttons.push_back (std::move (b));
+            choices.push_back (i);
         }
 
         attachment.sendInitialUpdate();
@@ -71,23 +96,28 @@ public:
     }
 
     /** New words for the same choices -- a wider panel can afford the long
-        forms. Must be as many as there are choices. */
+        forms. Indexed by **choice**, including any that has no button. */
     void setLabels (const juce::StringArray& labels)
     {
-        jassert (labels.size() == (int) buttons.size());
-        for (int i = 0; i < juce::jmin (labels.size(), (int) buttons.size()); ++i)
-            buttons[(size_t) i]->setButtonText (labels[i]);
+        for (size_t b = 0; b < buttons.size(); ++b)
+            if (choices[b] < labels.size())
+                buttons[b]->setButtonText (labels[choices[b]]);
     }
 
 private:
     void show (int index)
     {
-        for (int i = 0; i < (int) buttons.size(); ++i)
-            buttons[(size_t) i]->setToggleState (i == index, juce::dontSendNotification);
+        current = index;
+
+        for (size_t b = 0; b < buttons.size(); ++b)
+            buttons[b]->setToggleState (choices[b] == index, juce::dontSendNotification);
     }
 
     bool stacked;
+    int implicit = -1;
+    int current = -1;
     std::vector<std::unique_ptr<juce::ToggleButton>> buttons;
+    std::vector<int> choices;   ///< which choice each button writes
     juce::ParameterAttachment attachment;
 };
 
@@ -102,9 +132,19 @@ class BandTabs final : public juce::Component,
                        private juce::Timer
 {
 public:
+    /** `toggle` switches a band on or off. It is the **only** way to do that
+        from the tabs, and it is on the double-click because a single click
+        already selects: a tab that switched a band off when you were only
+        trying to look at it would be unusable.
+
+        The band's ON switch used to live in the strip below and was dropped on
+        2026-09-15 -- it sat inside the placement group and read as a fourth
+        placement mode. This gesture and the one on the curve's nodes replace
+        it. */
     BandTabs (int count, std::function<bool (int)> isOn, std::function<bool (int)> isDynamic,
-              std::function<void (int)> choose)
-        : bands (count), on (std::move (isOn)), dynamic (std::move (isDynamic)), onChoose (std::move (choose))
+              std::function<void (int)> choose, std::function<void (int)> toggle = {})
+        : bands (count), on (std::move (isOn)), dynamic (std::move (isDynamic)),
+          onChoose (std::move (choose)), onToggle (std::move (toggle))
     {
         startTimerHz (10);
     }
@@ -173,6 +213,19 @@ public:
             }
     }
 
+    void mouseDoubleClick (const juce::MouseEvent& e) override
+    {
+        // The first click of the pair has already selected this band, so a
+        // double-click is always "the band I am looking at, on or off".
+        for (int b = 0; b < bands; ++b)
+            if (tabBounds (b).contains (e.getPosition()))
+            {
+                if (onToggle) onToggle (b);
+                repaint();
+                return;
+            }
+    }
+
     juce::Colour accent = ui::tokens().accent;
 
 private:
@@ -180,7 +233,7 @@ private:
 
     int bands, rows = 1, selected = 0, gap = 7;
     std::function<bool (int)> on, dynamic;
-    std::function<void (int)> onChoose;
+    std::function<void (int)> onChoose, onToggle;
 };
 
 //==============================================================================

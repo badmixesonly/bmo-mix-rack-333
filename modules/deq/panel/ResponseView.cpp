@@ -439,25 +439,39 @@ void ResponseView::mouseUp (const juce::MouseEvent&)
 
 void ResponseView::mouseDoubleClick (const juce::MouseEvent& e)
 {
-    if (bandAt (e.position) >= 0)
+    auto set = [this] (int band, Control c, float v)
+    {
+        auto& p = params.param (indexOf (band, c));
+        p.beginChangeGesture();
+        params.setReal (indexOf (band, c), v);
+        p.endChangeGesture();
+    };
+
+    // On a node: switch that band off. Any node that is on answers, not only
+    // the selected one (Frosty, 2026-09-15) -- what you double-click is what
+    // happens, and `bandAt` already gives the selected band the tie when two
+    // nodes overlap.
+    //
+    // A band that is off but selected still draws a node, and that one does
+    // nothing here: switching it off again would be a gesture with no effect,
+    // and switching it *on* would make one double-click mean both things
+    // depending on state. Its tab is the way back on.
+    if (const auto hit = bandAt (e.position); hit >= 0)
+    {
+        if (value (hit, Control::on) > 0.5f)
+            set (hit, Control::on, 0.0f);
+
         return;
+    }
 
     // The first band that is off, switched on as a bell where the click was.
     for (int i = 0; i < kBands; ++i)
         if (value (i, Control::on) < 0.5f)
         {
-            auto set = [this, i] (Control c, float v)
-            {
-                auto& p = params.param (indexOf (i, c));
-                p.beginChangeGesture();
-                params.setReal (indexOf (i, c), v);
-                p.endChangeGesture();
-            };
-
-            set (Control::shape, 0.0f);
-            set (Control::freq, (float) hzFor (e.position.x));
-            set (Control::gain, (float) dbFor (e.position.y));
-            set (Control::on, 1.0f);
+            set (i, Control::shape, 0.0f);
+            set (i, Control::freq, (float) hzFor (e.position.x));
+            set (i, Control::gain, (float) dbFor (e.position.y));
+            set (i, Control::on, 1.0f);
 
             if (select)
                 select (i);

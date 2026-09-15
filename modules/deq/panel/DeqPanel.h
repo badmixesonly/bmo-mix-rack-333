@@ -52,6 +52,15 @@ private:
     void timerCallback() override;
 
     void selectBand (int band);
+
+    /** Switches a band on or off, as one host gesture.
+
+        Reached by double-clicking its tab, and the curve's nodes switch one off
+        the same way. There is no ON switch on the panel any more: it sat inside
+        the placement group and read as a fourth placement mode (Frosty,
+        2026-09-15). */
+    void toggleBand (int band);
+
     void bindBand();
     void layoutCompact (juce::Rectangle<int> area);
     void layoutExpanded (juce::Rectangle<int> area);
@@ -79,7 +88,7 @@ private:
     // The selected band's controls: rebuilt by bindBand, so they are always
     // attached to the band on show and to nothing else.
     std::unique_ptr<ShapeDial> shape;
-    std::unique_ptr<ui::SwitchButton> bandOn, dynOn, below;
+    std::unique_ptr<ui::SwitchButton> dynOn, below;
     std::unique_ptr<ChoiceRow> place;
     std::unique_ptr<ui::PlainKnob> freq, gain, q, thr, range, ratio, attack, release;
 
