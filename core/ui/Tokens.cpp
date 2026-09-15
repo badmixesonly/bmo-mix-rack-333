@@ -34,6 +34,7 @@ namespace
         { "accent",     &Tokens::accent },
         { "neutral",    &Tokens::neutral },
         { "utilGain",   &Tokens::utilGain },
+        { "meterQuiet", &Tokens::meterQuiet },
         { "meterLow",   &Tokens::meterLow },
         { "meterHigh",  &Tokens::meterHigh },
         { "meterClip",  &Tokens::meterClip },

@@ -98,6 +98,26 @@ public:
         24 dB of reduction in the clip red would say it was. */
     void setFlatColour (juce::Colour);
 
+    /** One colour stop along the bar, at a stated reading.
+
+        The fill is a gradient across the *well* rather than one colour chosen
+        by the current level, which is what it was until 2026-09-15. The
+        difference matters: a zone-coloured bar changes colour along its whole
+        length as the level crosses a threshold, so the quiet end of the meter
+        turns red when the loud end does. With a gradient a given dB is always
+        the same colour, and the bar shows where in its own range it is.
+
+        Stops are in dB and go through `positionOf`, so they follow the scale
+        curve with everything else -- the colour at -12 sits exactly where the
+        printed -12 does. */
+    struct ZoneStop
+    {
+        float db;
+        juce::Colour colour;
+    };
+
+    void setZones (std::vector<ZoneStop> stops);
+
     /** Draw a draggable threshold handle on this bar, bound to `param`.
 
         This is the gate, and it is the only control on the panel that is not a
@@ -173,6 +193,7 @@ private:
     juce::Colour flat;
     bool useFlatColour = false;
     std::vector<ScaleMark> scale;
+    std::vector<ZoneStop> zones;
 
     juce::RangedAudioParameter* threshold = nullptr;
     juce::Colour handleColour;

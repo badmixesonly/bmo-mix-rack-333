@@ -175,6 +175,15 @@ struct Tokens
         occupy. */
     juce::Colour neutral    { 0xffababab };
 
+    /** A meter fill that is not a warning yet, on a panel that does not use
+        the green. BMO Opto and the suite meters run meterLow; the LTV line is
+        greyscale and a green bar on it is the same loose end periwinkle was.
+
+        Mid, because it has to read in a well at either end of the range: it
+        clears the LTV pale well #b0b0b0 by 24.5 L* and the dark one #27272b by
+        31.6, which is the best either end gets from a single value. */
+    juce::Colour meterQuiet { 0xff6f7076 };
+
     juce::Colour meterLow   { 0xff6bbf7a };
     juce::Colour meterHigh  { 0xffe0b040 };
     juce::Colour meterClip  { 0xffe0685a };

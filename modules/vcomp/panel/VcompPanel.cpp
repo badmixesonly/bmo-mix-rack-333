@@ -105,6 +105,37 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
     inBar .setScale (levelScale);
     outBar.setScale (levelScale);
 
+    // **The fill is a gradient along the bar, not a colour chosen by the
+    // level** -- Frosty, 2026-09-15. Grey through -12, into yellow by -3, into
+    // red at the top.
+    //
+    // The distinction is the whole of it. Until now the bar took one colour
+    // from its own peak, so crossing -1 turned the *entire* bar red, including
+    // the quiet end that was nowhere near clipping. A gradient means a given
+    // dB is always the same colour and the bar says where in its range it is
+    // rather than only how far along it has got.
+    //
+    // Grey rather than the suite's meterLow green: this panel is greyscale,
+    // and a green bar on it was the same loose end periwinkle was. meterQuiet
+    // is the token, and it is mid so that it reads in an LTV well at either
+    // end of the range -- 24.5 L* clear of the silver one, 31.6 of the
+    // graphite.
+    // The stops are where each colour *arrives*, not where it starts blending,
+    // which is the thing to get right. Putting the red at 0 rather than at -3
+    // was the first attempt and it never showed red at all: the top 3 dB spent
+    // themselves finishing a blend, so a bar reading -2 was still amber. Red
+    // reaching -3 gives it the whole -3..0 to be red in.
+    const std::vector<LevelBar::ZoneStop> zones {
+        { -60.0f, ui::tokens().meterQuiet },
+        { -12.0f, ui::tokens().meterQuiet },
+        {  -6.0f, ui::tokens().meterHigh  },
+        {  -3.0f, ui::tokens().meterClip  },
+        {   0.0f, ui::tokens().meterClip  },
+    };
+
+    inBar .setZones (zones);
+    outBar.setZones (zones);
+
     // GR gets the same treatment about its own zero, which is the *right* end:
     // its positions are amounts of reduction and its fill grows leftward from
     // none. So the first 3 dB of reduction take a fifth of the bar and the

@@ -51,6 +51,11 @@ void LevelBar::setScale (std::vector<ScaleMark> marks)
     scale = std::move (marks);
 }
 
+void LevelBar::setZones (std::vector<ZoneStop> stops)
+{
+    zones = std::move (stops);
+}
+
 void LevelBar::setFlatColour (juce::Colour colour)
 {
     flat = colour;
@@ -175,9 +180,27 @@ void LevelBar::paint (juce::Graphics& g)
         {
             g.setColour (flat);
         }
+        else if (zones.size() >= 2)
+        {
+            // A gradient across the whole well, then clipped to the filled
+            // part -- not a gradient across the fill. Laying it over the well
+            // is what makes a given dB always the same colour: stretch it to
+            // the fill instead and the quiet end of the bar changes hue every
+            // time the loud end moves.
+            juce::ColourGradient gradient (zones.front().colour,
+                                           well.getX(), 0.0f,
+                                           zones.back().colour,
+                                           well.getRight(), 0.0f, false);
+
+            for (size_t i = 1; i + 1 < zones.size(); ++i)
+                gradient.addColour (juce::jlimit (0.001, 0.999,
+                                                  (double) positionOf (zones[i].db)),
+                                    zones[i].colour);
+
+            g.setGradientFill (gradient);
+        }
         else
         {
-            // The suite's zones, at the same thresholds OutputMeter uses.
             const auto db = minDb + displayed * (maxDb - minDb);
             g.setColour (db > -1.0f ? t.meterClip : db > -9.0f ? t.meterHigh : t.meterLow);
         }
@@ -259,7 +282,12 @@ void LevelBar::paint (juce::Graphics& g)
         // Whatever attachThreshold was given, unrouted: the handle is red now
         // rather than the module accent, so there is no accent here for a line
         // to override. See VcompPanel, where the colour is chosen.
-        g.setColour (handleColour);
+        // The line ink, not the red -- Frosty, 2026-09-15. The gate used to be
+        // tokens().meterClip, and the meter it sits on is a gradient into red
+        // now, so a red handle over a red bar was two different meanings in
+        // one colour. Matching the printed scale instead makes it read as part
+        // of the instrument's lettering, which is what it is.
+        g.setColour (ui::panelAccentFor (*this, handleColour));
 
         {
             // A flag over the well -- a triangle pointing down at the level it
@@ -300,7 +328,8 @@ void LevelBar::paint (juce::Graphics& g)
             ui::drawLabel (g, "GATE",
                            juce::Rectangle<float> (x, well.getY() - (float) kTagRow,
                                                    width, (float) kTagRow - kFlagHeight - 1.0f),
-                           juce::Justification::centred, font, handleColour);
+                           juce::Justification::centred, font,
+                           ui::panelAccentFor (*this, handleColour));
         }
 
     }
