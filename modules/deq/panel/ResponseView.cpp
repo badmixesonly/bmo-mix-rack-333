@@ -29,9 +29,20 @@ ResponseView::~ResponseView() = default;
 //==============================================================================
 juce::Rectangle<float> ResponseView::plot() const
 {
-    // Room under the plot for the frequency axis, and either side of it for a
-    // node at 20 Hz or 20 kHz to hang over the well's edge (kOverhang).
-    return getLocalBounds().toFloat().reduced ((float) kOverhang, 0.0f).withTrimmedBottom (compact ? 16.0f : 18.0f);
+    // Room under the plot for the frequency axis, and on the other three sides
+    // for a node at the end of its range to hang over the well's edge rather
+    // than be cut by it (kOverhang).
+    //
+    // The top inset is the half of that which was missing until 2026-09-15.
+    // Sideways it always worked -- it is why band 12's node at 18 kHz is whole
+    // -- but a band at **+24 dB** put its node's centre on the component's own
+    // top edge, so JUCE cut the top half off and took half the band number with
+    // it. The panel places this component 8 px higher to pay for the inset, so
+    // the plot itself does not move and nothing else on the panel does either.
+    return getLocalBounds().toFloat()
+             .reduced ((float) kOverhang, 0.0f)
+             .withTrimmedTop ((float) kOverhang)
+             .withTrimmedBottom (compact ? 16.0f : 18.0f);
 }
 
 float ResponseView::xFor (double hz) const
@@ -253,11 +264,8 @@ void ResponseView::paint (juce::Graphics& g)
     const auto labels = compact ? std::vector<std::pair<double, const char*>> { { 100.0, "100" }, { 1000.0, "1k" }, { 10000.0, "10k" } }
                                 : std::vector<std::pair<double, const char*>> { { 50.0, "50" }, { 100.0, "100" }, { 200.0, "200" }, { 500.0, "500" },
                                                                                  { 1000.0, "1k" }, { 2000.0, "2k" }, { 5000.0, "5k" }, { 10000.0, "10k" } };
-    for (const auto& [hz, text] : labels)
-        // 48 px boxes: the caption face is wide, and a 32 px box cut "100" to
-        // "10" on the first render.
-        ui::drawLabel (g, text, { xFor (hz) - 24.0f, r.getBottom() + 2.0f, 48.0f, 13.0f },
-                       juce::Justification::centred, axis, t.text2);
+    // The frequency labels are drawn last, under the nodes -- see the foot of
+    // this function.
 
     g.saveState();
     g.reduceClipRegion (r.toNearestInt());
@@ -339,6 +347,22 @@ void ResponseView::paint (juce::Graphics& g)
                            isSel ? ui::labelFont (10.0f, true) : numberFont,
                            isSel && b.on ? ui::onAccentOf (accent) : (b.on ? t.text1 : t.text2));
     }
+
+    // The frequency scale goes on last, over any node that has hung down into
+    // it.
+    //
+    // A band at **-24 dB** puts its node's centre on the plot's bottom edge,
+    // and the clip is deliberately off by now so that nodes ride over the
+    // well's edge instead of being cut by it. Drawn before the nodes, as they
+    // were until 2026-09-15, that put a node squarely on top of "100" and took
+    // the scale with it. Drawing the numbers afterwards keeps both: the node
+    // stays whole and where its gain says it is, and the scale stays readable
+    // because it is in front.
+    for (const auto& [hz, text] : labels)
+        // 48 px boxes: the caption face is wide, and a 32 px box cut "100" to
+        // "10" on the first render.
+        ui::drawLabel (g, text, { xFor (hz) - 24.0f, r.getBottom() + 2.0f, 48.0f, 13.0f },
+                       juce::Justification::centred, axis, t.text2);
 
     // No readout over the curve: the knobs carry their own numbers now
     // (PlainKnob::setShowsValue), which is where the mockups put them.

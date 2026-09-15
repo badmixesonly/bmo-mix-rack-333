@@ -311,7 +311,12 @@ void DeqPanel::layoutCompact (juce::Rectangle<int> area)
     const auto top = area.getY();
     auto at = [&] (int y0, int y1) { return juce::Rectangle<int> (area.getX(), top + y0 - 4, area.getWidth(), y1 - y0); };
 
-    curve.setBounds (at (8, 120).expanded (ResponseView::kOverhang, 0));
+    // 8 px higher than the well it draws, and 8 px wider each side: the extra
+    // is ResponseView::plot's inset, so the well lands exactly where mockup C
+    // has it while a node at the end of its range still has room to hang over
+    // the edge instead of being cut by it.
+    curve.setBounds (at (8, 120).expanded (ResponseView::kOverhang, 0)
+                                .withTrimmedTop (-ResponseView::kOverhang));
 
     tabs.setRows (2);
     tabs.setGap (7);
@@ -384,7 +389,9 @@ void DeqPanel::layoutExpanded (juce::Rectangle<int> area)
     const auto top = area.getY();
     auto at = [&] (int y0, int y1) { return juce::Rectangle<int> (area.getX(), top + y0 - 4, area.getWidth(), y1 - y0); };
 
-    curve.setBounds (at (8, 222).expanded (ResponseView::kOverhang, 0));
+    // 8 px higher and 8 px wider each side than the well -- see layoutCompact.
+    curve.setBounds (at (8, 222).expanded (ResponseView::kOverhang, 0)
+                                .withTrimmedTop (-ResponseView::kOverhang));
 
     tabs.setRows (1);
     tabs.setGap (kGap);
