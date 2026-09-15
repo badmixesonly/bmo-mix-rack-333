@@ -6,7 +6,7 @@
 namespace bmo::vcomp
 {
 
-/** **None of these set OUTPUT, and that is the point.**
+/** **None of these set MAKEUP, and that is the point.**
 
     modules/AGENTS.md asks that every preset come out at the level it went in,
     and the plugin tests check it. Every other module in the suite pays for
@@ -21,7 +21,7 @@ namespace bmo::vcomp
     tripwire on the auto makeup itself; it just has no numbers here to keep up
     to date.
 
-    So a preset that wants to be louder should say so with OUTPUT, deliberately,
+    So a preset that wants to be louder should say so with MAKEUP, deliberately,
     and none of these do.
 
     **Nor do any of them set GATE.** A gate threshold is an absolute level, and

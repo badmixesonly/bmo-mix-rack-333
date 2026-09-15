@@ -117,11 +117,26 @@ inline const ParamSpecs& specs()
         // own level is not a setting, it is a mistake with a wide travel.
         S::floatParam (kGate, "Gate", kGateOffDb, -10.0f, 0.1f, kGateOffDb, F::Decibels),
 
-        // OUTPUT: makeup on top of the automatic makeup, for the ear. The
+        // MAKEUP: makeup on top of the automatic makeup, for the ear. The
         // automatic one is not switchable and does not appear here -- it is
         // part of what AMOUNT *is*, not a feature layered over it. Compare
         // BMO Opto, which rejected auto-makeup outright because neither unit
         // it models has one; this module models a unit that does.
+        //
+        // **The id stays `output` and the panel says MAKEUP** -- Frosty,
+        // 2026-09-14, correcting a caption that had never agreed with the
+        // paragraph above it. An id is frozen once it ships and this one has;
+        // a caption is a UI string and free. That is the same split BMO Opto
+        // already runs twice, `level`/"Level"/MAKEUP and `crush`/"Crush"/COMP.
+        // The host-facing "Output" is left alone as well, so an automation
+        // lane written against 0.2.4 still reads what it read then.
+        //
+        // **It is not a trim**, which is the substance of the correction
+        // rather than a side effect of it: this is the module's own gain
+        // stage, the same control as BMO Opto's MAKEUP down to the range, the
+        // step and the default. It is why neither compressor takes the shared
+        // output section -- an output trim belongs on that line and a makeup
+        // stage does not.
         S::floatParam (kOutput, "Output", -24.0f, 24.0f, 0.01f, 0.0f, F::Decibels),
 
         // COMPLEX: reveals the six below and makes the DSP honour them.

@@ -7,7 +7,7 @@ namespace bmo::vcomp
 {
 
 /** AMOUNT, three horizontal dBFS meters with the gate handle on the first of
-    them, OUTPUT, then a COMPLEX/ARC switch row and the five detector knobs
+    them, MAKEUP, then a COMPLEX/ARC switch row and the five detector knobs
     COMPLEX reveals.
 
     **Two knobs is the product, and the panel has to say so.** The whole claim
@@ -35,7 +35,7 @@ namespace bmo::vcomp
     **The layout does not move when the complex knobs appear.** Every control
     is placed from the top at a fixed gap worked out for the complex-on
     layout, so the two knob rows are reserved whether or not anything is in
-    them, and AMOUNT, the meters, OUTPUT and the switch row sit at the same
+    them, and AMOUNT, the meters, MAKEUP and the switch row sit at the same
     pixel in both states. The cost is empty plate at the foot in standard mode,
     under a switch that says COMPLEX -- which reads as a closed drawer, and is
     the price of controls that stay put. Re-flowing the panel so standard mode

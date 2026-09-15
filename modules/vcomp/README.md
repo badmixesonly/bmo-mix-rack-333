@@ -9,7 +9,7 @@ are behind a switch for when they are wanted.
 |---|---|
 | **AMOUNT** | How hard it works. Sweeps threshold, knee and ratio together (1:1 up to 8:1) and adds its own makeup, so the vocal gets denser and more forward rather than louder. At 0 the module is a wire. |
 | **GATE** | The handle on the IN meter. Drag it to the level below which the track should be shut down -- room tone, bleed, breaths. It is there rather than on a knob because a gate threshold is set by watching the level you are setting it against. At the far left it is off. |
-| **OUTPUT** | Level, by ear, on top of that automatic makeup. |
+| **MAKEUP** | Level, by ear, on top of that automatic makeup. The id is `output`; see params.h. |
 | **COMPLEX** | Reveals the five below and makes the DSP read them. Off, they are ignored entirely and the module runs 5 ms attack, 200 ms release, ARC on, 90 Hz sidechain, no band split. |
 | **ARC** | Programme-dependent release: quick recovery after a consonant, slow after a sustained phrase. Always on in standard mode, which is why the switch is lit and locked there. |
 

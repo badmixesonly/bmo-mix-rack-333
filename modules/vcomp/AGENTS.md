@@ -5,7 +5,7 @@ behind a switch, and a modern feedforward detector under all of it.
 
 Frosty set the brief on 2026-09-13: **the sound of Waves RVox and RComp, the
 simplicity of RVox and Klanghelm DC1A**, with attack, release and a sidechain
-filter behind a "complex mode" and nothing but AMOUNT and OUTPUT before that.
+filter behind a "complex mode" and nothing but AMOUNT and MAKEUP before that.
 The gate, the band controls and the three-bar meter came in the same session,
 after the first build was heard about. Everything below follows from that brief
 pulling against itself.
@@ -335,7 +335,7 @@ Still open, having been heard once:
   Before it, `measure_vcomp presets` had "In Front" and "Keep The Chest"
   peaking above 0 dBFS on a -18 dBFS RMS source. What is left of that item is
   that the limiter's own reduction is not metered, so OUT pinned at -0.1 with a
-  quiet GR bar is what pushing OUTPUT looks like.
+  quiet GR bar is what pushing MAKEUP looks like.
 
 ## Open, and deliberately not built
 

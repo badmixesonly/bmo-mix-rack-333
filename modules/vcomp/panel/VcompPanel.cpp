@@ -42,14 +42,14 @@ namespace
 
 VcompPanel::VcompPanel (ui::ModuleContext ctx)
     : ModulePanel (std::move (ctx)),
-      // AMOUNT and OUTPUT are character knobs in the module's accent: they are
+      // AMOUNT and MAKEUP are character knobs in the module's accent: they are
       // what this module *is*. The five detector knobs below are utility --
       // the suite's azure, dotted track -- because five more accent knobs
       // would compete with AMOUNT for the eye, and these are controls you set
       // once rather than ride.
       amount (context.params.param (Index::amount), "AMOUNT",
               ui::Knob::Style::character, 0.62f, context.def.accent),
-      output (context.params.param (Index::output), "OUTPUT",
+      output (context.params.param (Index::output), "MAKEUP",
               ui::Knob::Style::character, 0.62f, context.def.accent),
       inBar  ("IN",  LevelBar::Grow::rightward, kGateOffDb, 0.0f,
               [this] { return context.inputPeak ? meterDb (context.inputPeak()) : kGateOffDb; }),
@@ -155,7 +155,7 @@ void VcompPanel::resized()
     // Six divisions -- a margin above the first block and below the last as
     // well as between them -- and the gap is worked out from the *complex-on*
     // content whether or not the detector rows are visible. That is what keeps
-    // AMOUNT, the meters, OUTPUT and the switch row at the same pixel in both
+    // AMOUNT, the meters, MAKEUP and the switch row at the same pixel in both
     // states; in standard mode the reserved rows and the margin under them are
     // simply empty plate. See the class comment for why that trade was taken.
     const auto gap = juce::jmax (kSwitchGap, (area.getHeight() - content) / 6);

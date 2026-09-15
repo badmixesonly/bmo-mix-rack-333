@@ -65,9 +65,13 @@ time. Hash renders before and after any change that should move nothing.
 - [ ] Settled by the 2026-09-11 decisions: TELE / ELD / COLOR names, LINK
       stays. Engaged colour red in Tele, amber in Stressed, both renders
       confirm.
-- [ ] Takes no output section on purpose, so MAKEUP does not sit on the
-      shared output line in a rack. Decide once whether that is right now
-      that Vcomp also has an output knob; the two compressors should agree.
+- [x] ~~Takes no output section on purpose … decide once whether that is
+      right now that Vcomp also has an output knob.~~ **Settled 2026-09-14:
+      it is right, and Opto does not move.** LTV Comp's knob turned out to be
+      a makeup stage rather than an output trim, so it is captioned MAKEUP and
+      keeps off the shared line for the same reason this one does. The two
+      compressors agree, and neither takes the section. See the LTV Comp entry
+      for the rejected candidate and its numbers.
 
 ### BMO Dimension (220)
 - [ ] `dim-ui-pass-plan.md` §1: L / R end marks on ROTATE and ASYM instead
@@ -99,12 +103,32 @@ time. Hash renders before and after any change that should move nothing.
       next to EQ.
 
 ### LTV Comp (260)
-- [ ] **Takes neither section.** OUTPUT floats mid-panel and does not line
-      up with EQ, Sat and DEQ's OUTPUT in a rack, and the foot below
-      COMPLEX / ARC is empty in standard mode. Take the output section (the
-      knob is a trim by function), and give the freed height to the meter
-      block, which the checklist already calls "considerably shorter" than
-      Opto's VU.
+- [x] ~~**Takes neither section.** OUTPUT floats mid-panel … take the output
+      section (the knob is a trim by function).~~ **Settled 2026-09-14, and
+      the item's premise was wrong twice over.**
+
+      The knob is **not a trim**: it is makeup on top of AMOUNT's automatic
+      makeup, which the parameter's own spec comment always said and the
+      caption never did. It is captioned **MAKEUP** now — the same control as
+      BMO Opto's, down to range, step and default. So neither compressor takes
+      the shared output line, and they agree for a stated reason instead of by
+      accident. The second wrong premise was "Opto and Vcomp disagree": the
+      layout dump shows neither has ever had a rule at 566 or a knob at
+      602..679.
+
+      The both-take-it candidate was built and rendered before this came out,
+      and is on the record as rejected on its own numbers. It gives the rack a
+      real bottom rail — three rules, three switch rows, three knobs on one
+      line — but it moves this panel's empty band out of the foot (190 px,
+      under COMPLEX, which explains it) and into the middle (**262 px**, where
+      nothing does), and it costs BMO Opto the head/foot mirror, since
+      LINK/COLOR stacked want 60 px and the shared switch row is 28.
+
+      **Do not re-raise "give the freed height to the meter block."**
+      `VcompPanel.h` records that re-flowing standard mode into that space was
+      considered and rejected: it is the price of controls that stay put when
+      COMPLEX toggles, the same reasoning as BMO Opto's old hide-and-shuffle
+      COLOR switch.
 - [ ] The meter block: three bars with 12 dB ticks. Decide whether GR
       right-to-left reads, and whether the gate handle on IN needs a
       printed threshold (there is no numeric readout of it anywhere).
