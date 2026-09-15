@@ -3,6 +3,7 @@
 #include "core/state/ParamSet.h"
 #include "modules/deq/dsp/Design.h"
 #include "modules/deq/dsp/DspCore.h"
+#include "modules/deq/panel/Analyser.h"
 #include "modules/deq/params.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 
@@ -60,6 +61,18 @@ public:
     /** The plotting area, inside the axis labels. */
     juce::Rectangle<float> plot() const;
 
+    /** The spectrum drawn behind the curve.
+
+        The view owns it because the well is the view's, and because the shape
+        has to be built on the same `xFor` the grid lines, the axis labels and
+        the nodes all go through -- see `Analyser::buildPath`. A spectrum that
+        drew its own log axis would drift from the one it is drawn against. */
+    Analyser& getAnalyser() noexcept { return analyser; }
+
+    /** The tap to draw, or null for a module with none. Enabling the tap is
+        what makes the audio thread write at all. */
+    void setAnalyserTap (AnalyserTap* tap) { analyser.setTap (tap); }
+
     static constexpr float kSpanDb = 24.0f;   ///< the gain range, top to centre
 
     /** How far the component runs past the well on each side, so a node at
@@ -79,6 +92,7 @@ private:
     void timerCallback() override;
     bool readBands();
     void rebuildPaths();
+    void rebuildSpectrum();
 
     float xFor (double hz) const;
     double hzFor (float x) const;
@@ -97,6 +111,8 @@ private:
 
     std::array<Band, kBands> bands;
     juce::Path curve, selectedFill;
+    Analyser analyser;
+    juce::Path spectrum;
 
     /** The grid the curve is evaluated on, at whatever rate the module is
         running. Rebuilt when the host re-prepares -- `DesignGrid::make` is a

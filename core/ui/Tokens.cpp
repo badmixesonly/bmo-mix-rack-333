@@ -40,6 +40,10 @@ namespace
         { "meterClip",  &Tokens::meterClip },
         { "meterGr",    &Tokens::meterGr },
         { "meterGrWarm", &Tokens::meterGrWarm },
+        { "analyserOrange",  &Tokens::analyserOrange },
+        { "analyserGold",    &Tokens::analyserGold },
+        { "analyserPink",    &Tokens::analyserPink },
+        { "analyserNeutral", &Tokens::analyserNeutral },
     };
 
     Tokens current;

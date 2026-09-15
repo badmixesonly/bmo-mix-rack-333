@@ -169,17 +169,36 @@ void ResponseView::timerCallback()
         }
     }
 
+    // The spectrum moves on its own, every frame, independently of whether a
+    // parameter did -- so it gets its own rebuild rather than riding on the
+    // curve's. `update` says whether the shape actually changed, so a settled
+    // or silent analyser costs a read and a comparison and no repaint.
+    const auto spectrumMoved = analyser.update (drawnAt);
+
+    if (spectrumMoved)
+        rebuildSpectrum();
+
     if (readBands() || sel != lastSelected || rateMoved)
     {
         lastSelected = sel;
         rebuildPaths();
         repaint();
     }
+    else if (spectrumMoved)
+    {
+        repaint();
+    }
+}
+
+void ResponseView::rebuildSpectrum()
+{
+    analyser.buildPath (spectrum, plot(), [this] (double hz) { return xFor (hz); });
 }
 
 void ResponseView::resized()
 {
     rebuildPaths();
+    rebuildSpectrum();   // its shape is in the plot's coordinates, so it moves too
 }
 
 //==============================================================================
@@ -190,6 +209,23 @@ void ResponseView::paint (juce::Graphics& g)
 
     g.setColour (t.well);
     g.fillRoundedRectangle (r, ui::Tokens::corner);
+
+    // The spectrum goes in first, under the grid and well under the curve.
+    //
+    // It measures a different quantity from everything drawn over it -- signal
+    // level, not EQ gain -- so it is deliberately the quietest thing in the
+    // well: a filled shape at low alpha with no outline, which reads as
+    // texture behind a scale rather than as a second line to be compared with
+    // the first. Alpha rather than a pre-dimmed colour, so a theme that
+    // overrides the token still lands where the author meant it to.
+    if (analyser.isEnabled() && ! spectrum.isEmpty())
+    {
+        g.saveState();
+        g.reduceClipRegion (r.getSmallestIntegerContainer());
+        g.setColour (analyser.colourFor (accent).withAlpha (0.28f));
+        g.fillPath (spectrum);
+        g.restoreState();
+    }
 
     // Grid: quiet, under everything. The full panel has decades and their
     // halves and every 6 dB; the compact one only the decades and +-12, as

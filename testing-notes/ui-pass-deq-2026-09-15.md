@@ -385,6 +385,64 @@ second is better:
 
 ---
 
+## 8a. The analyser — half built, inert, and where to pick it up
+
+**Paused mid-way on Frosty's call, 2026-09-15. It is committed deliberately
+rather than left in the working tree**, after a `git stash` in this session
+briefly took an hour of uncommitted work out from under the build. It compiles,
+every test passes, and it draws **nothing**: the analyser defaults off, so DEQ's
+four baselines and the other five panels' ten renders are all byte-identical
+across it. Nothing here is load-bearing yet.
+
+**The good news that changed the size of this job:** it is panel work. Both
+processors already populate `ModuleContext::setSolo` and `ModuleContext::analyser`,
+`DspCore` already carries the solo band and two `AnalyserTap`s, and the tap is
+already prepared at 0.35 s per rate. No DSP needs writing.
+
+### Done
+
+- **Four colour tokens** in `core/ui/Tokens.h` — `analyserOrange`, `analyserGold`,
+  `analyserPink`, `analyserNeutral`, registered as themeable, with Frosty's
+  2026-09-12 table and the reasoning in the doc comment. The fifth option is the
+  module's own accent and correctly has no token.
+- **`modules/deq/panel/Analyser.h`** — the FFT (4096, Hann, 11.7 Hz bins at
+  48 k), per-bin fast-up/slow-down smoothing, and `buildPath`, which walks
+  **pixel columns rather than bins** because a log axis leaves gaps below
+  200 Hz and aliases above 5 kHz if you walk bins. It maps Hz through the
+  view's own `xFor`, so the spectrum cannot drift from the grid it sits on.
+- **`AnalyserButton`** — the toggle, with the five-option chooser on
+  right-click, per decisions.md.
+- **`ResponseView`** owns the analyser, drives it from its timer, and draws the
+  shape behind the grid at alpha 0.28.
+- **`DeqPanel`** hands it the context's tap, which is what enables it.
+
+### Left
+
+1. **The button is not placed.** `AnalyserButton` exists and is never
+   constructed or added to `ResponseView`. That is the next thing to write, and
+   it is why nothing is visible.
+2. **Session state.** On/off and the colour must follow the `view` pattern —
+   saved with the session, absent from presets, not automatable. The pattern is
+   `SingleModuleProcessor::getStateInformation` writing `kViewAttribute` onto
+   the PARAMS element, and the rack's per-slot equivalent. Both processors and
+   `ModuleContext` need a small generic accessor pair; **do not** give `core` a
+   DEQ-specific `analyserOn()`.
+3. **No render has ever shown it.** Nothing here has been looked at. Enable it
+   and render with `signal=` before believing any of the above.
+4. **Decide the default.** Off today, because that is what makes this commit
+   inert. Whether a fresh DEQ opens with the spectrum on is Frosty's, and it is
+   the one thing here a user meets without being told.
+
+### The one design decision taken, and why
+
+**The toggle goes in the well, not on the output switch row.** `DeqPanel.h`
+states that every control on this panel changes the sound — it is the stated
+reason the compact/expanded switch lives on the host's bar and never here. The
+analyser changes nothing anyone hears, so putting it beside DEQ and AUTO would
+quietly make that sentence false. A display control belongs on the display.
+
+---
+
 ## 8. Where this leaves the pass
 
 **BMO DEQ is not complete.** The three items in §6 are Frosty's, and the first

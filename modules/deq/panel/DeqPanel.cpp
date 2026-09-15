@@ -102,6 +102,12 @@ DeqPanel::DeqPanel (ui::ModuleContext ctx)
     tabs.accent = context.def.accent;
     styleTrimKnob (output);
 
+    // The analyser draws the module's own post-EQ tap. Handing the tap over is
+    // what enables it, and ~ResponseView is what disables it again -- so a
+    // session with no DEQ window open costs the audio thread nothing, which is
+    // the contract `AnalyserTap` is emphatic about.
+    curve.setAnalyserTap (context.analyser);
+
     // Open on the first band that is doing something, so a session reopens on
     // its work rather than on band 1.
     for (int b = 0; b < kBands; ++b)

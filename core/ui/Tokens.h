@@ -206,6 +206,43 @@ struct Tokens
         two bars either side of it needs to do. */
     juce::Colour meterGrWarm { 0xffb98a5e };
 
+    /** The spectrum analyser's four alternatives, and its default.
+
+        **None of these is an accent**, and that is the whole point of writing
+        them down here rather than picking one in a panel. A colour in this set
+        means something *inside* one panel: it never touches a knob cap, a
+        caption or a header bar, and it claims no hue for the module drawing it.
+        The same is true of BMO Opto's red and amber, and the table beside these
+        lives in `products/AGENTS.md` for the same reason -- without it, a later
+        module reads BMO DEQ as owning 23.6 degrees.
+
+        A preference with five options, Frosty 2026-09-12, measured against the
+        well `#1b1b1f`. The fifth is the module's own accent and needs no token,
+        which is why there are four here:
+
+        | option | hue | on well | nearest claimed hue |
+        |---|---|---|---|
+        | Accent (the module's own) | -- | -- | it *is* the accent; no separation from the curve |
+        | orange | 23.6 | 6.92:1 | 8 degrees from BMO Saturator |
+        | gold | 46.9 | 10.57:1 | 5 degrees from BMO Opto's amber state |
+        | pink | 352.0 | 7.44:1 | 16 degrees from BMO EQ |
+        | **neutral, the default** | 220.0 | 8.25:1 | claims nothing |
+
+        **Neutral is the default**: it collides with nothing, it never competes
+        with the curve in front of it, and a panel that ships in someone else's
+        colour has made a claim on their behalf. The other four are there for
+        people who want one.
+
+        The pink is the true complement of BMO DEQ's teal -- 352.0 against
+        172.0 -- but lifted. The complement at the teal's own saturation and
+        lightness is `#cf5e6d`, which measures 4.48:1 and is the faintest thing
+        on the panel. The hue is the complement's; the lightness is the suite's
+        legibility. */
+    juce::Colour analyserOrange  { 0xffef8b4a };
+    juce::Colour analyserGold    { 0xffe8c95a };
+    juce::Colour analyserPink    { 0xffe6949f };
+    juce::Colour analyserNeutral { 0xffaeb4c0 };
+
     //== Fixed, not themable ===================================================
 
     /** Every switch in the suite, in px.
