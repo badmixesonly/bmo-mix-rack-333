@@ -14,14 +14,20 @@ trip is ~22 minutes; the loop below is measured at **4.3 seconds**.
 
 ## 0. Read this before the checklist — parts of it are already answered
 
-The pass is running one module at a time, and LTV Comp is done to the point
-where it is waiting on Frosty. **20 commits sit on `ui-pass`** off
-`integration` (`4980b40`..`1c5299f`), of which **19 are unpushed** — only the
-session brief has reached the fork. Both older documents were written before
-most of them, so check here first:
+The pass is running one module at a time. LTV Comp (module 1) is done to the
+point where it is waiting on Leteveon; **BMO DEQ (module 2) is done to the point
+where it is waiting on Frosty** — one defect fixed, five decisions gathered, in
+`ui-pass-deq-2026-09-15.md`. Read that before touching DEQ, and read its §5
+before re-finding three things that look like faults and are not. Nothing is
+pushed and CI has not been touched this pass.
+
+Both older documents were written before most of these commits, so check here
+first:
 
 | the older document says | actually |
 |---|---|
+| `ui-pass-checklist.md` §B, BMO DEQ: the **GR bar**, **solo and the analyser**, the **48 kHz response view**, the **compact 320 in a rack** | All four measured and put to Frosty, none decided — `ui-pass-deq-2026-09-15.md` §3 and §6. The GR readout defect found alongside them is **fixed** (`71d6d01`) |
+| `rest-dot-finding.md` §5: "a control defaulting to 2–3% of its range would sit inside \[the suppression threshold]. There is no such control today" | **Stale.** DEQ band 1's FREQ defaults to 30 Hz — 5.9% of a log sweep, not its 20 Hz minimum — and is suppressed. So is band 12's. Correct behaviour, but the note's claim is no longer true |
 | `ui-pass-checklist.md` §A: **`utilGain` placeholder**, three options, Frosty's call | **Settled** — option (2), the utility azure `#4fb8e8`, Frosty 2026-09-14, in `aff0282`. `core/ui/Tokens.h:160`. The token is themeable now too |
 | the handoff's "blocked on Frosty": **Vcomp's names and accent** | Still open, but **ordered**: Frosty wants control placement final *first*, then names, then the accent last. Do not re-open the names before the layout |
 | snapshot id `vcomp` | **`ltvcomp`** — the CLI keyword followed the module id. Flagged in the session note as not confirmed with Frosty |
@@ -174,6 +180,7 @@ nothing.
 | BMO Opto | 220 | 440 | `784ca005ff68a747` | `9a87504c6cf57c33` | 48 px at 82 |
 | Dimension | 220 | 440 | `339dfc8560a3c548` | `4063603b21333eff` | 72 px at 180 |
 | BMO DEQ | 600 (expanded) | 1200 | `8b15e62102cad9a6` | `325623156690ffec` | 30 px at 536 |
+| BMO DEQ | 320 (compact) | 640 | `35df0fbe474b0551` | `20e67b4acc38959a` | 20 px at 340 |
 | LTV Comp | 260 | 520 | `e3d5fc2f21d11822` | `8901aa58c7466207` | 184 px at 486 |
 | BMO Tune RT | 360 | 720 | `8076f67b0802f196` | `10738b95c82711ef` | **110 px at 273** |
 
@@ -191,8 +198,21 @@ other parenthetical in the checklist is a design width, so Util's is the one
 that does not mean what its neighbours mean — worth fixing there before
 somebody lays out a 160 px panel against a 320 px number.
 
-DEQ's row is the **expanded** 600 — the compact 320 needs `view=compact` and
-is a separate baseline nobody has taken yet.
+DEQ has two rows, because it is two panels: the compact 320 needs
+`view=compact` and hashes differently. Both taken 2026-09-15.
+
+**The expanded pair moved at `71d6d01`** and is now `13e5c1b6526f7e37` dark,
+`6b4aba73320e1d63` light — the GR cell went from 36 px to 46 so its readout
+stopped clipping. The compact pair is unchanged by that commit, which is the
+point: the bar prints no value at 320. The table keeps the pre-commit figures
+because every other row in it is `1c5299f`.
+
+One more thing about DEQ specifically: **`signal=` moves nothing on this
+module** at Init. Every band ships off, DEQ has no level meters, and the GR bar
+is all a signal could reach — so a bare render and `signal=-18` are byte-equal.
+To make the meter read, switch a band on and give it dynamics
+(`b7_on=1 b7_dyn=1 b7_thr=-30`), and remember that setting any parameter at all
+puts `Init *` in the header and changes the hash.
 
 **Two numbers to read before reacting to them:**
 
