@@ -32,8 +32,14 @@ most of them, so check here first:
 time, which is why several live questions are parked rather than forgotten —
 Dimension's DETUNE scope and **Tune's empty middle are modules 4 and 3**, and
 the raw-legend contrast question is a *suite* question that waits until it can
-be asked as one. Tune is next. Its empty middle is a candidates-for-Frosty
-item, not something to decide in the edit.
+be asked as one. **BMO DEQ is next, not Tune** -- corrected 2026-09-15. Reverse publish order
+is by when a module was added, and `git log --diff-filter=A` on each
+`params.h` puts DEQ at 09-10 **21:32** and Tune at 09-10 **17:23**. They landed
+the same day about four hours apart, which is how they got swapped. The order
+is LTV Comp, DEQ, Tune, Dimension, Opto, then the 09-05 three.
+
+Tune's empty middle, when its turn comes, is a candidates-for-Frosty item and
+not something to decide in the edit.
 
 ---
 
