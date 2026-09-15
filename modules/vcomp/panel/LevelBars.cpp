@@ -13,20 +13,25 @@ namespace
 
     constexpr float kCaptionSize = 10.0f;
     constexpr float kScaleSize   = 8.0f;   ///< the printed dB figures
-    // 7 rather than 3, and standing 5 px proud of the well rather than 3 --
-    // Frosty, 2026-09-14. The gate is the one control on this panel that is
-    // not a knob or a switch, and at 3 px it read as a tick mark on the meter
-    // rather than as the thing you drag. The hit test never needed it: a click
-    // anywhere on the bar moves the handle, so the width is telling the user
-    // there is something here to grab, not defining where to grab it.
+    // 7 rather than 3 -- Frosty, 2026-09-14. The gate is the one control on
+    // this panel that is not a knob or a switch, and at 3 px it read as a tick
+    // mark on the meter rather than as the thing you drag. The hit test never
+    // needed the width: a click anywhere on the bar moves the handle, so this
+    // says there is something here to grab, it does not say where to grab.
     constexpr int   kHandleWidth = 7;
-    constexpr float kHandleProud = 5.0f;
 
     // The flag over the well: its width, and how far it stands above the bar.
-    // Frosty chose it over a plain bar and an I-beam, rendered side by side
-    // on 2026-09-14.
-    constexpr int   kHandleCap   = 17;
-    constexpr float kFlagHeight  = 8.0f;
+    // Frosty chose the shape over a plain bar and an I-beam, rendered side by
+    // side on 2026-09-14, and took it down a size on the 15th -- at 17 by 8 it
+    // was competing with the meter it points at.
+    constexpr int   kHandleCap   = 13;
+    constexpr float kFlagHeight  = 6.0f;
+
+    /** Air between the well and its printed figures.
+
+        Was the gate handle clearance, back when the handle hung below the
+        well. It does not any more, so this is only breathing room now. */
+    constexpr float kScaleGap    = 5.0f;
 
 }
 
@@ -210,9 +215,7 @@ void LevelBar::paint (juce::Graphics& g)
     // over its edge.
     {
         const auto font = ui::labelFont (kScaleSize);
-        // Clear of kHandleProud, so the handle cannot land on a figure; see
-        // kScaleRow.
-        const auto top = well.getBottom() + kHandleProud + 1.0f;
+        const auto top = well.getBottom() + kScaleGap + 1.0f;
         const auto strip = juce::Rectangle<float> (well.getX(), top,
                                                    well.getWidth(),
                                                    well.getBottom() + (float) kScaleRow - top);
@@ -258,11 +261,6 @@ void LevelBar::paint (juce::Graphics& g)
         // to override. See VcompPanel, where the colour is chosen.
         g.setColour (handleColour);
 
-        const auto stem = juce::Rectangle<float> (at - (float) kHandleWidth * 0.5f,
-                                                  well.getY() - kHandleProud,
-                                                  (float) kHandleWidth,
-                                                  well.getHeight() + kHandleProud * 2.0f);
-
         {
             // A flag over the well -- a triangle pointing down at the level it
             // sets -- with the stem carrying the eye through the bar, and the
@@ -272,7 +270,19 @@ void LevelBar::paint (juce::Graphics& g)
             // the name buys is the thing neither shape could say: a mark on a
             // meter is a reading until something tells you it is a control,
             // and GATE moving with it says both at once.
-            g.fillRect (stem.withTop (well.getY()));
+            //
+            // **The stem is exactly the well's height** -- Frosty, 2026-09-15.
+            // It used to stand kHandleProud past both edges, left over from
+            // the bar this replaced, and hanging below the meter made the
+            // handle read as taller than the thing it sits in.
+            //
+            // That also settles the printed scale properly. It was kept clear
+            // of the handle by a margin; now nothing on the handle descends
+            // past the well at all, so the figures are out of its reach by
+            // geometry rather than by clearance -- which is the stronger form
+            // of the same fix BMO Opto's GR needle needed.
+            g.fillRect (juce::Rectangle<float> (at - (float) kHandleWidth * 0.5f, well.getY(),
+                                                (float) kHandleWidth, well.getHeight()));
 
             juce::Path flag;
             flag.addTriangle (at - (float) kHandleCap * 0.5f, well.getY() - kFlagHeight,
