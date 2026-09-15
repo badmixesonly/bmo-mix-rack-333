@@ -184,10 +184,25 @@ private:
 };
 
 //==============================================================================
-/** Gain reduction as a bar that grows down from the top, in the suite's
-    meterGr. The module's deepest band, from the context's gainReductionDb --
-    the panel has no path to a single band's figure, by design (a panel sees
-    parameters and five meters, never the DSP).
+/** What the dynamics are doing to the gain, as a bar read from both ends.
+
+    The module's deepest band, from the context's gainReductionDb -- the panel
+    has no path to a single band's figure, by design (a panel sees parameters
+    and five meters, never the DSP).
+
+    **Gain taken away grows down from the top. Gain added grows up from the
+    bottom.** Frosty, 2026-09-15, after the UI pass measured that an upward
+    band drew exactly the same empty bar as a band with its dynamics switched
+    off -- the source was `max (0, ...)` and the meter could not tell the two
+    apart. See `DspCore::currentGainReductionDb`.
+
+    Both directions run the **full** height for the full range, so they share
+    the track rather than splitting it and neither costs the other any
+    resolution. That is the reason this is not a centre-out bar, which was the
+    other candidate rendered: centre-out halves both. It works because only one
+    of them can be non-zero at a time -- the source is one band's offset, not a
+    sum -- so the two fills can never collide, and which end a fill starts from
+    *is* the sign.
 
     Mockups A and C: a 12 px bar, GR under it, and on the full panel the
     figure under that. The bar is centred in whatever width it is given, so
@@ -206,17 +221,35 @@ public:
     /** The height a bar of `barHeight` needs with its words under it. */
     int heightFor (int barHeight) const { return barHeight + kCaptionRow + (showsValue ? kValueRow : 0); }
 
+    /** The readout for a signed figure: a real minus for gain taken away, a
+        plus for gain added. Tenths, so the bar says how much at a glance and
+        this says it exactly. */
+    static juce::String valueText (float db)
+    {
+        return juce::String (db >= 0.0f ? juce::CharPointer_UTF8 ("\xe2\x88\x92")
+                                        : juce::CharPointer_UTF8 ("+"))
+             + juce::String (std::abs (db), 1);
+    }
+
     /** The widest readout this bar can ever print.
 
         Fixed rather than sampled, because a cell sized to whatever the meter
         happened to read when somebody looked at it is a cell that clips later.
         `DspCore::currentGainReductionDb` returns the deepest *single* band
         rather than a sum, and a band's offset is bounded by its own range
-        parameter, whose floor is -24 dB -- so this is the widest string, and
-        it cannot grow without the schema changing. */
+        parameter, which runs to 24 dB either way -- so one of these two is the
+        widest string, and it cannot grow without the schema changing.
+
+        Both ends are measured rather than one, because the minus and the plus
+        are different glyphs and which is wider is a property of the caption
+        face. Assuming would be how the next version of "-12." gets written. */
     static juce::String widestValue()
     {
-        return juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) + juce::String (kRangeDb, 1);
+        const auto cut = valueText (kRangeDb), added = valueText (-kRangeDb);
+        const auto font = ui::captionFont (kValueSize);
+
+        return juce::GlyphArrangement::getStringWidth (font, added)
+             > juce::GlyphArrangement::getStringWidth (font, cut) ? added : cut;
     }
 
     /** How far the widest word this bar draws runs past its own box; <= 0
@@ -249,24 +282,36 @@ public:
         g.setColour (t.hairline.withAlpha (0.5f));
         g.drawRoundedRectangle (bar.reduced (0.5f), 2.0f, 1.0f);
 
-        const auto depth = juce::jlimit (0.0f, 1.0f, shown / kRangeDb);
+        // Down from the top for gain taken away, up from the bottom for gain
+        // added, both over the whole track. One fill or the other, never both.
+        const auto inner = bar.reduced (2.0f);
+        const auto depth = juce::jlimit (-1.0f, 1.0f, shown / kRangeDb);
+
         g.setColour (t.meterGr);
-        g.fillRect (bar.reduced (2.0f).removeFromTop ((bar.getHeight() - 4.0f) * depth));
+
+        if (depth > 0.0f)
+            g.fillRect (inner.withHeight (inner.getHeight() * depth));
+        else if (depth < 0.0f)
+            g.fillRect (inner.withTrimmedTop (inner.getHeight() * (1.0f + depth)));
 
         ui::drawLabel (g, "GR", caption, juce::Justification::centredBottom, ui::labelFont (kCaptionSize), t.text1);
 
-        // Tenths, and a real minus: the bar says how much at a glance, this
-        // says it exactly. Blank at rest rather than "-0.0".
-        if (showsValue && shown >= 0.05f)
-            ui::drawLabel (g, juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) + juce::String (shown, 1), value,
+        // Blank at rest rather than "-0.0", and the sign carries which end the
+        // fill is growing from -- so the figure and the picture agree even
+        // when the bar is too short to read a direction off.
+        if (showsValue && std::abs (shown) >= 0.05f)
+            ui::drawLabel (g, valueText (shown), value,
                            juce::Justification::centredTop, ui::captionFont (kValueSize), t.text2);
     }
 
 private:
     void timerCallback() override
     {
+        // Snap to a bigger move, ease back from it -- by magnitude now that
+        // the value is signed, so a deep boost holds the way a deep cut does
+        // and does not get overtaken by a shallower cut of the opposite sign.
         const auto now = reduction ? reduction() : 0.0f;
-        shown = now > shown ? now : shown + 0.25f * (now - shown);
+        shown = std::abs (now) > std::abs (shown) ? now : shown + 0.25f * (now - shown);
         repaint();
     }
 

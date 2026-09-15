@@ -155,7 +155,16 @@ public:
     AnalyserTap& postTap() noexcept { return shared->post; }
     AnalyserTap& preTap() noexcept  { return shared->pre; }
 
-    /** Deepest cut any dynamic band is applying right now, dB, >= 0. */
+    /** The largest gain move any dynamic band is making right now, dB,
+        **signed: positive is gain taken away, negative is gain added**.
+
+        Not `>= 0`, which is what it was until 2026-09-15 and what the name
+        still reads as. The name stays because it is the one
+        `ModuleDsp::currentGainReductionDb` declares for every module, and
+        widening what the value means costs less than a second channel through
+        the engine, the processor and `ModuleContext`. Every other module in
+        the suite only ever cuts, so BMO DEQ is the only one that returns the
+        other sign. See the definition for what went wrong without it. */
     double currentGainReductionDb() const noexcept;
 
     //== Inspection, for tests, tools and a future curve display ===============

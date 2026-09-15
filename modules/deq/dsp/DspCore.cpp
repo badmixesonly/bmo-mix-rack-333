@@ -356,11 +356,31 @@ void DspCore::process (double* const* channels, int numChannels, int numSamples)
 //==============================================================================
 double DspCore::currentGainReductionDb() const noexcept
 {
+    // Signed, and the sign is the point: **positive is gain taken away,
+    // negative is gain added**.
+    //
+    // This was `std::max (0, -offsetDb)`, which reported a flat zero for every
+    // upward band. Measured on the panel during the UI pass (2026-09-15), a
+    // band boosting 12 dB and a band with its dynamics switched off drew the
+    // same empty meter -- the one thing a meter must never do. Frosty's call
+    // the same day: reduction reads down from the top of the bar, gain added
+    // reads up from the bottom.
+    //
+    // Still the deepest *single* band rather than a sum, as before, because a
+    // panel has no path to one band's figure. "Deepest" is now by magnitude,
+    // so the band moving the signal furthest wins whichever way it is moving
+    // it, and ties go to the first one reached -- the same arbitrary but
+    // stable choice `std::max` was already making.
     double deepest = 0.0;
 
     for (const auto& b : bands)
         if (b.live)
-            deepest = std::max (deepest, -b.offsetDb * b.enable.tick);
+        {
+            const auto moved = -b.offsetDb * b.enable.tick;
+
+            if (std::abs (moved) > std::abs (deepest))
+                deepest = moved;
+        }
 
     return deepest;
 }

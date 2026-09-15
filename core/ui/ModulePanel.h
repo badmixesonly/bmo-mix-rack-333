@@ -49,7 +49,17 @@ struct ModuleContext
     // default-constructed std::function throws if invoked.
     std::function<float()> inputPeak;         ///< input level, linear, before the DSP
     std::function<float()> inputRms;
-    std::function<float()> gainReductionDb;   ///< always >= 0
+    /** Gain the module is moving right now, dB, **signed: positive is gain
+        taken away, negative is gain added**.
+
+        It read "always >= 0" until 2026-09-15, and for BMO Opto and LTV Comp
+        it still is -- a compressor only cuts. BMO DEQ is why it widened: an
+        upward dynamic band was reporting zero, so a band boosting 12 dB drew
+        the same empty meter as a band switched off. A panel that reads this
+        and shows only reduction should clamp at zero rather than assume the
+        sign, because whether it can arrive depends on the module underneath
+        and not on this declaration. */
+    std::function<float()> gainReductionDb;
 
     // The panel-to-DSP direction, and the only one that is not a parameter.
     // `setSolo` is momentary: the panel calls it while a control is held and

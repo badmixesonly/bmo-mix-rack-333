@@ -840,6 +840,43 @@ namespace
             checkClose (toDb (peakAbs (x, n - 4800, n) / hi), expected, 0.05, "T5: steady-state level in the audio");
             checkClose (e.currentGainReductionDb(), 10.5, 0.05, "T5: gain reduction reported for the meter");
         }
+
+        // The same band pointed the other way, because the meter's figure is
+        // signed and the sign is the only thing that tells an upward band from
+        // a band doing nothing.
+        //
+        // `currentGainReductionDb` was `max (0, -offsetDb)` until 2026-09-15,
+        // so this case reported a flat zero and the panel drew an empty bar
+        // while the band was adding 10.5 dB. Nothing failed, because nothing
+        // asked. The mirror of the block above, to the same tolerances: only
+        // `rangeDb` changes, and every figure comes back with its sign turned
+        // over.
+        {
+            const double rate = 48000.0;
+            Settings s;
+            auto& b = s.bands[0];
+            b.enabled = true; b.shape = Shape::bell; b.frequencyHz = 1000.0; b.q = 2.0; b.gainDb = 0.0;
+            b.dynamics.enabled = true; b.dynamics.thresholdDb = -20.0; b.dynamics.ratio = 4.0;
+            b.dynamics.kneeDb = 0.0; b.dynamics.rangeDb = 24.0;
+            b.dynamics.attackMs = 5.0; b.dynamics.releaseMs = 1000.0;
+
+            auto e = makeEngine (rate, s);
+            const auto n = (size_t) (2.0 * rate);
+            std::vector<double> x (n);
+            for (size_t i = 0; i < n; ++i) x[i] = hi * std::sin (2.0 * kPi * 1000.0 * (double) i / rate);
+            double* ch[1] { x.data() };
+            e.process (ch, 1, (int) n);
+
+            const auto expected = 10.5;    // the same amount, added rather than taken
+            checkClose (e.bandOffsetDb (0), expected, 0.05, "T5: an upward band settles on the static curve");
+            checkClose (toDb (peakAbs (x, n - 4800, n) / hi), expected, 0.05, "T5: an upward band's level in the audio");
+
+            // The absolute, not "is negative": a sign test would pass on any
+            // wrong magnitude, which is the trap OptoDspTests was written
+            // against.
+            checkClose (e.currentGainReductionDb(), -10.5, 0.05,
+                        "T5: the meter reports gain added as a negative figure");
+        }
     }
 
     //==========================================================================

@@ -33,11 +33,19 @@ public:
         can be told about a change before the audio thread has picked it up. */
     virtual int latencyForParams (const float* values, int count) const = 0;
 
-    /** Gain reduction this module is currently applying, in dB, always >= 0.
+    /** Gain this module is currently moving, in dB, **signed: positive is gain
+        taken away, negative is gain added**.
+
         Called from the audio thread right after process(), same as a Meter's
         measure() -- see core/product/ModuleEngine.h. Only a dynamics module
-        (BMO Opto and whatever follows it) has anything to report here; the
-        default is silence, so EQ/Sat/Util need no change to keep building. */
+        has anything to report here; the default is silence, so EQ/Sat/Util
+        need no change to keep building.
+
+        The sign was added 2026-09-15 for BMO DEQ, whose bands can expand
+        upward as well as compress downward and which was reporting a flat
+        zero for the upward half. A compressor -- BMO Opto, LTV Comp -- only
+        ever cuts and so only ever returns >= 0, and nothing here requires the
+        other sign; it is available to a module that needs it. */
     virtual float currentGainReductionDb() const noexcept { return 0.0f; }
 
     /** Hear one part of the module on its own, or -1 for the whole thing.
