@@ -13,7 +13,7 @@ new plugin.
 | **BMO Opto** | A two-knob opto-style leveller, CRUSH and LEVEL, with a feedback detector | 220 |
 | **BMO Dimension** | A stereo imager in three stages, all of them on the side signal only | 220 |
 | **BMO DEQ** | A zero-latency dynamic parametric EQ; the one module with two widths | 320 compact, 600 full |
-| **BMO Vcomp** | A modern vocal compressor: AMOUNT, a gate on the meter, and OUTPUT, with timing, sidechain and band-split controls behind COMPLEX | 260 |
+| **LTV Comp** | A modern vocal compressor: AMOUNT, a gate on the meter, and OUTPUT, with timing, sidechain and band-split controls behind COMPLEX | 260 |
 | **BMO Mix Rack** | Up to eight of the above in series, re-orderable, with chain presets | as wide as its modules |
 | **BMO Tune RT** | A low-latency monophonic pitch corrector. In this repository, **not in the rack** | 360 |
 

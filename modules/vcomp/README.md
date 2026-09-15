@@ -1,4 +1,4 @@
-# BMO Vcomp
+# LTV Comp
 
 A modern vocal compressor. Two knobs and a gate do the work; five more controls
 are behind a switch for when they are wanted.

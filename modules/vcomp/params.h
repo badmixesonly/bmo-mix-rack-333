@@ -11,8 +11,8 @@ namespace bmo::vcomp
 // that holds them.
 //==============================================================================
 
-inline constexpr auto kModuleId   = "vcomp";
-inline constexpr auto kModuleName = "BMO Vcomp";
+inline constexpr auto kModuleId   = "ltvcomp";
+inline constexpr auto kModuleName = "LTV Comp";
 
 //==============================================================================
 // The face, and the switch that reveals the rest.

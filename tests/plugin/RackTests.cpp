@@ -61,7 +61,7 @@ namespace
                     "active" } },
         { "dim",  { "width", "shuffle", "shuffle_freq", "detune", "detune_on",
                     "diffuse", "rate", "depth", "rotation", "asymmetry" } },
-        { "vcomp", { "amount", "gate", "output", "complex", "attack", "release",
+        { "ltvcomp", { "amount", "gate", "output", "complex", "attack", "release",
                      "arc", "sidechain", "low_thru", "high_thru" } },
     };
 

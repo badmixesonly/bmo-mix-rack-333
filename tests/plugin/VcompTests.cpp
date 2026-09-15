@@ -159,7 +159,12 @@ int main()
 
         check (presets.getFactory().size() == P::factory().size(), "every factory preset is listed");
         check (presets.getCurrentName() == "Init", "the plugin starts on Init");
-        check (presets.extension() == ".bmovcomp", "presets are .bmovcomp files");
+        // Renamed with the product, 2026-09-14: BMO Vcomp became LTV Comp, the
+        // first product on the LTV line. The legacy pair that still reads the
+        // old `.bmovcomp` folder is set in products/vcomp/Product.h and is not
+        // reachable from here -- PresetManager exposes extension() and none of
+        // the rest of its PresetInfo -- so this pins the new extension only.
+        check (presets.extension() == ".ltvcomp", "presets are .ltvcomp files");
 
         for (int i = 0; i < (int) P::factory().size(); ++i)
         {
@@ -240,5 +245,5 @@ int main()
         }
     }
 
-    return finish ("BMO Vcomp");
+    return finish ("LTV Comp");
 }

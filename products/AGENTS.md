@@ -20,11 +20,37 @@ Permanent. Allocate here before the first build of anything new.
 | BMO Mix Rack | -- | `Brck` | `com.lt3audio.bmomixrack` | `.bmorack` |
 | BMO DEQ | `deq` | `Bpar` | `com.lt3audio.bmodeq` | `.bmodeq` |
 | BMO Tune RT -- **not in the rack** | `tune` | `Btun` | `com.lt3audio.bmotunert` | `.bmotune` |
-| BMO Vcomp | `vcomp` | `Bvcp` | `com.lt3audio.bmovcomp` | `.bmovcomp` |
+| LTV Comp -- **not a BMO product** | `ltvcomp` | `Ltvc` | `com.lt3audio.ltvcomp` | `.ltvcomp` (reads `.bmovcomp`) |
 
 Manufacturer code `LT3a`, company "LT3 Audio", preset root `LT3 Audio/`.
 BMO EQ keeps FrostyEQ's code and bundle id on purpose: that is what makes
 existing sessions open.
+
+## Lines
+
+There are two, and a product belongs to one of them. **BMO** is the suite.
+**LTV** is the collaborations, of which LTV Comp is the first and more are
+planned. A line is `ui::Line` in code: it owns the faceplate, the strip behind
+the header, the wells and the knob caps, plus the marque printed at the head of
+every panel -- `LT3a` for BMO, `LTV` for a collaboration. It owns no ink and no
+layout, so a rack still lines up and every ink in the suite still answers to a
+known set of grounds.
+
+**Codes on the LTV line are two characters for the collaborator and two for
+the product** -- `Ltvc` is `lt` + `vc` -- against BMO's one-character prefix
+and three for the product. Frosty's scheme, 2026-09-14.
+
+The capital is not optional and not a house style. JUCE's CMake API on
+`PLUGIN_CODE`: *"For AU compatibility, this must contain exactly one upper-case
+letter. GarageBand 10.3 requires the first letter to be upper-case, and the
+remaining letters to be lower-case."* An all-lowercase code is an AudioUnit
+that misbehaves rather than one that fails to build, which is the worst kind of
+wrong. Every row above already obeys it.
+
+**Nothing here changes a BMO product.** The two-plus-two shape is the LTV
+line's alone; the eight BMO rows keep the codes they shipped with, and a new
+BMO module still takes `B` plus three. The only row this scheme has ever been
+applied to is LTV Comp's, which was allocated inside its own change window.
 
 **BMO Tune RT is in this repository but not in the rack** (Frosty,
 2026-09-11): its module id is allocated here so nothing else can take it, and
@@ -60,8 +86,8 @@ were re-derived from the new name, and the module id is `deq` rather than
 `par`. None of these had shipped, so changing them cost nothing. The row has
 been permanent since the product's first build, on `add-bmo-deq`.
 
-**BMO Vcomp** is the vocal compressor, and it is not BMO Opto's replacement or
-its successor -- the two are opposite products that happen to share a category.
+**LTV Comp** (BMO Vcomp until 2026-09-14) is the vocal compressor, and it is
+not BMO Opto's replacement or its successor -- the two are opposite products that happen to share a category.
 Opto models two pieces of hardware and wears their behaviour, feedback topology
 and all; Vcomp is modern, feedforward and predictable, and its whole claim is
 that a vocal needs one knob for how hard and one for how loud. Frosty named the
@@ -85,10 +111,27 @@ the shipped accents run, and its 1.91 on the pale plate is second only to BMO
 EQ's 2.00 -- so unlike the lime it costs nothing in the pale appearance. The
 figures were computed by the WCAG formula on AURORA.
 
-**Frosty has not yet signed this row off.** It was allocated during the build so
-the module could have a colour at all, on the argument above; the accent, the
-plugin code `Bvcp` and the name are all cheap to change until the first build
-ships and none of it has, which is exactly the window the BMO DEQ row describes.
+**The row was rewritten in that window, 2026-09-14, and the window is now the
+only reason it cost nothing.** BMO Vcomp became **LTV Comp**, the first product
+on the LTV line: the module id went `vcomp` to `ltvcomp`, the plugin code
+`Bvcp` to `Ltvc`, and the bundle id and preset extension were re-derived from
+the new name. That is the BMO DEQ move exactly -- renamed from BMO Parametric
+before anything shipped -- and it is the module id that made the timing matter,
+because `ModuleDef::id` is documented *"in state files and rack presets, never
+changes"*. 0.2.4 existed only on AURORA, so nothing else had ever written it.
+
+`ProductInfo` carries `BMO Vcomp` / `.bmovcomp` as its legacy pair, for the one
+machine that has presets under the old name. One hop; BMO CEQ is the product
+that needs two.
+
+**The accent is still not signed off**, and is now the last thing in the queue
+rather than the first, because the line moved the ground out from under it.
+Every figure in the table above is quoted against `#2e2e32` and `#efefef`, and
+an LTV panel is neither -- periwinkle `#a2a8ff` measures 1.91:1 on the suite's
+pale plate and **1.31:1 on LTV silver**, level with the lime, which is the
+lowest figure here. So an LTV accent cannot be picked off this table. It has to
+clear silver and graphite, and it should be picked after the panel's layout is
+settled, not before.
 
 BMO DEQ has 159 parameters -- 158 of Frosty's allocation plus AUTO, appended
 at index 158 on 2026-09-11 before any release. A rack slot still has 32 host
@@ -203,7 +246,7 @@ there are distinguishable ones.
 | *(not an accent)* utility azure `#4fb8e8` | | 198.8° | 6.02 | -- |
 | BMO DEQ | `#5ecfc0` teal | 172.0° | **7.19** | 1.64 |
 | BMO Tune RT (not in the rack) | `#b6e35d` lime | 80.1° | **9.10** | **1.29** |
-| BMO Vcomp | `#a2a8ff` periwinkle | 236.1° | 6.17 | 1.91 |
+| LTV Comp -- **unsigned, and on the LTV ground** | `#a2a8ff` periwinkle | 236.1° | 6.17 | 1.91 |
 
 **The lime was picked outside this table**, while Tune was still its own
 repository, and its two figures are computed by the WCAG formula on AURORA

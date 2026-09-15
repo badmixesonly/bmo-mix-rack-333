@@ -98,7 +98,7 @@ time. Hash renders before and after any change that should move nothing.
       greyed when DYN is off. Reads well; check the 320 width in a rack
       next to EQ.
 
-### BMO Vcomp (260)
+### LTV Comp (260)
 - [ ] **Takes neither section.** OUTPUT floats mid-panel and does not line
       up with EQ, Sat and DEQ's OUTPUT in a rack, and the foot below
       COMPLEX / ARC is empty in standard mode. Take the output section (the

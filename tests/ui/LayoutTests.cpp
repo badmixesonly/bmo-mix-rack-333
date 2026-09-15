@@ -663,7 +663,7 @@ int main (int argc, char** argv)
         { "util", +[] () -> std::unique_ptr<juce::AudioProcessor> { return createUtil(); } },
         { "opto", +[] () -> std::unique_ptr<juce::AudioProcessor> { return createOpto(); } },
         { "dim",  +[] () -> std::unique_ptr<juce::AudioProcessor> { return createDim(); } },
-        { "vcomp", +[] () -> std::unique_ptr<juce::AudioProcessor> { return createVcomp(); } },
+        { "ltvcomp", +[] () -> std::unique_ptr<juce::AudioProcessor> { return createVcomp(); } },
 
         // BMO DEQ twice, once per width: standalone opens it full, and the
         // compact one is what a rack shows. Both are the same panel laid out

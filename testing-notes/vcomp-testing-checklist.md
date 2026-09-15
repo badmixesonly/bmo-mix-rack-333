@@ -1,4 +1,4 @@
-# BMO Vcomp — listening checklist
+# LTV Comp — listening checklist
 
 Build under test: `v0.2.4` / `cbd0939` on `integration`, CI run
 34834557823 (`BMO-Windows`), installed on **AURORA** 2026-09-14; the SHA-256 is

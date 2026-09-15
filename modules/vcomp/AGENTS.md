@@ -1,4 +1,4 @@
-# modules/vcomp -- BMO Vcomp
+# modules/vcomp -- LTV Comp
 
 The vocal compressor. Two knobs and a gate handle on the face, five more knobs
 behind a switch, and a modern feedforward detector under all of it.
@@ -201,7 +201,7 @@ said.
 **This was first written up here as a fault in `PlainKnob::captionOverflow`,
 and that was wrong.** Measured directly, it reports 10.7 px and 13.3 px of
 overflow for those two strings in an 80 px column -- correct, and it would have
-failed the build. The actual fault was that **BMO Vcomp was never added to
+failed the build. The actual fault was that **LTV Comp (then BMO Vcomp) was never added to
 `tests/ui/LayoutTests.cpp`'s product list**, so nothing ever laid this panel
 out. `modules/AGENTS.md` names that file as one of the shared files a new
 module must edit and predicts this exact failure mode: "unchecked, silent".
