@@ -47,6 +47,44 @@ public:
     LevelBar (juce::String caption, Grow, float minDb, float maxDb,
               std::function<float()> source);
 
+    /** One printed figure on the scale: where it sits, in the bar's own dB,
+        and what it says.
+
+        The two are separate because on the GR bar they disagree. That bar's
+        readings are *amounts of reduction*, 0 to 24 and positive, because that
+        is what the DSP hands over -- and what a reader wants printed under it
+        is the gain it represents, which is negative. Deriving the text from
+        the position would print 24 where the meter means -24. */
+    struct ScaleMark
+    {
+        float db;
+
+        /** Where this reading sits along the bar, 0 at minDb and 1 at maxDb,
+            *before* Grow is applied.
+
+            The scale is the mapping as well as the labelling, so the fill, the
+            ticks, the figures and the gate handle cannot disagree about where
+            a dB is -- there is one list and they all read it. BMO Opto's
+            DynamicsMeter::ScalePoint is the same idea and the precedent.
+
+            **It is hand-placed and not a formula.** Frosty asked for -18 at
+            the halfway point with the fidelity rising toward 0, and no single
+            exponent gives that: the top 18 dB take half the bar, and inside
+            that half the spacing still has to open out. Opto's GR scale hit
+            the same wall and stopped pretending to be a power law for the same
+            reason. The cost is that a value added here is placed by hand and
+            its neighbours re-measured; that is cheaper than a formula whose
+            comment lies about what it does. */
+        float fraction;
+
+        juce::String text;
+    };
+
+    /** The printed scale, ends included. Ticks are drawn at the interior marks,
+        so the figures and the rules agree by construction rather than by two
+        lists being kept in step. */
+    void setScale (std::vector<ScaleMark> marks);
+
     void paint (juce::Graphics&) override;
 
     /** Pulls a new reading and repaints. Driven from the panel's timer rather
@@ -94,6 +132,15 @@ public:
         hard left, on top of the very figure that says so. */
     static constexpr int kScaleRow     = 16;
 
+    /** The strip above the well on a bar that carries a threshold, holding the
+        flag and the sliding name over it.
+
+        Reserved by wellBounds on that bar only, and the panel hands that bar a
+        box this much taller -- so the three wells stay evenly spaced and the
+        block still reads as one instrument. Giving all three the strip would
+        cost 40 px of empty plate on the two that have nothing to put in it. */
+    static constexpr int kTagRow       = 20;
+
 private:
     /** 0..1 along the well for a dB reading, before Grow is applied. */
     float normalised (float db) const;
@@ -109,6 +156,11 @@ private:
         Printing the scale is what made it visible. */
     float positionOf (float db) const;
 
+    /** The inverse of `normalised`: the dB a 0..1 along the bar stands for.
+        The mouse needs it, and it has to walk the same marks or a drag and
+        the handle disagree wherever the curve bends. */
+    float dbAtFraction (float fraction) const;
+
     /** Sets the threshold parameter from a mouse x, through the standard
         gesture triplet. */
     void setThresholdFromX (int x);
@@ -120,6 +172,7 @@ private:
 
     juce::Colour flat;
     bool useFlatColour = false;
+    std::vector<ScaleMark> scale;
 
     juce::RangedAudioParameter* threshold = nullptr;
     juce::Colour handleColour;

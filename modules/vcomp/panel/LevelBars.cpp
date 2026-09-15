@@ -22,10 +22,12 @@ namespace
     constexpr int   kHandleWidth = 7;
     constexpr float kHandleProud = 5.0f;
 
-    /** Ticks every 12 dB: four across a 60 dB level bar, one across the GR
-        bar's 24. Enough to read a threshold against, few enough not to turn
-        the well into a ruler. */
-    constexpr float kTickStepDb = 12.0f;
+    // The flag over the well: its width, and how far it stands above the bar.
+    // Frosty chose it over a plain bar and an I-beam, rendered side by side
+    // on 2026-09-14.
+    constexpr int   kHandleCap   = 17;
+    constexpr float kFlagHeight  = 8.0f;
+
 }
 
 LevelBar::LevelBar (juce::String captionText, Grow growDirection,
@@ -37,6 +39,11 @@ LevelBar::LevelBar (juce::String captionText, Grow growDirection,
       source (std::move (levelSource))
 {
     setInterceptsMouseClicks (false, false);
+}
+
+void LevelBar::setScale (std::vector<ScaleMark> marks)
+{
+    scale = std::move (marks);
 }
 
 void LevelBar::setFlatColour (juce::Colour colour)
@@ -61,12 +68,59 @@ juce::Rectangle<int> LevelBar::wellBounds() const
     auto area = getLocalBounds();
     area.removeFromLeft (kCaptionWidth);
     area.removeFromBottom (kScaleRow);
+
+    if (threshold != nullptr)
+        area.removeFromTop (kTagRow);
     return area.withSizeKeepingCentre (area.getWidth(), kBarHeight);
 }
 
 float LevelBar::normalised (float db) const
 {
-    return juce::jlimit (0.0f, 1.0f, (db - minDb) / (maxDb - minDb));
+    // Piecewise-linear through the scale marks, which is what puts -18 at the
+    // halfway point of a -60..0 bar. Straight ratio before setScale has been
+    // called, so a bar without a scale still reads.
+    if (scale.size() < 2)
+        return juce::jlimit (0.0f, 1.0f, (db - minDb) / (maxDb - minDb));
+
+    if (db <= scale.front().db) return scale.front().fraction;
+    if (db >= scale.back().db)  return scale.back().fraction;
+
+    for (size_t i = 1; i < scale.size(); ++i)
+    {
+        const auto& a = scale[i - 1];
+        const auto& b = scale[i];
+
+        if (db <= b.db)
+            return a.fraction + (db - a.db) / (b.db - a.db) * (b.fraction - a.fraction);
+    }
+
+    return scale.back().fraction;
+}
+
+float LevelBar::dbAtFraction (float fraction) const
+{
+    // The inverse, for the mouse. Without it a drag and the handle it drags
+    // would be on two different scales, and the handle would slide out from
+    // under the cursor everywhere the curve is not straight.
+    if (scale.size() < 2)
+        return minDb + fraction * (maxDb - minDb);
+
+    if (fraction <= scale.front().fraction) return scale.front().db;
+    if (fraction >= scale.back().fraction)  return scale.back().db;
+
+    for (size_t i = 1; i < scale.size(); ++i)
+    {
+        const auto& a = scale[i - 1];
+        const auto& b = scale[i];
+
+        if (fraction <= b.fraction)
+        {
+            const auto span = b.fraction - a.fraction;
+            return a.db + (span > 0.0f ? (fraction - a.fraction) / span : 0.0f) * (b.db - a.db);
+        }
+    }
+
+    return scale.back().db;
 }
 
 float LevelBar::positionOf (float db) const
@@ -91,8 +145,14 @@ void LevelBar::paint (juce::Graphics& g)
 
     const auto well = wellBounds().toFloat();
 
+    // Centred on the *well*, not on the component. The component grew a scale
+    // strip under it on 2026-09-14 and the caption carried on centring itself
+    // in the whole row, which left IN, GR and OUT sitting a few pixels below
+    // the bars they name -- consistently, so it read as sloppy rather than as
+    // broken, which is the harder kind to notice.
     ui::drawLabel (g, caption,
-                   getLocalBounds().removeFromLeft (kCaptionWidth - 6).toFloat(),
+                   juce::Rectangle<float> (0.0f, well.getY(),
+                                           (float) kCaptionWidth - 6.0f, well.getHeight()),
                    juce::Justification::centredRight, ui::labelFont (kCaptionSize), t.text1);
 
     g.setColour (t.well);
@@ -129,9 +189,9 @@ void LevelBar::paint (juce::Graphics& g)
     // different instruments.
     g.setColour (t.meterInk.withAlpha (0.22f));
 
-    for (auto db = minDb + kTickStepDb; db < maxDb; db += kTickStepDb)
+    for (size_t i = 1; i + 1 < scale.size(); ++i)
     {
-        const auto at = well.getX() + well.getWidth() * positionOf (db);
+        const auto at = well.getX() + well.getWidth() * positionOf (scale[i].db);
         g.drawVerticalLine ((int) at, well.getY() + 2.0f, well.getBottom() - 2.0f);
     }
 
@@ -157,22 +217,32 @@ void LevelBar::paint (juce::Graphics& g)
                                                    well.getWidth(),
                                                    well.getBottom() + (float) kScaleRow - top);
 
-        const auto figure = [&] (float db, juce::Justification justify)
+        const auto figure = [&] (const ScaleMark& mark, juce::Justification justify)
         {
-            const auto text = juce::String (juce::roundToInt (std::abs (db)));
             const auto box = justify == juce::Justification::centred
-                                 ? strip.withX (strip.getX() + well.getWidth() * positionOf (db) - 16.0f)
+                                 ? strip.withX (strip.getX() + well.getWidth() * positionOf (mark.db) - 16.0f)
                                         .withWidth (32.0f)
                                  : strip;
 
-            ui::drawLabel (g, text, box, justify, font, t.text2);
+            ui::drawLabel (g, mark.text, box, justify, font, t.text2);
         };
 
-        for (auto db = minDb + kTickStepDb; db < maxDb; db += kTickStepDb)
-            figure (db, juce::Justification::centred);
+        for (size_t i = 1; i + 1 < scale.size(); ++i)
+            figure (scale[i], juce::Justification::centred);
 
-        figure (grow == Grow::rightward ? minDb : maxDb, juce::Justification::centredLeft);
-        figure (grow == Grow::rightward ? maxDb : minDb, juce::Justification::centredRight);
+        // The two ends, justified into the well rather than centred on their
+        // own positions, so they sit inside the meter instead of half over its
+        // edge. Which mark is which end depends on the fill direction.
+        if (scale.size() >= 2)
+        {
+            const auto& low  = scale.front();
+            const auto& high = scale.back();
+
+            figure (positionOf (low.db) < positionOf (high.db) ? low : high,
+                    juce::Justification::centredLeft);
+            figure (positionOf (low.db) < positionOf (high.db) ? high : low,
+                    juce::Justification::centredRight);
+        }
     }
 
     if (threshold != nullptr)
@@ -187,10 +257,42 @@ void LevelBar::paint (juce::Graphics& g)
         // rather than the module accent, so there is no accent here for a line
         // to override. See VcompPanel, where the colour is chosen.
         g.setColour (handleColour);
-        g.fillRect (juce::Rectangle<float> (at - (float) kHandleWidth * 0.5f,
-                                            well.getY() - kHandleProud,
-                                            (float) kHandleWidth,
-                                            well.getHeight() + kHandleProud * 2.0f));
+
+        const auto stem = juce::Rectangle<float> (at - (float) kHandleWidth * 0.5f,
+                                                  well.getY() - kHandleProud,
+                                                  (float) kHandleWidth,
+                                                  well.getHeight() + kHandleProud * 2.0f);
+
+        {
+            // A flag over the well -- a triangle pointing down at the level it
+            // sets -- with the stem carrying the eye through the bar, and the
+            // control's name riding above it.
+            //
+            // Frosty's call, 2026-09-14, over a plain bar and an I-beam. What
+            // the name buys is the thing neither shape could say: a mark on a
+            // meter is a reading until something tells you it is a control,
+            // and GATE moving with it says both at once.
+            g.fillRect (stem.withTop (well.getY()));
+
+            juce::Path flag;
+            flag.addTriangle (at - (float) kHandleCap * 0.5f, well.getY() - kFlagHeight,
+                              at + (float) kHandleCap * 0.5f, well.getY() - kFlagHeight,
+                              at,                             well.getY());
+            g.fillPath (flag);
+
+            // Clamped into the well, so the name stays legible at either end
+            // of the travel instead of running off the panel -- and the gate's
+            // own default is hard left, which is exactly where it would.
+            const auto font = ui::labelFont (kScaleSize);
+            const auto width = 34.0f;
+            const auto x = juce::jlimit (well.getX(), well.getRight() - width, at - width * 0.5f);
+
+            ui::drawLabel (g, "GATE",
+                           juce::Rectangle<float> (x, well.getY() - (float) kTagRow,
+                                                   width, (float) kTagRow - kFlagHeight - 1.0f),
+                           juce::Justification::centred, font, handleColour);
+        }
+
     }
 }
 
@@ -200,8 +302,11 @@ void LevelBar::setThresholdFromX (int x)
     const auto proportion = juce::jlimit (0.0f, 1.0f,
                                           (float) (x - well.getX()) / (float) well.getWidth());
 
+    // Through the curve, not a straight ratio -- see dbAtFraction. positionOf
+    // is not needed here because only a rightward bar carries a handle; if a
+    // leftward one ever does, this needs the flip too.
     threshold->setValueNotifyingHost (
-        threshold->convertTo0to1 (minDb + proportion * (maxDb - minDb)));
+        threshold->convertTo0to1 (dbAtFraction (proportion)));
 }
 
 void LevelBar::mouseDown (const juce::MouseEvent& e)

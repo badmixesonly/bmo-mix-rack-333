@@ -19,7 +19,12 @@ namespace
 
     constexpr int kBarRow   = 22 + LevelBar::kScaleRow;   ///< the bar, its air, and its printed scale
     constexpr int kBarGap   = 2;
-    constexpr int kMeterBlock = kBarRow * 3 + kBarGap * 2;
+
+    // The IN bar is kTagRow taller than the other two, because it is the one
+    // carrying the gate and its flag needs somewhere to stand. It absorbs the
+    // difference inside itself -- see LevelBar::wellBounds -- so all three
+    // wells stay evenly spaced and the block still reads as one instrument.
+    constexpr int kMeterBlock = kBarRow * 3 + kBarGap * 2 + LevelBar::kTagRow;
 
     // The five detector knobs are trim knobs -- ui::ModulePanel::styleTrimKnob
     // sizes and captions them -- in two rows of three and two.
@@ -73,6 +78,46 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
       lowThruKnob   (context.params.param (Index::lowThru),   "LOW THRU"),
       highThruKnob  (context.params.param (Index::highThru),  "HIGH THRU")
 {
+    // The printed scales -- Frosty, 2026-09-14. Not evenly spaced, and that is
+    // the point: the figures crowd toward 0 because that is the end a reader
+    // works at. -60 is a floor you need named once; everything between -24 and
+    // 0 is where a vocal actually sits and where the gate gets set.
+    //
+    // GR's positions are amounts of reduction, 0..24 and positive, because
+    // that is what the DSP reports. Its *text* is negative, because what the
+    // meter means is gain. ScaleMark keeps the two apart for exactly this.
+    // **-18 sits at the halfway point and the scale opens out toward 0** --
+    // Frosty, 2026-09-14. The bar is no longer linear in dB: the top 18 take
+    // half its length and the bottom 42 take the other half, because the top
+    // is where a vocal lives and where the gate gets set, and -60 is a floor
+    // you need named once.
+    //
+    // Hand-placed, and it has to be. Sweeping an exponent cannot hold -18 at
+    // 0.5 *and* keep opening out above it; BMO Opto's GR scale hit the same
+    // wall and stopped pretending to be a power law. Per-dB density across the
+    // marks below runs 0.0106, 0.020, 0.025, 0.028, 0.030 -- monotonic toward
+    // 0, which is the property to preserve if one is ever moved.
+    const std::vector<LevelBar::ScaleMark> levelScale {
+        { -60.0f, 0.00f, "-60" }, { -24.0f, 0.38f, "-24" }, { -18.0f, 0.50f, "-18" },
+        { -12.0f, 0.66f, "-12" }, {  -6.0f, 0.83f,  "-6" }, {   0.0f, 1.00f,   "0" },
+    };
+
+    inBar .setScale (levelScale);
+    outBar.setScale (levelScale);
+
+    // GR gets the same treatment about its own zero, which is the *right* end:
+    // its positions are amounts of reduction and its fill grows leftward from
+    // none. So the first 3 dB of reduction take a fifth of the bar and the
+    // last 12 take two fifths -- the difference between 1 and 3 dB is worth
+    // seeing and the difference between 20 and 24 is not.
+    //
+    // The text is negative where the position is positive. ScaleMark keeps the
+    // two apart for exactly this: what the DSP reports is reduction, what the
+    // meter means is gain.
+    grBar .setScale ({ {  0.0f, 0.00f,   "0" }, {  3.0f, 0.20f,  "-3" },
+                       {  6.0f, 0.35f,  "-6" }, { 12.0f, 0.60f, "-12" },
+                       { 24.0f, 1.00f, "-24" } });
+
     for (auto* k : { &amount, &output })
         k->setKnobSide (kKnobSide);
 
@@ -187,7 +232,7 @@ void VcompPanel::resized()
     {
         auto block = area.removeFromTop (kMeterBlock);
 
-        inBar.setBounds (block.removeFromTop (kBarRow));
+        inBar.setBounds (block.removeFromTop (kBarRow + LevelBar::kTagRow));
         block.removeFromTop (kBarGap);
         grBar.setBounds (block.removeFromTop (kBarRow));
         block.removeFromTop (kBarGap);
