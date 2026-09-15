@@ -353,8 +353,21 @@ void LevelBar::mouseDown (const juce::MouseEvent& e)
     if (threshold == nullptr)
         return;
 
-    // Click anywhere on the bar puts the handle there, then the drag refines
-    // it: a handle you have to grab exactly is a handle you miss.
+    // Anywhere **on the well**, not anywhere on the component. A handle you
+    // have to grab exactly is a handle you miss, so the whole trough is a
+    // target -- but the component is taller and wider than its trough, and
+    // everything else in it is lettering.
+    //
+    // Outside the well this used to arm the drag anyway and set the threshold
+    // from a clamped x, so clicking the word IN, a printed figure or the GATE
+    // tag slammed the gate shut at -60. It grew worse as the class did: the
+    // caption column was the only dead zone until 2026-09-15, when a 13 px
+    // scale strip and a 16 px tag row joined it. A mis-click that silently
+    // closes a gate is the worst kind, because the panel looks identical
+    // afterwards and only the sound is wrong.
+    if (! wellBounds().contains (e.getPosition()))
+        return;
+
     dragging = true;
     threshold->beginChangeGesture();
     setThresholdFromX (e.x);

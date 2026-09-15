@@ -95,7 +95,7 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
       arcSwitch     (context.params.param (Index::arc),     "SAUCE",   ui::tokens().meterClip),
       attackKnob    (context.params.param (Index::attack),    "ATTACK"),
       releaseKnob   (context.params.param (Index::release),   "RELEASE"),
-      sidechainKnob (context.params.param (Index::sidechain), "SC HPF"),
+      sidechainKnob (context.params.param (Index::sidechain), "DETECT"),
       lowThruKnob   (context.params.param (Index::lowThru),   "LOW"),
       highThruKnob  (context.params.param (Index::highThru),  "HIGH")
 {
@@ -182,12 +182,27 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
         k->setUtilityTint (drawerTint());
     }
 
-    // Reduction is not a fault, so it is not painted in the fault colours. The
-    // low/high/clip zones say "you are running out of headroom", which is true
-    // of a level and false of a compressor working hard -- 24 dB of reduction
-    // in the clip red would be the meter telling the user off for using the
-    // module. meterGr is the token that exists for exactly this.
-    grBar.setFlatColour (ui::tokens().meterGr);
+    // GR is flat red -- Frosty, 2026-09-15. It was flat `meterGr` azure until
+    // then, on the argument that reduction is not a fault and that painting
+    // 24 dB of it in the clip red would be the meter telling the user off for
+    // using the module.
+    //
+    // **That argument was about the suite, and this is no longer a suite
+    // panel.** On an LTV panel red is not the fault colour, it is the *active*
+    // one: SAUCE lights red, COMPLEX lights red, the whole drawer is red. A
+    // compressor working hard showing red here says the same word the rest of
+    // the panel says. The azure, meanwhile, was the last suite colour left
+    // anywhere on it -- sitting between two grey-to-red bars and reading as a
+    // different instrument.
+    //
+    // Flat rather than the IN/OUT gradient, which is the half of the old
+    // reasoning that survives: a gradient says "further along is worse", and
+    // on this bar further along is only further along.
+    //
+    // The cost, stated rather than discovered later: red now means "near
+    // clipping" at the top of IN and OUT and "working" across the whole of GR.
+    // Two meanings in one colour, told apart by which bar they are in.
+    grBar.setFlatColour (ui::tokens().meterClip);
 
     // The gate, on the meter that shows the level it acts on. Red rather than
     // the module accent -- Frosty, 2026-09-14 -- which is the same call as
@@ -272,7 +287,7 @@ void VcompPanel::paintPanel (juce::Graphics& g)
     const auto ink = drawerTint();
     const auto font = ui::labelFont (ui::Tokens::gainCaptionSize, true);
 
-    const auto text = juce::String ("IGNORE");
+    const auto text = juce::String ("PASS THROUGH");
     const auto textWidth = juce::GlyphArrangement::getStringWidth (font, text);
     const auto gap = 8.0f;
 

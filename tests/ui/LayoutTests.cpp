@@ -775,7 +775,7 @@ int main (int argc, char** argv)
     withPanel (named ("ltvcomp"), [] (bmo::ui::ModulePanel& panel)
     {
         checkTrimKnobHeights (panel, "ltvcomp",
-                              { "ATTACK", "RELEASE", "SC HPF", "LOW", "HIGH" });
+                              { "ATTACK", "RELEASE", "DETECT", "LOW", "HIGH" });
     });
 
     // BMO DEQ takes the output section at both widths, so its OUTPUT knob and

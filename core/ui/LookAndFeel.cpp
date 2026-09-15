@@ -147,8 +147,12 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
     // near-black in the dark set because a dark cap is normally the accent at
     // full strength and therefore light, and a fixed black cap would swallow
     // it. onAccentOf hands back white on either of these.
-    const auto lineCap = character ? capFor (panelLineFor (slider))
-                                   : std::optional<juce::Colour> {};
+    // Every knob on the line, not only the character ones -- Frosty,
+    // 2026-09-15. LTV Comp's drawer knobs take the line's cap so they match
+    // AMOUNT and MAKEUP, while their dotted track, rest dot and caption stay
+    // the drawer's red. The cap says which instrument this is; the ink says
+    // which group of controls you are looking at.
+    const auto lineCap = capFor (panelLineFor (slider));
 
     const auto tinted = knob != nullptr && ! knob->getUtilityTint().isTransparent();
 

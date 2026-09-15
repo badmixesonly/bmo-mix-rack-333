@@ -71,8 +71,10 @@ struct Line
     {
         juce::Colour plate, plateEdge, well;
 
-        /** The character knobs' caps, if the line fixes them rather than
-            deriving them from each module's accent.
+        /** The knob caps, if the line fixes them rather than deriving them
+            from each module's accent. Every knob on the line takes it --
+            character and utility alike -- so a panel's controls read as one
+            instrument whatever colour their lettering carries.
 
             This is the one thing on a panel that is not ground and is a
             line's anyway, so the boundary above is really *surfaces, not
