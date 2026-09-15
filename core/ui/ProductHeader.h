@@ -47,8 +47,10 @@ public:
 
         g.fillAll (t.plateEdge);
 
-        // The module's colour, as a thin bar along the top edge.
-        g.setColour (tint);
+        // The module's colour, as a thin bar along the top edge -- or the
+        // line's ink where it has one, so an LTV header does not keep an
+        // accent its panel no longer uses anywhere.
+        g.setColour (inkFor (*line).value_or (tint));
         g.fillRect (area.removeFromTop (3));
 
         drawLabel (g, name, area.reduced (10, 0).toFloat(), juce::Justification::centredLeft,

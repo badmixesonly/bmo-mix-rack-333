@@ -95,6 +95,33 @@ struct Line
             in principle: "a knob's pointer answers to the cap rather than to
             either [plate]". White on a near-black cap measures 16.6-21:1. */
         std::optional<juce::Colour> knobCap {};
+
+        /** What this line's panels use in place of a module's accent, if it
+            has one: knob captions, the header's tint bar, section legends.
+
+            **This is the line owning ink, which the rule above says it does
+            not, and the exception is argued rather than assumed.** Frosty
+            asked for the header and the captions to match the knob, which
+            sounds like one colour and cannot be: the cap is darker than its
+            plate in *both* appearances, so an ink that matches it inverts
+            between them. Measured against the two LTV grounds --
+
+                #3a3a3e  6.77:1 on silver,  1.00:1 on graphite
+                #141414 11.01:1 on silver,  1.63:1 on graphite
+                #6f6f76  2.98:1 on silver,  2.27:1 on graphite
+
+            -- the light cap is *literally the dark plate*, and the best single
+            compromise is mediocre on both. So the ink is per appearance like
+            everything else here.
+
+            What that costs is the reason the rule existed: the (ink, ground)
+            pairs to check stop being a list and become a product. With two
+            lines it is four grounds and still countable by hand, which is why
+            it is affordable now and why the contrast assertions in
+            docs/ui-workflow-brief.md §4 stop being the cheapest open item and
+            become the thing that keeps this honest. Do not add a third line
+            without them. */
+        std::optional<juce::Colour> ink {};
     };
 
     /** Empty for a line that takes the suite's ground, which is BMO. */
@@ -123,5 +150,9 @@ Tokens groundFor (const Line& line);
 /** The knob cap this line fixes for the appearance in force, or nothing if it
     leaves caps to `faceOf` and the module's accent. */
 std::optional<juce::Colour> capFor (const Line& line);
+
+/** The ink this line uses in place of a module's accent, or nothing if it
+    leaves the accent alone. */
+std::optional<juce::Colour> inkFor (const Line& line);
 
 } // namespace bmo::ui

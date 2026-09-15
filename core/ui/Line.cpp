@@ -64,20 +64,44 @@ const Line& ltvLine()
     //   white pointer on it: 18.42:1
     static const juce::Colour nearBlack { 0xff141414 };
 
+    // The ink follows the knob, which is what Frosty asked for, and it can
+    // only do that per appearance -- see Line::Ground::ink for the table.
+    //
+    // Light: the cap itself, 6.77:1 on silver. The caption is the colour of
+    // the knob it names, exactly.
+    //
+    // Dark: the knob's *other* colour. There the cap is near-black on a dark
+    // plate at 1.63:1, so following the cap would put a 15 pt caption at a
+    // ratio the suite does not spend on anything, and the thing that actually
+    // reads on that knob is the white mark across it. #e6e6ea is the dark
+    // set's own text colour and 9.10:1 here, so the caption matches the
+    // pointer rather than the face -- still the knob, the legible half of it.
+    static const juce::Colour darkInk { 0xffe6e6ea };
+
     static const Line line
     {
         "LTV",
         Line::Ground { juce::Colour (0xffc8c8c8),    // plate, brushed silver
                        juce::Colour (0xffbdbdbd),    // plateEdge
                        juce::Colour (0xffb0b0b0),    // well
-                       graphite },                   // cap
+                       graphite,                     // cap
+                       graphite },                   // ink
         Line::Ground { graphite,                     // plate
                        juce::Colour (0xff434347),    // plateEdge
                        juce::Colour (0xff27272b),    // well
-                       nearBlack },                  // cap
+                       nearBlack,                    // cap
+                       darkInk },                    // ink
     };
 
     return line;
+}
+
+std::optional<juce::Colour> inkFor (const Line& line)
+{
+    if (! line.ownsGround())
+        return {};
+
+    return (isDarkMode() ? *line.dark : *line.light).ink;
 }
 
 std::optional<juce::Colour> capFor (const Line& line)

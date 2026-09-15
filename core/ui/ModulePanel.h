@@ -29,6 +29,11 @@ Tokens panelTokensFor (const juce::Component& c);
     control that is in no panel. */
 const Line& panelLineFor (const juce::Component& c);
 
+/** The colour a control should use in place of a module accent: the line own
+    ink where it has one, and `fallback` -- normally the module accent --
+    where it does not. */
+juce::Colour panelAccentFor (const juce::Component& c, juce::Colour fallback);
+
 /** What a module's panel is built against. The same whether the module is
     running as its own plugin or sitting in a rack slot. */
 struct ModuleContext

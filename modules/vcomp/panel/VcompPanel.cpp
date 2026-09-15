@@ -60,7 +60,7 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
       // Neither switch is a bypass, a mono or a polarity, so both take
       // switchAlt -- see the table in modules/AGENTS.md. Not a free choice.
       complexSwitch (context.params.param (Index::complex), "COMPLEX", ui::tokens().switchAlt),
-      arcSwitch     (context.params.param (Index::arc),     "ARC",     ui::tokens().switchAlt),
+      arcSwitch     (context.params.param (Index::arc),     "SAUCE",   ui::tokens().switchAlt),
       attackKnob    (context.params.param (Index::attack),    "ATTACK"),
       releaseKnob   (context.params.param (Index::release),   "RELEASE"),
       sidechainKnob (context.params.param (Index::sidechain), "SC HPF"),
@@ -149,17 +149,26 @@ void VcompPanel::resized()
 {
     auto area = getLocalBounds().reduced (kPad, 4);
 
-    const auto content = kKnobHeight + kMeterBlock + kKnobHeight
+    const auto content = kSwitchHeight + kKnobHeight + kMeterBlock + kKnobHeight
                              + kSwitchHeight + kDetectorBlock;
 
-    // Six divisions -- a margin above the first block and below the last as
+    // Seven divisions -- a margin above the first block and below the last as
     // well as between them -- and the gap is worked out from the *complex-on*
     // content whether or not the detector rows are visible. That is what keeps
     // AMOUNT, the meters, MAKEUP and the switch row at the same pixel in both
     // states; in standard mode the reserved rows and the margin under them are
     // simply empty plate. See the class comment for why that trade was taken.
-    const auto gap = juce::jmax (kSwitchGap, (area.getHeight() - content) / 6);
+    const auto gap = juce::jmax (kSwitchGap, (area.getHeight() - content) / 7);
 
+    area.removeFromTop (gap);
+
+    // SAUCE above AMOUNT, centred on it. It is the programme-dependent release
+    // and standard mode runs it whatever the parameter says, so it belongs to
+    // AMOUNT rather than to the drawer COMPLEX opens -- which is where it sat
+    // until 2026-09-14, abreast of COMPLEX, reading as one of the advanced
+    // controls it is not.
+    arcSwitch.setBounds (area.removeFromTop (kSwitchHeight)
+                             .withSizeKeepingCentre (kSwitchWidth, kSwitchHeight));
     area.removeFromTop (gap);
 
     amount.setBounds (area.removeFromTop (kKnobHeight)
@@ -183,16 +192,10 @@ void VcompPanel::resized()
                           .withSizeKeepingCentre (kKnobWidth, kKnobHeight));
     area.removeFromTop (gap);
 
-    // COMPLEX and ARC abreast: the switch that opens the drawer, and the one
-    // thing inside it that is true in both states.
-    {
-        auto row = area.removeFromTop (kSwitchHeight)
-                       .withSizeKeepingCentre (kSwitchWidth * 2 + kSwitchGap, kSwitchHeight);
-
-        complexSwitch.setBounds (row.removeFromLeft (kSwitchWidth));
-        row.removeFromLeft (kSwitchGap);
-        arcSwitch.setBounds (row.removeFromLeft (kSwitchWidth));
-    }
+    // COMPLEX alone now, centred: the switch that opens the drawer, directly
+    // over what it opens. SAUCE used to sit beside it and is at the head.
+    complexSwitch.setBounds (area.removeFromTop (kSwitchHeight)
+                                 .withSizeKeepingCentre (kSwitchWidth, kSwitchHeight));
     area.removeFromTop (gap);
 
     // The reserved rows: the three detector-timing controls above the two that

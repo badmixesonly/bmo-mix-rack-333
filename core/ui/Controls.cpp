@@ -1,4 +1,5 @@
 #include "Controls.h"
+#include "ModulePanel.h"
 
 namespace bmo::ui
 {
@@ -109,8 +110,13 @@ void PlainKnob::paint (juce::Graphics& g)
     // read as the same control wherever they are; setting those captions in
     // the accent put pink text on BMO EQ's blue cap and orange on the
     // Saturator's.
-    const auto system = knob.getStyle() == Knob::Style::character ? accentColour
-                                                                 : tokens().track;
+    // panelAccentFor: a product line may supply its own ink in place of the
+    // module's accent. LTV does, because its caps are fixed and the accent no
+    // longer reaches them, so the caption is the only thing left carrying the
+    // knob's colour. Nothing changes for a BMO panel.
+    const auto system = knob.getStyle() == Knob::Style::character
+                            ? panelAccentFor (knob, accentColour)
+                            : tokens().track;
 
     // The colour system as it stands, not stepped for contrast. A caption is
     // the larger of a panel's two labels -- 15 pt against a section legend's

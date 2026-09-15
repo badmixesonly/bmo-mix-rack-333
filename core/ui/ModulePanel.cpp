@@ -19,7 +19,9 @@ void ModulePanel::paintRules (juce::Graphics& g) const
         if (r.text.isEmpty())
             drawRule (g, r.row);
         else
-            drawRuleLegend (g, r.row, r.text, context.def.accent, t.plate);
+            drawRuleLegend (g, r.row, r.text,
+                            inkFor (context.def.lineOf()).value_or (context.def.accent),
+                            t.plate);
     }
 }
 
@@ -62,6 +64,14 @@ const Line& panelLineFor (const juce::Component& c)
         return panel->getContext().def.lineOf();
 
     return bmoLine();
+}
+
+juce::Colour panelAccentFor (const juce::Component& c, juce::Colour fallback)
+{
+    if (const auto ink = inkFor (panelLineFor (c)))
+        return *ink;
+
+    return fallback;
 }
 
 } // namespace bmo::ui

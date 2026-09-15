@@ -153,7 +153,11 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
     const auto face       = lineCap ? *lineCap
                                     : (character ? faceOf (moduleAccent) : t.knobFace);
     const auto pointerInk = lineCap ? onAccentOf (*lineCap) : t.pointer;
-    const auto accent    = character ? moduleAccent : t.track;
+    // The dotted track, its plus and minus, and the rest dot. Routed through
+    // the line as well as the cap and the pointer: these are the knob's own
+    // marks, and leaving them on the module accent is what kept a periwinkle
+    // ring around a black LTV knob after the cap and the caption had moved.
+    const auto accent    = character ? panelAccentFor (slider, moduleAccent) : t.track;
     const auto faceBox   = juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (centre);
 
     // Gain controls carry a dotted track, with the rest position marked on it

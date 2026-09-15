@@ -131,7 +131,11 @@ void LevelBar::paint (juce::Graphics& g)
         const auto value = threshold->convertFrom0to1 (threshold->getValue());
         const auto at = well.getX() + well.getWidth() * normalised (value);
 
-        g.setColour (handleColour);
+        // Resolved here rather than at attachThreshold, so it follows a line's
+        // ink and follows an appearance change with it. The handle was the
+        // last thing on an LTV panel still carrying the module accent, and a
+        // lone periwinkle mark on a silver plate is the loose end this closes.
+        g.setColour (ui::panelAccentFor (*this, handleColour));
         g.fillRect (juce::Rectangle<float> (at - (float) kHandleWidth * 0.5f,
                                             well.getY() - 3.0f,
                                             (float) kHandleWidth,
