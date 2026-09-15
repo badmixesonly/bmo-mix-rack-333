@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Controls.h"
+#include "Line.h"
 #include "core/dsp/AnalyserTap.h"
 #include "core/state/ParamSet.h"
 
@@ -11,6 +12,22 @@ struct ModuleDef;
 
 namespace bmo::ui
 {
+
+class ModulePanel;
+
+/** The palette a control should paint a *ground* with -- a meter trough, a
+    pressed button, anything cut into the faceplate.
+
+    Use this in place of `tokens()` wherever a control fills a recess. Ink is
+    unaffected: a line owns its ground and nothing else, so text, knob faces,
+    accents and meter colours all still come from `tokens()`.
+
+    Falls back to `tokens()` for a control that is not inside a panel. */
+Tokens panelTokensFor (const juce::Component& c);
+
+/** The line a control belongs to, found by walking up to its panel. BMO for a
+    control that is in no panel. */
+const Line& panelLineFor (const juce::Component& c);
 
 /** What a module's panel is built against. The same whether the module is
     running as its own plugin or sitting in a rack slot. */
@@ -198,12 +215,14 @@ public:
 
     const ModuleContext& getContext() const noexcept { return context; }
 
-    void paint (juce::Graphics& g) override
-    {
-        g.fillAll (tokens().plate);
-        paintRules (g);
-        paintPanel (g);
-    }
+    /** Out of line, with paintRules and for the same reason: the ground comes
+        from the module's line and `def` is only forward-declared here. */
+    void paint (juce::Graphics& g) override;
+
+    /** The palette this panel paints with: the tokens in force with its
+        line's ground substituted. `tokens()` for every BMO module, silver or
+        graphite for an LTV one. See ui::Line. */
+    Tokens panelTokens() const;
 
 protected:
     /** Anything the module draws itself, over its rules and its plate. */
@@ -242,7 +261,8 @@ protected:
         measured 1.72-2.00:1 -- the panel's navigation was the second least
         readable thing on it. */
     void drawRuleLegend (juce::Graphics& g, juce::Rectangle<int> row,
-                         const juce::String& text, juce::Colour accent) const
+                         const juce::String& text, juce::Colour accent,
+                         juce::Colour plate) const
     {
         // The module's accent stepped until it is legible. A section legend is
         // the smaller of the two labels on a panel -- 13 pt against a knob
@@ -262,9 +282,12 @@ protected:
         const auto box = juce::Rectangle<float> (width, (float) row.getHeight())
                              .withCentre (row.toFloat().getCentre());
 
-        g.setColour (tokens().plate);
+        // The panel's plate, passed in rather than read from tokens(): a
+        // legend knocks a hole in the rule it sits on, and on an LTV panel
+        // that hole has to be silver or the rule shows through it.
+        g.setColour (plate);
         g.fillRect (box);
-        drawLabel (g, text, box, juce::Justification::centred, font, accentInk (accent));
+        drawLabel (g, text, box, juce::Justification::centred, font, accentInk (accent, plate));
     }
 
     ModuleContext context;

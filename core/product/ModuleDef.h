@@ -2,6 +2,7 @@
 
 #include "core/dsp/ModuleDsp.h"
 #include "core/state/ParamSpec.h"
+#include "core/ui/Line.h"
 #include "core/ui/ModulePanel.h"
 #include <functional>
 #include <memory>
@@ -43,6 +44,23 @@ struct ModuleDef
         change the sound. The panel chooses its layout from the width it is
         given and needs no other signal. */
     int expandedWidth = 0;
+
+    /** The product line this module belongs to, or null for BMO.
+
+        Last in the struct and defaulted on purpose: every module builds its
+        def by positional aggregate initialisation, so a field added anywhere
+        but the end would silently re-bind eight other modules' members.
+
+        Null rather than `&ui::bmoLine()` because these defs are function-local
+        statics in eight translation units; resolving it at the point of use
+        keeps it out of static initialisation order entirely. */
+    const ui::Line* line = nullptr;
+
+    /** The line this module is drawn as -- BMO if it names none. */
+    const ui::Line& lineOf() const noexcept
+    {
+        return line != nullptr ? *line : ui::bmoLine();
+    }
 
     int numParams() const noexcept { return (int) specs.size(); }
 

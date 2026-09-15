@@ -118,7 +118,7 @@ void RackEditor::AddStrip::resized()
 //==============================================================================
 RackEditor::RackEditor (RackProcessor& p)
     : juce::AudioProcessorEditor (&p), proc (p),
-      header (p.getInfo().name, ui::tokens().accent),
+      header (p.getInfo().name, ui::tokens().accent, ui::bmoLine()),
       presetBar (p.getPresets()),
       addStrip (*this)
 {

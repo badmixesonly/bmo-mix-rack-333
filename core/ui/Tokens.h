@@ -289,6 +289,12 @@ juce::Colour onAccentOf (juce::Colour fill, float minRatio = 4.5f) noexcept;
     they went in, which is why this is a swap and not a compromise. */
 juce::Colour accentInk (juce::Colour accent) noexcept;
 
+/** The same, derived against a stated ground rather than against the suite&apos;s
+    plate. For a panel on a ui::Line that carries a plate of its own: a legend
+    stepped for #efefef and then printed on silver is legible for a plate the
+    reader is not looking at. */
+juce::Colour accentInk (juce::Colour accent, juce::Colour ground) noexcept;
+
 /** The current tokens: the built-in set for whichever appearance is chosen,
     with whatever the user's theme file overrides on top. */
 const Tokens& tokens() noexcept;
@@ -385,6 +391,20 @@ bool pollTheme();
 
 /** Every token name the theme file may set, for writing a template. */
 juce::StringArray tokenNames();
+
+/** Whether the theme file currently in force sets this token by name.
+
+    The difference between "the plate is #efefef because that is the built-in"
+    and "the plate is #efefef because a theme says so", which nothing could ask
+    before: `tokens()` hands back a colour and not its provenance.
+
+    It exists for `ui::Line`. A line carries its own ground -- the LTV plugins
+    are silver rather than the suite's pale grey -- and that has to give way
+    the moment someone applies a theme, because a theme is a statement about
+    the whole window and a line is only a statement about one product in it.
+    Without this, a theme that set `plate` would recolour seven panels and
+    leave the eighth silver, which is the one outcome nobody wants. */
+bool themeSets (juce::StringRef tokenName);
 
 /** Applies a parsed theme object over `base`, which defaults to the light
     built-in set. A theme is an overlay, not a whole palette, so choosing dark

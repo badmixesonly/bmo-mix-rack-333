@@ -56,6 +56,26 @@ namespace
     // which is a file the user owns and which every open plugin is watching.
     juce::File themeOverride;
 
+    // Which token names the theme in force actually sets, as opposed to which
+    // ones simply have a value. See ui::themeSets -- ui::Line needs to know
+    // the difference and nothing else in the palette records it.
+    //
+    // Kept beside `current` and rewritten by the same three places that
+    // rewrite it, rather than inside tokensFromJson: that function is a pure
+    // overlay documented as exposed for tests, and a global side effect in it
+    // would be a surprise to every caller.
+    juce::StringArray themedKeys;
+
+    void recordThemedKeys (const juce::var& object)
+    {
+        themedKeys.clear();
+
+        if (auto* obj = object.getDynamicObject())
+            for (const auto& e : kEntries)
+                if (obj->hasProperty (e.name))
+                    themedKeys.add (e.name);
+    }
+
     bool parseColour (const juce::var& v, juce::Colour& out)
     {
         if (! v.isString())
@@ -259,14 +279,23 @@ Tokens darkTokens() noexcept
     return t;
 }
 
-juce::Colour accentInk (juce::Colour accent) noexcept
+juce::Colour accentInk (juce::Colour accent, juce::Colour ground) noexcept
 {
     // The other half of faceOf. On the dark plate the cap takes the accent
     // whole and the ink takes the wash; on the pale one it is the other way
     // round. The wash is written out here rather than calling faceOf, which
     // would hand back the accent in this appearance and defeat the swap.
     return isDarkMode() ? accent.interpolatedWith (current.knobTint, 0.5f)
-                        : accentTextOn (accent, current.plate);
+                        : accentTextOn (accent, ground);
+}
+
+juce::Colour accentInk (juce::Colour accent) noexcept
+{
+    // The suite's plate, for every caller that is not on a line with a ground
+    // of its own. Kept as the default rather than made the only form because
+    // a derivation against the wrong ground is silent: it returns a perfectly
+    // legible colour for a plate the reader is not looking at.
+    return accentInk (accent, current.plate);
 }
 
 juce::File themeDirectory() { return suitePresetRoot().getChildFile ("Themes"); }
@@ -300,7 +329,9 @@ void overrideAppearance (bool shouldBeDark)
     {
         loadedOnce = true;
         lastModified = themeFile().getLastModificationTime();
-        current = tokensFromJson (juce::JSON::parse (themeFile().loadFileAsString()), current);
+        const auto parsedTheme = juce::JSON::parse (themeFile().loadFileAsString());
+        recordThemedKeys (parsedTheme);
+        current = tokensFromJson (parsedTheme, current);
     }
 }
 
@@ -332,7 +363,9 @@ void setDarkMode (bool shouldBeDark)
     {
         loadedOnce = true;
         lastModified = themeFile().getLastModificationTime();
-        current = tokensFromJson (juce::JSON::parse (themeFile().loadFileAsString()), current);
+        const auto parsedTheme = juce::JSON::parse (themeFile().loadFileAsString());
+        recordThemedKeys (parsedTheme);
+        current = tokensFromJson (parsedTheme, current);
     }
 }
 
@@ -389,9 +422,12 @@ bool pollTheme()
     {
         if (loadedOnce)
         {
-            // The theme file went away: back to the chosen built-in set.
+            // The theme file went away: back to the chosen built-in set, and
+            // to no themed keys -- which is what hands a line's own ground
+            // back to it when a theme is deleted.
             loadedOnce = false;
             lastModified = {};
+            themedKeys.clear();
             changed = true;
         }
 
@@ -410,8 +446,14 @@ bool pollTheme()
     loadedOnce = true;
 
     const auto parsed = juce::JSON::parse (file.loadFileAsString());
+    recordThemedKeys (parsed);
     current = tokensFromJson (parsed, dark ? darkTokens() : Tokens {});
     return true;
+}
+
+bool themeSets (juce::StringRef tokenName)
+{
+    return themedKeys.contains (tokenName);
 }
 
 } // namespace bmo::ui

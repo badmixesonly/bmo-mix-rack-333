@@ -1,4 +1,5 @@
 #include "LookAndFeel.h"
+#include "ModulePanel.h"
 
 namespace bmo::ui
 {
@@ -139,7 +140,19 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
     }
 
     const auto character = style == Knob::Style::character;
-    const auto face      = character ? faceOf (moduleAccent) : t.knobFace;
+
+    // A line may fix its caps rather than derive them from each module's
+    // accent -- LTV is black knobs on a silver panel. When it does, the
+    // pointer comes off the cap instead of off the appearance: `pointer` is
+    // near-black in the dark set because a dark cap is normally the accent at
+    // full strength and therefore light, and a fixed black cap would swallow
+    // it. onAccentOf hands back white on either of these.
+    const auto lineCap = character ? capFor (panelLineFor (slider))
+                                   : std::optional<juce::Colour> {};
+
+    const auto face       = lineCap ? *lineCap
+                                    : (character ? faceOf (moduleAccent) : t.knobFace);
+    const auto pointerInk = lineCap ? onAccentOf (*lineCap) : t.pointer;
     const auto accent    = character ? moduleAccent : t.track;
     const auto faceBox   = juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (centre);
 
@@ -272,7 +285,7 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         const auto tip  = radius - 3.0f;
         const auto tail = radius * 0.05f;
 
-        g.setColour (dim (t.pointer));
+        g.setColour (dim (pointerInk));
         g.drawLine ({ at (angle, tail), at (angle, tip) }, 2.6f);
     }
 }

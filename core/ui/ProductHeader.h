@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ExpandButton.h"
+#include "Line.h"
 #include "LookAndFeel.h"
 
 namespace bmo::ui
@@ -15,8 +16,11 @@ class ProductHeader final : public juce::Component
 public:
     static constexpr int kHeight = 28;
 
-    explicit ProductHeader (juce::String productName, juce::Colour accent)
-        : name (std::move (productName)), tint (accent) {}
+    /** `productLine` supplies the marque printed at the right-hand end and the
+        ground this strip is filled with -- "LT3a" on the suite grey for BMO,
+        "LTV" on silver for a collaboration. */
+    ProductHeader (juce::String productName, juce::Colour accent, const Line& productLine)
+        : name (std::move (productName)), tint (accent), line (&productLine) {}
 
     /** Gives the header an expand switch. `expandedNow` answers what the view
         is; `toggle` asks for the other one. Only an expandable module calls
@@ -38,7 +42,7 @@ public:
 
     void paint (juce::Graphics& g) override
     {
-        const auto& t = tokens();
+        const auto t = groundFor (*line);
         auto area = getLocalBounds();
 
         g.fillAll (t.plateEdge);
@@ -49,7 +53,7 @@ public:
 
         drawLabel (g, name, area.reduced (10, 0).toFloat(), juce::Justification::centredLeft,
                    labelFont (12.5f, true), t.text1);
-        drawLabel (g, "LT3a", area.reduced (10, 0).toFloat(), juce::Justification::centredRight,
+        drawLabel (g, line->marque, area.reduced (10, 0).toFloat(), juce::Justification::centredRight,
                    labelFont (10.0f, true), t.text2);
     }
 
@@ -66,6 +70,7 @@ private:
 
     juce::String name;
     juce::Colour tint;
+    const Line* line;
     std::unique_ptr<ExpandButton> expand;
 };
 

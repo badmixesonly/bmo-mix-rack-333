@@ -1,4 +1,5 @@
 #include "LevelBars.h"
+#include "core/ui/ModulePanel.h"
 
 namespace bmo::vcomp
 {
@@ -71,7 +72,7 @@ void LevelBar::refresh()
 
 void LevelBar::paint (juce::Graphics& g)
 {
-    const auto& t = ui::tokens();
+    const auto t = ui::panelTokensFor (*this);
 
     const auto well = wellBounds().toFloat();
 

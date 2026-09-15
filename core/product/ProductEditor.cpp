@@ -5,7 +5,7 @@ namespace bmo
 
 ProductEditor::ProductEditor (SingleModuleProcessor& p)
     : juce::AudioProcessorEditor (&p), proc (p),
-      header (p.getInfo().name, p.getModule().accent),
+      header (p.getInfo().name, p.getModule().accent, p.getModule().lineOf()),
       presetBar (p.getPresets()),
       designWidth (p.getModule().widthFor (p.isExpanded()))
 {
