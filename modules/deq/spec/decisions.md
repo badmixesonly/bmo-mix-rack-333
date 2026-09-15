@@ -3,7 +3,7 @@
 The spec (`spec-v0.1.md`) is kept as received. Decisions that change it are
 recorded here, newest first, with who made them and what evidence they rest on.
 
-## 2026-09-15 — the UI pass: a dimmed control's caption, and what GR measures
+## 2026-09-15 — the UI pass: a dimmed control's caption, and what GR shows
 
 From module 2 of the UI pass on **AURORA**; the measurements and the renders
 behind both are in `testing-notes/ui-pass-deq-2026-09-15.md`.
@@ -44,44 +44,60 @@ used by this module and nothing else today, and the next planned use is BMO
 Dimension's DETUNE scope (`ui-pass-checklist.md`, module 4). It is settled for
 that too, and should not be re-opened there.
 
-### The GR bar measures reduction, and does not show an upward band
+### The GR bar is read from both ends
 
-**Open — Frosty asked to see both, 2026-09-15.** Not settled, recorded so the
-behaviour is not mistaken for an oversight in the meantime.
+**Frosty, 2026-09-15**, on rendered candidates: keep the vertical bar where it
+is, and **read gain taken away down from the top, gain added up from the
+bottom**. Implemented in `d7aba69`.
 
-`DspCore::currentGainReductionDb` is `max(deepest, -offsetDb)`, so a band whose
-RANGE is positive contributes zero by construction, and
-`ModuleContext::gainReductionDb` is documented "always >= 0" — the callback
-cannot carry the other sign. Measured: one band at 1 kHz, `signal=-6`,
+The fault it fixes, measured on the panel first: one band at 1 kHz, `signal=-6`,
 `thr=-30`, `ratio=4`, and only RANGE's sign changed.
 
-| | the bar |
-|---|---|
-| `range=-12` | 88 px of `meterGr`, then 90 px of well |
-| `range=+12` | 180 px of well. Nothing |
-| DYN off | 180 px of well. Nothing |
+| | before | after |
+|---|---|---|
+| `range=-12` | 88 px of `meterGr` from the top | unchanged |
+| `range=+12` | 180 px of well. Nothing | 88 px of `meterGr` from the bottom |
+| DYN off | 180 px of well. Nothing | unchanged |
 
-**The second and third rows are the same picture**, which is the fault: a band
-boosting 12 dB is drawn identically to a band doing nothing.
+**The second and third rows used to be the same picture** — a band boosting
+12 dB drawn identically to a band doing nothing — which is the one thing a
+meter must never do. `currentGainReductionDb` was `max (0, -offsetDb)` and
+discarded the upward half.
 
-A bipolar candidate was built and rendered at all three states in both
-appearances — a centre hairline, growing down for a cut and up for a boost,
-with a signed readout. It fits the existing 46 px cell and costs half the
-resolution: 46 px per direction against the present 92 for one. It needs
-`currentGainReductionDb` to return a signed deepest offset, which changes a
-`ModuleContext` callback's documented contract for every module, so it is a DSP
-edit rather than a panel one. The candidate is not committed.
+**Both directions run the full height for the full range**, so they share the
+track rather than splitting it and neither costs the other any resolution. That
+is what decided it against the centre-out bipolar bar, which was also built and
+rendered and halves both. It is safe because only one fill can exist at a time:
+the source is one band's offset and never a sum, so which end a fill grows from
+*is* the sign, and the two can never collide.
 
-**A horizontal centre-out bar was also asked for** — growing one way for a cut
-and the other for a boost — and is for whoever takes that DSP edit. Measured
-here so the shape of the problem travels with the idea: on the 600 the shared
-output switch row has **216 px** free either side of DEQ/AUTO, which at ±24 dB
-is 4.5 px/dB and better resolution than the vertical bar has now. On the 320
-the same gaps are **76 px**. So a horizontal meter fits the full panel and not
-the compact one, and the two views would stop agreeing about what the GR meter
-is — which is the thing to solve before it is drawn, not after. It would also
-put a meter on the suite's shared switch line, which `checkOutputSection` pins
-across every module, so it is a suite-layout question as well as a DEQ one.
+**The value is signed now — positive is gain taken, negative is gain added.**
+`ModuleDsp::currentGainReductionDb`, `ModuleContext::gainReductionDb` and
+`DspCore::currentGainReductionDb` all said ">= 0", and all three said it because
+it happened to be true rather than because anything required it. A compressor
+only cuts, so BMO Opto and LTV Comp still never return the other sign; a panel
+that reads this value and shows only reduction should clamp rather than assume.
+
+`DeqDspTests` pins it with the mirror of the T5 end-to-end case: the same band
+with only `rangeDb` flipped, asserting **-10.5** rather than "is negative" — a
+sign test passes on any wrong magnitude.
+
+The cell went 46 → 49 px, because "+24.0" measures 2.8 px wider than "-24.0".
+
+### The horizontal bar, for whoever takes the next DSP edit
+
+**Raised by Frosty, 2026-09-15, and not taken now.** A horizontal centre-out
+bar, growing one way for a cut and the other for a boost. Measured here so the
+constraint travels with the idea rather than being found while drawing it: on
+the 600 the shared output switch row has **216 px** free either side of
+DEQ/AUTO, which at ±24 dB is 4.5 px/dB and better resolution than the vertical
+bar has. On the 320 the same gaps are **76 px**.
+
+So it fits the full panel and not the compact one, and the two views would stop
+agreeing about what the GR meter *is* — settle that before it is drawn. It would
+also put a meter on the suite's shared switch line, which `checkOutputSection`
+pins across every module, making it a suite-layout question as well as a DEQ
+one.
 
 ## 2026-09-12 — band solo, and the analyser
 

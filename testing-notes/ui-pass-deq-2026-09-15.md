@@ -1,23 +1,25 @@
 # The UI pass — module 2, BMO DEQ
 
 **On AURORA, 2026-09-15. Branch `ui-pass`, worktree `../bmo-mix-rack-333-ui`,
-off `71d6d01`.** Module 1 (LTV Comp) is in `ui-pass-2026-09-14.md` and is
+off `d7aba69`.** Module 1 (LTV Comp) is in `ui-pass-2026-09-14.md` and is
 waiting on Leteveon; do not change it. The tools and the before-numbers are in
 `ui-pass-render-loop.md`, the triage in `ui-pass-handoff-2026-09-14.md`.
 
-**One defect fixed. One measurement that is bigger than the item that led to
-it. Five decisions put to Frosty — two answered the same day, three open.**
+**Two defects fixed, both of them things the panel had been getting wrong since
+its first build and nothing had ever measured. One number bigger than the item
+that led to it. Seven decisions put to Frosty — four answered the same day.**
 
 | | |
 |---|---|
 | GR readout clipped to `−12.` | **fixed**, `71d6d01`, and asserted |
 | disabled caption at 1.23:1 | **settled** — stays at alpha 0.4, Frosty 2026-09-15. §4 |
-| GR bar blind to upward bands | **open**, bipolar candidate rendered at his request. §3 |
+| GR bar blind to upward bands | **fixed**, `d7aba69` — taken reads down from the top, added up from the bottom. §3 |
+| a horizontal GR bar | raised by Frosty, **not taken**; its constraint measured and left with the next DSP edit. §3 |
 | solo and the analyser | open. §6 |
 | the 48 kHz response view | open. §6 |
 | the compact 320 in a rack | open. §6 |
 
-Both settled calls are recorded at the call site, in
+Every settled call is recorded at the call site, in
 `modules/deq/spec/decisions.md`, 2026-09-15.
 
 ---
@@ -27,15 +29,22 @@ Both settled calls are recorded at the call site, in
 Rendered from this worktree's `build-release`, `signal=-18`, both appearances.
 `snapshots/` is gitignored — these are on AURORA only, re-run the tool.
 
-| | before | after `71d6d01` |
-|---|---|---|
-| expanded dark | `8b15e62102cad9a6` | `13e5c1b6526f7e37` |
-| expanded light | `325623156690ffec` | `6b4aba73320e1d63` |
-| compact dark | `35df0fbe474b0551` | unmoved |
-| compact light | `20e67b4acc38959a` | unmoved |
+| | before | `71d6d01` | **`d7aba69`, current** |
+|---|---|---|---|
+| expanded dark | `8b15e62102cad9a6` | `13e5c1b6526f7e37` | **`9478e51947a89a6c`** |
+| expanded light | `325623156690ffec` | `6b4aba73320e1d63` | **`d693be037330d695`** |
+| compact dark | `35df0fbe474b0551` | unmoved | **unmoved** |
+| compact light | `20e67b4acc38959a` | unmoved | **unmoved** |
 
 The compact pair is new: `ui-pass-render-loop.md` §4 records the expanded row
-and says the 320 "is a separate baseline nobody has taken yet". It is taken.
+and says the 320 "is a separate baseline nobody has taken yet". It is taken —
+and it has not moved once across this whole session, because both commits grew
+the GR cell and the compact panel prints no figure in it.
+
+**The rest of the suite has not moved either**, which the second commit had to
+prove because it touched a DSP file and two shared headers: eq, sat, util,
+opto, dim and ltvcomp rendered in both appearances and hashed against the
+`1c5299f` baselines, twelve of twelve byte-identical.
 
 `signal=-18` renders **byte-identically to a bare render** on this module, in
 both views. That is correct rather than a broken flag: every band ships off, so
@@ -67,11 +76,12 @@ So the measurement ships with the fix:
 
 - `GainReductionBar::valueOverflow()` — the widest word the bar can draw,
   against the box it actually has.
-- `GainReductionBar::widestValue()` — fixed at `−24.0`, not sampled.
-  `DspCore::currentGainReductionDb` returns the deepest **single** band rather
-  than a sum, and a band's offset is bounded by its own range parameter, whose
-  floor is −24 dB. A cell sized to the reading somebody happened to see when
-  they looked is a cell that clips later.
+- `GainReductionBar::widestValue()` — fixed at the bar's own range, not
+  sampled. `DspCore::currentGainReductionDb` returns the deepest **single**
+  band rather than a sum, and a band's offset is bounded by its own range
+  parameter. A cell sized to the reading somebody happened to see when they
+  looked is a cell that clips later. *(It was `−24.0` at this commit; §3 made
+  the value signed, so it now measures both ends and `+24.0` wins.)*
 - `checkDeqPanel` asserts it at both widths, and **was seen to fail on the
   fault first**: `deq GR bar's widest word ("−24.0") overflows its 36 px cell
   by 9.9 px`.
@@ -88,61 +98,82 @@ and OUTPUT is its one trim knob.
 
 ---
 
-## 3. Measured, not settled: the GR bar is blind to half of what it meters
+## 3. Fixed: the GR bar was blind to half of what it meters  (`d7aba69`)
 
-The checklist says "GR bar shows the deepest cut across bands; an upward band
-shows nothing. Label or redesign." That is now a number rather than a claim.
+The checklist said "GR bar shows the deepest cut across bands; an upward band
+shows nothing. Label or redesign." Measured, then redesigned.
 
 Same panel, same signal, one parameter's **sign** changed:
 
 ```
 b7_on=1 b7_dyn=1 b7_freq=1000 b7_thr=-30 b7_ratio=4 signal=-6
-
-  b7_range=-12   bar column: 88 px of #4fb8e8, then 90 px of well
-  b7_range=+12   bar column: 180 px of well. Nothing.
 ```
 
-A band moving the signal by 12 dB upward reads as a dead meter. `DspCore.cpp:357`
-is `deepest = max(deepest, -offsetDb * tick)`, so a positive offset contributes
-zero by construction, and `ModuleContext::gainReductionDb` is documented
-"always >= 0" — the callback cannot carry the other sign.
+| | before | after |
+|---|---|---|
+| `range=-12` | 88 px of `#4fb8e8` from the top, then 90 of well | unchanged |
+| `range=+12` | 180 px of well. Nothing | 88 px from the **bottom**, readout `+12.0` |
+| DYN off | 180 px of well. Nothing | unchanged |
 
-**Frosty asked to see the empty bar and a bipolar version side by side, and
-raised a third shape.** Still open; nothing committed.
+**Rows 2 and 3 were the same picture.** A band moving the signal by 12 dB drew
+exactly what a band doing nothing drew, which is the one thing a meter must
+never do.
 
-Both rendered, three states each, both appearances:
-`snapshots/_dq-grcand-dark.png` and `_dq-grcand-light.png`. The sheets make the
-case on their own — **panels 1 and 3, "DYN off" and "RANGE +12", are the same
-picture**, and the bipolar column tells the three states apart.
+**Frosty, 2026-09-15:** keep the vertical bar where it is, read gain taken away
+down from the top and gain added up from the bottom.
 
-The bipolar candidate fits the existing 46 px cell: a centre hairline, growing
-down for a cut and up for a boost, with a signed readout (`−12.0` / `+12.0`).
-It costs half the resolution — 46 px per direction against the present 92 for
-one — and it needs `currentGainReductionDb` to return a signed deepest offset,
-which changes a `ModuleContext` callback's documented contract ("always >= 0")
-for every module. **So it is a DSP edit, not a panel one.** Built here only far
-enough to render; reverted, and the revert verified by hash against the
-committed panel.
+Both directions run the **full** height for the full range, so they share the
+track rather than splitting it — neither costs the other any resolution. That
+is what decided it against the centre-out bipolar candidate, which was built,
+rendered at all three states in both appearances, and halves both. It is safe
+because only one fill can exist at a time: the source is one band's offset and
+never a sum, so which end a fill grows from *is* the sign.
 
-**The third shape — horizontal, centre-out, one way for a cut and the other for
-a boost — is Frosty's, and goes with that DSP edit.** Measured here so the
-constraint travels with the idea rather than being found while drawing it:
+Measured after, at design x 562 (the bar's centre), render rows 966..1145:
 
-| | free either side of DEQ / AUTO on the shared switch row |
+| | fill |
 |---|---|
-| expanded 600 | **216 px** — at ±24 dB that is 4.5 px/dB, better than the vertical bar's 3.83 |
-| compact 320 | **76 px** |
+| DYN off | none |
+| `range=-12` | render 968..1055, **88 px**, from the top |
+| `range=+12` | render 1056..1143, **88 px**, from the bottom |
 
-So it fits the full panel and not the compact one, and the two views would stop
-agreeing about what the GR meter *is* — which is the thing to settle before it
-is drawn. It would also put a meter on the suite's shared switch line, which
-`checkOutputSection` pins across every module, making it a suite-layout question
-as well as a DEQ one.
+Mirror-exact. `snapshots/_dq-v2sheet-dark.png` and `_dq-v2sheet-light.png`.
 
-A fourth option, unprompted and cheap, is on the record and not recommended:
-rename the caption `GR` → `CUT`. Free in code, but GR is the term every other
-compressor in the suite uses, and this would be the one panel that differs.
+**The value is signed now, and three doc comments were wrong about that.**
+`ModuleDsp::currentGainReductionDb`, `ModuleContext::gainReductionDb` and
+`DspCore::currentGainReductionDb` all said ">= 0" — true of every module in the
+suite, but true by accident rather than by requirement. All three now state the
+sign and say the same thing: a compressor only cuts, so BMO Opto and LTV Comp
+never return the other sign, and a panel showing only reduction should clamp
+rather than assume.
 
+`DeqDspTests` pins it with the mirror of the T5 end-to-end case: the same band
+with only `rangeDb` flipped, asserting **-10.5** and not "is negative", because
+a sign test passes on any wrong magnitude — the trap `OptoDspTests` was written
+against.
+
+**The cell went 46 → 49 px, and that is its own small lesson.** "+24.0"
+measures 2.8 px wider than "-24.0": the plus is the wider glyph. `widestValue`
+measures both ends rather than taking the obvious one, and `checkDeqPanel` was
+seen to fail at 46 before the number moved. Assuming which is wider is how the
+next "-12." gets written.
+
+**This touched a DSP file and two shared headers, so it had to prove it moved
+nothing else.** Every other panel rendered in both appearances and hashed
+against the `1c5299f` baselines — eq, sat, util, opto, dim, ltvcomp — all twelve
+**byte-identical**. Full Release `ctest` 26/26.
+
+**Still open on this meter, and not raised with Frosty yet:** both fills are
+`meterGr`, the azure that means "gain reduction" everywhere in the suite, and
+one of them is now gain *addition*. Direction and the readout's sign carry the
+distinction; a second colour would carry it harder. Left alone deliberately —
+it is a colour call, and the pass has one of those open already (§4).
+
+**The horizontal bar Frosty raised is not taken** and is recorded in
+`spec/decisions.md` for whoever takes the next DSP edit, with its constraint
+measured: the shared switch row has **216 px** free either side of DEQ/AUTO on
+the 600 and **76 px** on the 320, so it fits the full panel and not the compact
+one, and the two views would stop agreeing about what the GR meter is.
 ---
 
 ## 4. The headline: a dimmed caption is **1.23:1** on the pale plate
@@ -273,8 +304,9 @@ stale and should not be read as current.
 
 ## 6. Blocked on Frosty
 
-§4 and §3 above were put to him on 2026-09-15; §4 is answered, §3 has a render
-and no decision. These three were not:
+§3 and §4 were put to him on 2026-09-15 and both are answered. These three were
+not, and they are the reason **BMO DEQ is not complete**. Ranked by what each
+one costs to leave alone.
 
 1. **Solo and the analyser.** Confirmed exactly as the checklist has it. Both
    are in the engine and tested — `DeqDsp::setSolo`, `DeqDsp::analyser()`,
@@ -299,47 +331,66 @@ and no decision. These three were not:
 
 ---
 
-## 7. Still open, not raised here
+## 7. Next steps — what is unaddressed, and in what order
 
-- **Contrast assertions** (`docs/ui-workflow-brief.md` §4) still do not exist,
-  and §4 above changed what they have to say. They are a pure function of the
-  tokens and the alpha and need no rendering, so they stayed out of this commit
-  only because the floor they assert is the thing §4 was deciding.
+Written for Frosty to add to. **Nothing below is started.** The three in §6 are
+his and are not repeated here; these are the ones that have an owner as soon as
+a call is made.
 
-  Now that it is decided, the floor cannot simply be "every (ink, ground) pair
-  clears X": 1.23:1 is **accepted**, so a blanket floor would be a red suite
-  rather than a guard. Two ways to write it honestly, and the second is better
-  — the assertion should carry the decision, not route around it:
+### On BMO DEQ, before the module can be called done
 
-  1. Set the floor below 1.23 and catch only what is worse. Cheap, and almost
-     useless: nothing in the suite is worse.
-  2. Assert per pair against a table with the decision beside each figure —
-     raw legend ≥ 1.72 except DEQ's 1.64 and Tune's 1.29, disabled caption
-     ≥ 1.23. Then the test fails when a number moves *from what was signed off*
-     rather than from a generic floor, and adding a row means quoting who
-     agreed to it. That is `OptoDspTests`' "assert absolutes, not comparisons"
-     applied to colour.
-- **Nothing tests a rest dot.** Still true, and `rest-dot-finding.md` §5 still
-  says so. The mark is painted, and the suppression rule lives inside
-  `drawRotarySlider` mixed in with the geometry. A pure `restMarkFor (slider,
-  trackRadius)` returning the proportion and whether one is drawn would be
-  assertable without rendering — but it is a `core/ui` refactor touching every
-  module's paint path, so it is a suite item and not a DEQ one.
-- Nothing pushed. **25 commits on `ui-pass` locally**, CI untouched this pass.
+| # | what | size | why now |
+|---|---|---|---|
+| 1 | **Solo and the analyser** (§6.1) | large | It is the only open item that changes what the panel *is*, so everything else on this module is provisional until it lands. `spec/decisions.md` currently reads as if both shipped |
+| 2 | **The GR bar's colour** | small | Both fills are `meterGr`, the azure that means "gain reduction" across the suite, and one of them is now gain *addition*. Direction and the readout's sign carry it; a second colour would carry it harder. LTV Comp hit the same problem and took `meterGrWarm`, so there is a precedent and a spare token |
+| 3 | **The response view's sample rate** (§6.2) | medium | The only item here a user meets in normal use: at 44.1 or 96 k the drawn curve is up to 1 dB out in the top octave. Below item 1 only because that one changes the panel's shape and this does not. Needs the rate through `ModuleContext` -- the same widening §3 just did for the GR value |
+| 4 | **`GR` flush to the panel edge on the 320** | small | Noticed in the rack render. The caption sits hard against the right margin at compact width. Cosmetic, one number |
+| 5 | **DEQ's teal at 1.64:1** | — | Confirmed, and the worst raw legend in the suite. It is a *suite* question, not DEQ's, so under the one-module rule it waits until it can be asked as one. Do not re-raise it here |
 
-## 8. Next
+### Suite items this module surfaced, for after the pass
 
-**BMO Tune RT**, module 3. Nothing blocks it: §4 is answered, and §3 is a DSP
-edit rather than a panel one, so it leaves with whoever takes the signed GR
-value rather than holding this pass up.
+| # | what | size | note |
+|---|---|---|---|
+| 6 | **Contrast assertions** | medium | `docs/ui-workflow-brief.md` §4, still the cheapest open item in the brief. §4 above changed what they have to say — see below |
+| 7 | **Nothing tests a rest dot** | medium | `rest-dot-finding.md` §5 has said so since it was written, and its "no control defaults to 2–3% of its range" claim went stale on this module |
+| 8 | **A horizontal GR bar** | medium | Frosty's, 2026-09-15. Recorded in `spec/decisions.md` with its constraint measured; goes with whichever DSP edit comes next |
+| 9 | **`ModuleContext` is being widened one field at a time** | — | §3 widened `gainReductionDb`, item 3 wants the sample rate, and Tune's empty middle wants a pitch readout. Three modules now want something from the context that is not in it. Worth one decision rather than three |
 
-DEQ itself is **not complete** — the three items in §6 are still Frosty's, and
-the solo/analyser one in particular changes what the panel *is*. Leave the
-module open and do not start changing it.
+**On item 6 specifically, because §4 changed it.** The assertions are a pure
+function of the tokens and the alpha and need no rendering, so the only reason
+they are not written is that the floor they assert was the thing §4 was
+deciding. Now that 1.23:1 is **accepted**, a blanket "every (ink, ground) pair
+clears X" would be a red suite rather than a guard. Two honest shapes, and the
+second is better:
 
-And when §7's contrast assertions are written, the floor they assert has to be
-below 1.23:1 or exclude a disabled caption explicitly, because that figure is
-now accepted rather than a bug. Assert the absolute, and say in the test which
-decision set it.
+1. Set the floor below 1.23 and catch only what is worse. Cheap, and nearly
+   useless — nothing in the suite is worse.
+2. Assert per pair against a table with the decision beside each figure: raw
+   legend ≥ 1.72 except DEQ's 1.64 and Tune's 1.29, disabled caption ≥ 1.23.
+   Then a failure means a number moved *from what was signed off* rather than
+   from a generic minimum, and adding a row means naming who agreed to it.
+   That is `OptoDspTests`' "assert absolutes, not comparisons" applied to
+   colour.
+
+### Housekeeping
+
+- **Nothing pushed. 27 commits on `ui-pass` locally**, CI untouched this pass.
+  A round trip is ~22 minutes and the concurrency group cancels an in-progress
+  run on the same ref, so this wants batching — and `d7aba69` is the first
+  commit of the pass to touch DSP and shared headers, which is the kind of
+  change worth getting a CI opinion on before it goes much further.
+- `snapshots/` is gitignored, so no render in this pass travels with the branch.
+  Re-run the tool.
+
+---
+
+## 8. Where this leaves the pass
+
+**BMO DEQ is not complete.** The three items in §6 are Frosty's, and the first
+of them changes what the panel is. Leave the module open.
+
+**BMO Tune RT, module 3, is not blocked.** §4 is answered and settles
+Dimension's inherited copy of the same question; §3 is done. Nothing on this
+module holds module 3 up.
 
 *Everything above measured on **AURORA**.*
