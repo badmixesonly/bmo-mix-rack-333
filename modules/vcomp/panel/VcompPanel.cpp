@@ -64,7 +64,7 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
               [this] { return context.peak ? meterDb (context.peak()) : kGateOffDb; }),
       // COMPLEX is neither a bypass, a mono nor a polarity, so it takes
       // switchAlt -- the table in modules/AGENTS.md, not a free choice.
-      complexSwitch (context.params.param (Index::complex), "COMPLEX", ui::tokens().switchAlt),
+      complexSwitch (context.params.param (Index::complex), "COMPLEX", ui::tokens().meterHigh),
       // SAUCE takes the engaged red rather than switchAlt, which is an
       // exception to the switch table in modules/AGENTS.md and the second one
       // in the suite. BMO Opto is the first, and for the same reason: a panel
