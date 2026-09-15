@@ -250,7 +250,16 @@ void LevelBar::paint (juce::Graphics& g)
                                         .withWidth (32.0f)
                                  : strip;
 
-            ui::drawLabel (g, mark.text, box, justify, font, t.text2);
+            // Stepped against the plate this panel actually has, not left at
+            // the token. text2 is #9a9a9a in the pale set and lands at 1.68:1
+            // on LTV silver, where it is #9a9aa4 and 4.02:1 on the graphite --
+            // so the figures were legible in one appearance and washed out in
+            // the other. accentTextOn fixes the pale one and leaves the dark
+            // alone, because it only moves a colour that has not already
+            // cleared. 3.0 rather than the 4.5 default: a touch darker, not a
+            // second set of captions.
+            ui::drawLabel (g, mark.text, box, justify, font,
+                           ui::accentTextOn (t.text2, t.plate, 3.0f));
         };
 
         for (size_t i = 1; i + 1 < scale.size(); ++i)

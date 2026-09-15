@@ -189,6 +189,23 @@ struct Tokens
     juce::Colour meterClip  { 0xffe0685a };
     juce::Colour meterGr    { 0xff4fb8e8 };   ///< gain reduction, for the modules that show it
 
+    /** Gain reduction on a panel that carries no suite colour.
+
+        A second GR colour rather than a new value for `meterGr`, because BMO
+        DEQ draws with that one in three places and this is not a change to how
+        BMO looks.
+
+        Bronze -- Frosty, 2026-09-15, from four warm candidates rendered in
+        both appearances. **The warm gap is narrower than it looks**: the LTV
+        level bars already run a gradient from amber at 42 degrees to red at 6,
+        so anything warm *between* those reads as a level rather than as a
+        different quantity. Deep gold came back looking like the gradient's
+        amber zone and copper like its red. This is muted and dark enough to
+        read as neither -- 24.5 L* clear of the silver well, 31.6 of the
+        graphite -- which is what a bar measuring a different thing from the
+        two bars either side of it needs to do. */
+    juce::Colour meterGrWarm { 0xffb98a5e };
+
     //== Fixed, not themable ===================================================
 
     /** Every switch in the suite, in px.

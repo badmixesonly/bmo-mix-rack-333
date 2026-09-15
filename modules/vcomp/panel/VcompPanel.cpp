@@ -33,6 +33,18 @@ namespace
     // The five detector knobs are trim knobs -- ui::ModulePanel::styleTrimKnob
     // sizes and captions them -- in two rows of three and two.
     constexpr int kDetectorRow = ui::ModulePanel::kTrimKnobRow;
+    /** How far below a trim knob's own top edge its first track dot falls.
+
+        Derived, then checked on a render: the component is kTrimKnobRow tall,
+        the caption row comes off the bottom, and a gainKnobSide square centres
+        in what is left -- so the face centre sits about 28 px down, the radius
+        is 14 at the default face scale, and the dotted track stands trackGap
+        beyond it at 24. 28 - 24 = 4.
+
+        It exists so COMPLEX can be centred on what a reader sees rather than
+        on a component edge. */
+    constexpr int kTrackTop = 4;
+
     /** The rule-and-legend row bracketing LOW and HIGH. */
     constexpr int kLegendRow = 16;
 
@@ -113,14 +125,26 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
     // is where a vocal lives and where the gate gets set, and -60 is a floor
     // you need named once.
     //
-    // Hand-placed, and it has to be. Sweeping an exponent cannot hold -18 at
-    // 0.5 *and* keep opening out above it; BMO Opto's GR scale hit the same
-    // wall and stopped pretending to be a power law. Per-dB density across the
-    // marks below runs 0.0106, 0.020, 0.025, 0.028, 0.030 -- monotonic toward
-    // 0, which is the property to preserve if one is ever moved.
+    // Hand-placed, and it has to be. Sweeping an exponent cannot hold -18 near
+    // the middle *and* keep opening out above it; BMO Opto's GR scale hit the
+    // same wall and stopped pretending to be a power law.
+    //
+    // **-3 joined on 2026-09-15 and cost nothing**, which is the part worth
+    // understanding. Adding a seventh figure to a 202 px well should crowd it,
+    // and the first attempt at a fix -- dropping -24 to make room -- came back
+    // *worse*, 8.5 px at its tightest against the six-figure scale's 10.5, and
+    // left a 101 px void between -60 and -18. The room came from easing the
+    // whole curve instead: -18 moved 0.50 to 0.47 and everything above it came
+    // down with it, which is 10.5 px at the tightest again with seven figures
+    // rather than six. Rendered, then scanned; both numbers are off the pixels.
+    //
+    // Per-dB density across the marks runs 0.0094, 0.022, 0.027, 0.027, 0.033,
+    // 0.037 -- monotonic toward 0, which is the property to preserve if one is
+    // ever moved.
     const std::vector<LevelBar::ScaleMark> levelScale {
-        { -60.0f, 0.00f, "-60" }, { -24.0f, 0.38f, "-24" }, { -18.0f, 0.50f, "-18" },
-        { -12.0f, 0.66f, "-12" }, {  -6.0f, 0.83f,  "-6" }, {   0.0f, 1.00f,   "0" },
+        { -60.0f, 0.00f, "-60" }, { -24.0f, 0.34f, "-24" }, { -18.0f, 0.47f, "-18" },
+        { -12.0f, 0.63f, "-12" }, {  -6.0f, 0.79f,  "-6" }, {  -3.0f, 0.89f,  "-3" },
+        {   0.0f, 1.00f,   "0" },
     };
 
     inBar .setScale (levelScale);
@@ -182,27 +206,27 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
         k->setUtilityTint (drawerTint());
     }
 
-    // GR is flat red -- Frosty, 2026-09-15. It was flat `meterGr` azure until
-    // then, on the argument that reduction is not a fault and that painting
-    // 24 dB of it in the clip red would be the meter telling the user off for
-    // using the module.
+    // GR is flat bronze -- Frosty, 2026-09-15 -- and it took two goes.
     //
-    // **That argument was about the suite, and this is no longer a suite
-    // panel.** On an LTV panel red is not the fault colour, it is the *active*
-    // one: SAUCE lights red, COMPLEX lights red, the whole drawer is red. A
-    // compressor working hard showing red here says the same word the rest of
-    // the panel says. The azure, meanwhile, was the last suite colour left
-    // anywhere on it -- sitting between two grey-to-red bars and reading as a
-    // different instrument.
+    // It was flat `meterGr` azure, on the argument that reduction is not a
+    // fault and painting 24 dB of it in the clip red would be the meter
+    // telling the user off for using the module. True, and it left the last
+    // suite colour on a panel that had none, reading as a different
+    // instrument between two grey-to-red bars.
     //
-    // Flat rather than the IN/OUT gradient, which is the half of the old
-    // reasoning that survives: a gradient says "further along is worse", and
-    // on this bar further along is only further along.
+    // Red was the next answer and lasted one render. It put "near clipping" at
+    // the top of IN and OUT and "working" across the whole of GR -- two
+    // meanings in one colour, told apart only by which bar they were in.
     //
-    // The cost, stated rather than discovered later: red now means "near
-    // clipping" at the top of IN and OUT and "working" across the whole of GR.
-    // Two meanings in one colour, told apart by which bar they are in.
-    grBar.setFlatColour (ui::tokens().meterClip);
+    // Bronze is warm without being on the ramp. The level bars run amber at 42
+    // degrees to red at 6, so a warm colour *between* those reads as a level;
+    // the candidates that did -- deep gold, copper -- were rendered and
+    // rejected for exactly that. See tokens().meterGrWarm.
+    //
+    // Flat rather than a gradient, which is the half of the first argument
+    // that survives: a gradient says "further along is worse", and on this bar
+    // further along is only further along.
+    grBar.setFlatColour (ui::tokens().meterGrWarm);
 
     // The gate, on the meter that shows the level it acts on. Red rather than
     // the module accent -- Frosty, 2026-09-14 -- which is the same call as
@@ -398,6 +422,25 @@ void VcompPanel::resized()
 
         lowThruKnob .setBounds (row.removeFromLeft (each));
         highThruKnob.setBounds (row.removeFromLeft (each));
+    }
+
+    // COMPLEX last, and centred in the space it actually sits in rather than
+    // placed by the run of gaps above it -- Frosty, 2026-09-15. The gap
+    // arithmetic distributes evenly over seven divisions, which is right for
+    // the blocks and wrong for a lone switch between two unequal neighbours:
+    // it had MAKEUP's caption close above it and the drawer's first ring of
+    // track dots further below.
+    //
+    // Measured between what a reader sees, not between component bounds. A
+    // trim knob's box starts well above its dotted track, so centring on
+    // attackKnob.getY() would centre on nothing -- kTrackTop is how far down
+    // that box the first dot actually falls.
+    {
+        const auto above = output.getBottom();
+        const auto below = attackKnob.getY() + kTrackTop;
+
+        complexSwitch.setBounds (juce::Rectangle<int> (kSwitchWidth, kSwitchHeight)
+                                     .withCentre ({ getWidth() / 2, (above + below) / 2 }));
     }
 }
 

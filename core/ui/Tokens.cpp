@@ -39,6 +39,7 @@ namespace
         { "meterHigh",  &Tokens::meterHigh },
         { "meterClip",  &Tokens::meterClip },
         { "meterGr",    &Tokens::meterGr },
+        { "meterGrWarm", &Tokens::meterGrWarm },
     };
 
     Tokens current;

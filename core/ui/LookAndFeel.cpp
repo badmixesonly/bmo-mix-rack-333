@@ -171,7 +171,13 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
                                 ? knob->getUtilityTint()
                                 : t.track;
 
-    const auto accent    = character ? panelAccentFor (slider, moduleAccent) : utilityInk;
+    // Routed through the line for utility knobs as well as character ones --
+    // Frosty, 2026-09-15. A tinted drawer keeps its colour on the *caption*
+    // and gives the marks back to the line, so LTV Comp's five drawer knobs
+    // carry the same track, rest dot and plus-minus as AMOUNT and MAKEUP and
+    // differ only in their lettering. Nothing changes on a BMO panel: with no
+    // line ink, panelAccentFor hands the fallback straight back.
+    const auto accent    = panelAccentFor (slider, character ? moduleAccent : utilityInk);
     const auto faceBox   = juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (centre);
 
     // Gain controls carry a dotted track, with the rest position marked on it
