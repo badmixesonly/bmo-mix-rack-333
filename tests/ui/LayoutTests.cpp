@@ -419,6 +419,26 @@ void checkDeqPanel (bmo::ui::ModulePanel& panel, const juce::String& who)
         check (shape->captionOverflow() <= 0.0f,
                who + " SHAPE or its legend overflows by " + juce::String (shape->captionOverflow(), 1) + " px");
 
+    // The gain-reduction bar's words. It is a Component that paints its own
+    // caption and readout, so neither checkCaptionFits nor checkSwitchLabelsFit
+    // has ever looked at it -- and the readout was clipping to "-12." on the
+    // full panel from the module's first build. Same class as MAKEUP -> MAKEU,
+    // one container over: the text that gets measured is the text somebody
+    // remembered to measure.
+    bmo::deq::GainReductionBar* gr = nullptr;
+
+    for (auto* child : panel.getChildren())
+        if (auto* bar = dynamic_cast<bmo::deq::GainReductionBar*> (child))
+            gr = bar;
+
+    check (gr != nullptr, who + " has no gain-reduction bar");
+
+    if (gr != nullptr)
+        check (gr->valueOverflow() <= 0.0f,
+               who + " GR bar's widest word (\"" + bmo::deq::GainReductionBar::widestValue()
+                   + "\") overflows its " + juce::String (gr->getWidth()) + " px cell by "
+                   + juce::String (gr->valueOverflow(), 1) + " px");
+
     checkOutputSwitch (panel, "AUTO", who);
 }
 
@@ -780,9 +800,16 @@ int main (int argc, char** argv)
 
     // BMO DEQ takes the output section at both widths, so its OUTPUT knob and
     // its DEQ switch sit on the same lines as every other module's in a rack.
+    //
+    // It is the other content-dense panel: thirteen controls a band, twelve
+    // bands, a curve and a meter, and the compact half does it in 320. So it
+    // gets checkTrimKnobHeights too -- LTV Comp's silent squash was a layout
+    // that no longer fitted and shrank instead of overflowing, and the panel
+    // most likely to run out of room next is this one.
     for (const auto& product : { named ("deq"), named ("deq compact") })
         withPanel (product, [&] (bmo::ui::ModulePanel& panel)
         {
+            checkTrimKnobHeights (panel, product.who, { "OUTPUT" });
             checkOutputRule    (panel, product.who);
             checkOutputSection (panel, product.who);
             checkOutputSwitch  (panel, "DEQ", product.who);

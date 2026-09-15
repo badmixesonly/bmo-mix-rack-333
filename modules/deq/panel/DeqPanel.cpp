@@ -413,10 +413,16 @@ void DeqPanel::layoutExpanded (juce::Rectangle<int> area)
 
         // Cells as wide as their words in the suite's caption face, which
         // sets THRESH at 15 pt 94 px wide and RELEASE at 11 pt 78.
+        //
+        // The meter's cell is the one that was not. 36 px was the 12 px bar
+        // and a margin; the readout under it is "-24.0" at worst, which
+        // measures 45.9, so it drew "-12." for the module's whole life.
+        // 46 -- and checkDeqPanel now measures the widest string the bar can
+        // print rather than whichever one it happened to be printing.
         juce::Component stackCell;   // DYN over BELOW, as on the compact panel
         spread (row, { { &stackCell, kSwitchW, kSwitchH * 2 + kGap }, { thr.get(), 96, hb }, { range.get(), 88, hb },
                        { ratio.get(), 80, hs }, { attack.get(), 80, hs }, { release.get(), 80, hs },
-                       { &reduction, 36, reduction.heightFor (92) } }, false);
+                       { &reduction, 46, reduction.heightFor (92) } }, false);
 
         auto stack = stackCell.getBounds();
         dynOn->setBounds (stack.removeFromTop (kSwitchH));

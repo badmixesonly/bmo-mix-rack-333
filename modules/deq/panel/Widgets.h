@@ -206,6 +206,36 @@ public:
     /** The height a bar of `barHeight` needs with its words under it. */
     int heightFor (int barHeight) const { return barHeight + kCaptionRow + (showsValue ? kValueRow : 0); }
 
+    /** The widest readout this bar can ever print.
+
+        Fixed rather than sampled, because a cell sized to whatever the meter
+        happened to read when somebody looked at it is a cell that clips later.
+        `DspCore::currentGainReductionDb` returns the deepest *single* band
+        rather than a sum, and a band's offset is bounded by its own range
+        parameter, whose floor is -24 dB -- so this is the widest string, and
+        it cannot grow without the schema changing. */
+    static juce::String widestValue()
+    {
+        return juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) + juce::String (kRangeDb, 1);
+    }
+
+    /** How far the widest word this bar draws runs past its own box; <= 0
+        fits. The caption is drawn always, the readout only on the full panel.
+
+        The readout clipped to "-12." on the 600 from its first build until the
+        2026-09-15 UI pass, and no assertion could have caught it: the suite's
+        text-fits checks walk PlainKnob captions and switch labels, and this is
+        painted by hand inside a Component of its own. */
+    float valueOverflow() const
+    {
+        auto widest = juce::GlyphArrangement::getStringWidth (ui::labelFont (kCaptionSize), "GR");
+
+        if (showsValue)
+            widest = juce::jmax (widest, juce::GlyphArrangement::getStringWidth (ui::captionFont (kValueSize), widestValue()));
+
+        return widest - (float) getWidth();
+    }
+
     void paint (juce::Graphics& g) override
     {
         const auto& t = ui::tokens();
@@ -223,13 +253,13 @@ public:
         g.setColour (t.meterGr);
         g.fillRect (bar.reduced (2.0f).removeFromTop ((bar.getHeight() - 4.0f) * depth));
 
-        ui::drawLabel (g, "GR", caption, juce::Justification::centredBottom, ui::labelFont (11.0f), t.text1);
+        ui::drawLabel (g, "GR", caption, juce::Justification::centredBottom, ui::labelFont (kCaptionSize), t.text1);
 
         // Tenths, and a real minus: the bar says how much at a glance, this
         // says it exactly. Blank at rest rather than "-0.0".
         if (showsValue && shown >= 0.05f)
             ui::drawLabel (g, juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) + juce::String (shown, 1), value,
-                           juce::Justification::centredTop, ui::captionFont (11.0f), t.text2);
+                           juce::Justification::centredTop, ui::captionFont (kValueSize), t.text2);
     }
 
 private:
@@ -241,6 +271,7 @@ private:
     }
 
     static constexpr float kRangeDb = 24.0f, kBarWidth = 12.0f;
+    static constexpr float kCaptionSize = 11.0f, kValueSize = 11.0f;
     static constexpr int kCaptionRow = 16, kValueRow = 14;
     std::function<float()> reduction;
     float shown = 0.0f;
