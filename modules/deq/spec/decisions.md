@@ -44,6 +44,46 @@ used by this module and nothing else today, and the next planned use is BMO
 Dimension's DETUNE scope (`ui-pass-checklist.md`, module 4). It is settled for
 that too, and should not be re-opened there.
 
+### Band solo is a right-click held, and sidechain listen waits
+
+**Frosty, 2026-09-15.** The 2026-09-12 entry below settled what solo *is* --
+the band's output, momentary, never a parameter -- and left where it lives to
+this pass, "when the space is visible". The space is visible and there is none:
+the tab strip fills its row at both widths (expanded tabs run x 16..584 in a
+10..590 content area; compact tabs are 10..310 exactly), so twelve solo buttons
+were never possible and a thirteenth control has nowhere to go.
+
+**So it is a gesture: right-click and hold, on a band's tab or on its node.**
+The right button rather than a plain hold, because a plain hold cannot be told
+from a slow click. It does not change the selection -- auditioning a band is not
+the same as going to work on it -- and it solos only a band that is on, because
+soloing one that is off is silence.
+
+**Right-clicking a node that is already being dragged solos it too**, which is
+the case that decided how it is built. JUCE does not deliver a second mouseDown
+while a button is held (`MouseInputSourceImpl::setButtons`: "ignore secondary
+clicks when there's already a button down"), but it does update the button state
+and send a drag -- so the gesture exists only in `mouseDrag`'s modifiers. The
+obvious implementation, in `mouseDown`, compiles and never fires; there is a
+test that fails on exactly that.
+
+The panel clears any solo when it is destroyed. A solo is held by a mouse button
+and a window can close while one is down, and nothing saves solo -- so an engine
+would otherwise stay soloed with no panel on screen to release it, which is the
+support ticket this decision exists to avoid.
+
+**Sidechain listen waits, and the reason is the detector rather than the
+space.** `DspCore.cpp` builds the detector with `sidechainFor (s.shape, hz, q,
+rate)` -- the **band's own** frequency and Q. DEQ's detector is not
+independently tunable, so band solo and sidechain listen are always the same
+frequency region and differ only by before-gain-reduction against after. On a
+module where the detector can be aimed away from the band -- a 200 Hz band
+ducking off 3 kHz -- they answer genuinely different questions and listen earns
+a control. Here it does not.
+
+**If a detector frequency is ever added, this comes back with it.** That is the
+condition, not "when there is room".
+
 ### The GR bar is read from both ends
 
 **Frosty, 2026-09-15**, on rendered candidates: keep the vertical bar where it

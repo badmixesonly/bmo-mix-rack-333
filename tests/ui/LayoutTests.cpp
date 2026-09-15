@@ -17,6 +17,7 @@
 // constructing the editor is enough to ask where everything landed.
 
 #include "products/deq/Product.h"
+#include "modules/deq/panel/ResponseView.h"
 #include "modules/deq/panel/Widgets.h"
 #include "products/dim/Product.h"
 #include "products/eq/Product.h"
@@ -459,6 +460,93 @@ juce::MouseEvent clickAt (juce::Component& c, juce::Point<float> p, int clicks)
              juce::MouseInputSource::defaultTiltY, &c, &c, now, p, now, clicks, false };
 }
 
+/** A mouse event with a chosen set of buttons held. */
+juce::MouseEvent buttonsAt (juce::Component& c, juce::Point<float> p, juce::ModifierKeys mods)
+{
+    const auto now = juce::Time::getCurrentTime();
+
+    return { juce::Desktop::getInstance().getMainMouseSource(), p, mods,
+             juce::MouseInputSource::defaultPressure, juce::MouseInputSource::defaultOrientation,
+             juce::MouseInputSource::defaultRotation, juce::MouseInputSource::defaultTiltX,
+             juce::MouseInputSource::defaultTiltY, &c, &c, now, p, now, 1, false };
+}
+
+/** Right-clicking a node solos it, and **right-clicking one that is already
+    being dragged with the left button solos it without ending the drag.**
+
+    The second half is why this test exists. JUCE never delivers a second
+    mouseDown while a button is held -- `MouseInputSourceImpl::setButtons`
+    returns early, "ignore secondary clicks when there's already a button
+    down" -- so the gesture is only visible in `mouseDrag`'s modifiers. A
+    reasonable implementation in `mouseDown` would compile, pass review, and
+    silently never fire. */
+void checkDeqNodeSolo (bmo::ui::ModulePanel& panel, const juce::String& who, std::vector<int>& soloCalls)
+{
+    bmo::deq::ResponseView* curve = nullptr;
+
+    for (auto* child : panel.getChildren())
+        if (auto* v = dynamic_cast<bmo::deq::ResponseView*> (child))
+            curve = v;
+
+    check (curve != nullptr, who + " has no response view");
+
+    if (curve == nullptr)
+        return;
+
+    auto& params = panel.getContext().params;
+
+    // Band 1 at its default 30 Hz, switched on, as a bell so it has a gain and
+    // its node sits on the zero line rather than being pinned there.
+    const auto band = 0;
+    params.setReal (bmo::deq::indexOf (band, bmo::deq::Control::shape), 0.0f);
+    params.setReal (bmo::deq::indexOf (band, bmo::deq::Control::gain), 0.0f);
+    params.setReal (bmo::deq::indexOf (band, bmo::deq::Control::on), 1.0f);
+
+    // Where that node is, from the view's own geometry rather than a repeat of
+    // its log mapping: 30 Hz of a 20..20000 sweep, and 0 dB is the centre.
+    const auto r = curve->plot();
+    const auto x = r.getX() + r.getWidth() * (float) (std::log (30.0 / 20.0) / std::log (20000.0 / 20.0));
+    const juce::Point<float> node { x, r.getCentreY() };
+
+    const auto before = soloCalls.size();
+
+    // 1. A plain right-click on the node.
+    curve->mouseDown (buttonsAt (*curve, node, juce::ModifierKeys (juce::ModifierKeys::rightButtonModifier)));
+    check (soloCalls.size() == before + 1 && soloCalls.back() == band,
+           who + " right-clicking band 1's node should solo it");
+
+    curve->mouseUp (buttonsAt (*curve, node, juce::ModifierKeys()));
+    check (soloCalls.size() == before + 2 && soloCalls.back() == -1,
+           who + " releasing the node should clear the solo");
+
+    // 2. Left-drag the node, then add the right button mid-drag.
+    curve->mouseDown (buttonsAt (*curve, node, juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier)));
+    curve->mouseDrag (buttonsAt (*curve, node, juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier)));
+
+    check (soloCalls.size() == before + 2,
+           who + " dragging a node alone should not solo anything");
+
+    const auto both = juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier | juce::ModifierKeys::rightButtonModifier);
+    curve->mouseDrag (buttonsAt (*curve, node, both));
+
+    check (soloCalls.size() == before + 3 && soloCalls.back() == band,
+           who + " right-clicking during a drag should solo the band being dragged");
+
+    // Still dragging: the freq parameter must keep following the mouse.
+    const auto movedTo = juce::Point<float> (r.getCentreX(), r.getCentreY());
+    curve->mouseDrag (buttonsAt (*curve, movedTo, both));
+    check (params.getReal (bmo::deq::indexOf (band, bmo::deq::Control::freq)) > 100.0f,
+           who + " the drag should continue while soloed, but band 1 stayed at "
+               + juce::String (params.getReal (bmo::deq::indexOf (band, bmo::deq::Control::freq)), 1) + " Hz");
+
+    // Letting go of the right button alone ends the solo, not the drag.
+    curve->mouseDrag (buttonsAt (*curve, movedTo, juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier)));
+    check (soloCalls.size() == before + 4 && soloCalls.back() == -1,
+           who + " releasing the right button mid-drag should clear the solo");
+
+    curve->mouseUp (buttonsAt (*curve, movedTo, juce::ModifierKeys()));
+}
+
 /** Double-clicking a band's tab switches that band on, and again switches it
     off.
 
@@ -494,6 +582,40 @@ void checkDeqBandToggle (bmo::ui::ModulePanel& panel, const juce::String& who)
     tabs->mouseDoubleClick (clickAt (*tabs, centre, 2));
     check (params.getReal (onIndex) < 0.5f,
            who + " double-clicking band 5's tab again should switch it off");
+
+    // Right-click held is solo, released is not. Solo is the suite's first
+    // non-parameter path from editor to engine, so there is no value to read
+    // back: the call itself is the whole of the behaviour, and intercepting it
+    // is the only way to assert on it.
+    std::vector<int> soloCalls;
+    auto& ctx = const_cast<bmo::ui::ModuleContext&> (panel.getContext());
+    const auto realSolo = ctx.setSolo;
+
+    ctx.setSolo = [&soloCalls, realSolo] (int b)
+    {
+        soloCalls.push_back (b);
+        if (realSolo) realSolo (b);
+    };
+
+    const auto rightClick = juce::MouseEvent (juce::Desktop::getInstance().getMainMouseSource(), centre,
+                                              juce::ModifierKeys (juce::ModifierKeys::rightButtonModifier),
+                                              juce::MouseInputSource::defaultPressure, juce::MouseInputSource::defaultOrientation,
+                                              juce::MouseInputSource::defaultRotation, juce::MouseInputSource::defaultTiltX,
+                                              juce::MouseInputSource::defaultTiltY, tabs, tabs,
+                                              juce::Time::getCurrentTime(), centre, juce::Time::getCurrentTime(), 1, false);
+
+    tabs->mouseDown (rightClick);
+    check (soloCalls.size() == 1 && soloCalls.back() == band,
+           who + " right-clicking band 5's tab should solo band 5, got "
+               + (soloCalls.empty() ? juce::String ("no call") : juce::String (soloCalls.back())));
+
+    tabs->mouseUp (rightClick);
+    check (soloCalls.size() == 2 && soloCalls.back() == -1,
+           who + " releasing should clear the solo with -1");
+
+    checkDeqNodeSolo (panel, who, soloCalls);
+
+    ctx.setSolo = realSolo;
 }
 
 /** Every switch label fits its switch.

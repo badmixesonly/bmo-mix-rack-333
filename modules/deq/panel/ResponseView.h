@@ -73,6 +73,14 @@ public:
         what makes the audio thread write at all. */
     void setAnalyserTap (AnalyserTap* tap) { analyser.setTap (tap); }
 
+    /** Called with a band while it is soloed and with -1 on release.
+
+        Momentary and never a parameter -- see `ModuleContext::setSolo`. The
+        curve raises it for a right-click on a node, **including one made while
+        that node is already being dragged with the left button**, which is the
+        case that decided where the gesture is handled: see `mouseDrag`. */
+    void onSoloChanged (std::function<void (int)> f) { onSolo = std::move (f); }
+
     static constexpr float kSpanDb = 24.0f;   ///< the gain range, top to centre
 
     /** How far the component runs past the well on each side, so a node at
@@ -93,6 +101,7 @@ private:
     bool readBands();
     void rebuildPaths();
     void rebuildSpectrum();
+    void setSolo (int band);
 
     float xFor (double hz) const;
     double hzFor (float x) const;
@@ -123,6 +132,8 @@ private:
     bool compact = false;
 
     int dragging = -1;
+    int soloing = -1;
+    std::function<void (int)> onSolo;
     int lastSelected = -2;   ///< per instance: two DEQs in a session each have their own
 
     /** The rate assumed before the host has said otherwise. It was the rate

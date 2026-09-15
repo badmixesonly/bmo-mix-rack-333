@@ -91,7 +91,8 @@ DeqPanel::DeqPanel (ui::ModuleContext ctx)
             [this] (int b) { return context.params.getReal (indexOf (b, Control::dyn)) > 0.5f
                                   && context.params.getReal (indexOf (b, Control::on)) > 0.5f; },
             [this] (int b) { selectBand (b); },
-            [this] (int b) { toggleBand (b); }),
+            [this] (int b) { toggleBand (b); },
+            [this] (int b) { if (context.setSolo) context.setSolo (b); }),
       reduction (context.gainReductionDb),
 
       // The module's in/out, so it lights in the module's own colour; AUTO is
@@ -108,6 +109,9 @@ DeqPanel::DeqPanel (ui::ModuleContext ctx)
     // session with no DEQ window open costs the audio thread nothing, which is
     // the contract `AnalyserTap` is emphatic about.
     curve.setAnalyserTap (context.analyser);
+
+    // The curve's nodes carry the same momentary solo the tabs do.
+    curve.onSoloChanged ([this] (int b) { if (context.setSolo) context.setSolo (b); });
 
     // Open on the first band that is doing something, so a session reopens on
     // its work rather than on band 1.
@@ -133,6 +137,14 @@ DeqPanel::DeqPanel (ui::ModuleContext ctx)
 DeqPanel::~DeqPanel()
 {
     removeMouseListener (this);
+
+    // A solo is held by a mouse button, and a window can close while one is
+    // down. Nothing saves solo, so an engine left soloed would stay that way
+    // with no panel on screen to release it and nothing in the session to
+    // explain it -- which is the support ticket `spec/decisions.md` names as
+    // the reason solo is not a parameter in the first place.
+    if (context.setSolo)
+        context.setSolo (-1);
 }
 
 bool DeqPanel::isShowingExpanded() const noexcept

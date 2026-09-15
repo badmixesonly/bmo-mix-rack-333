@@ -127,7 +127,12 @@ private:
 
     A tab shows whether its band is on (switch fill against the dark well of
     an off one) and whether its dynamics are (a dot in the gain-reduction
-    azure), so which bands are doing something reads without selecting any. */
+    azure), so which bands are doing something reads without selecting any.
+
+    Three gestures, and between them the whole of a band's existence: click to
+    select, double-click to switch on or off, **right-click held to solo**. The
+    tab strip fills its row at both widths, so there was never anywhere to put a
+    button for any of them. */
 class BandTabs final : public juce::Component,
                        private juce::Timer
 {
@@ -142,9 +147,10 @@ public:
         placement mode. This gesture and the one on the curve's nodes replace
         it. */
     BandTabs (int count, std::function<bool (int)> isOn, std::function<bool (int)> isDynamic,
-              std::function<void (int)> choose, std::function<void (int)> toggle = {})
+              std::function<void (int)> choose, std::function<void (int)> toggle = {},
+              std::function<void (int)> solo = {})
         : bands (count), on (std::move (isOn)), dynamic (std::move (isDynamic)),
-          onChoose (std::move (choose)), onToggle (std::move (toggle))
+          onChoose (std::move (choose)), onToggle (std::move (toggle)), onSolo (std::move (solo))
     {
         startTimerHz (10);
     }
@@ -198,6 +204,18 @@ public:
                 g.setColour (isSel ? ink : t.meterGr);
                 g.fillEllipse (r.getRight() - 9.0f, r.getY() + 4.0f, 5.0f, 5.0f);
             }
+
+            // Soloed, while the button is held. A ring in the primary ink
+            // rather than a fill: solo is the loudest thing the panel can do
+            // and it has to read instantly against every other tab state, but
+            // it lasts as long as a mouse button and must not be mistaken for
+            // one of them. Not `polarity`, whose white is reserved suite-wide
+            // for phase inversion and nothing else.
+            if (b == soloed)
+            {
+                g.setColour (t.text1);
+                g.drawRoundedRectangle (r.reduced (1.0f), ui::Tokens::corner, 2.0f);
+            }
         }
     }
 
@@ -206,11 +224,41 @@ public:
         for (int b = 0; b < bands; ++b)
             if (tabBounds (b).contains (e.getPosition()))
             {
+                // **Right-click held is solo** (Frosty, 2026-09-15). Momentary,
+                // never a parameter, and it does not change the selection --
+                // auditioning a band is not the same as going to work on it.
+                //
+                // The right button rather than a plain hold, because a plain
+                // hold cannot be told from a slow click; and rather than a
+                // button, because there is nowhere to put twelve of them and
+                // the tab strip already fills its row in both widths. It costs
+                // no context menu: the tabs have never had one.
+                if (e.mods.isPopupMenu())
+                {
+                    soloed = b;
+                    repaint();
+                    if (onSolo) onSolo (b);
+                    return;
+                }
+
                 selected = b;
                 repaint();
                 if (onChoose) onChoose (b);
                 return;
             }
+    }
+
+    void mouseUp (const juce::MouseEvent&) override
+    {
+        // -1 clears it, which is the contract ModuleContext::setSolo states.
+        // Unconditional: a release anywhere ends a solo, including one that
+        // began on a tab and ended off the strip.
+        if (soloed < 0)
+            return;
+
+        soloed = -1;
+        repaint();
+        if (onSolo) onSolo (-1);
     }
 
     void mouseDoubleClick (const juce::MouseEvent& e) override
@@ -231,9 +279,9 @@ public:
 private:
     void timerCallback() override { repaint(); }
 
-    int bands, rows = 1, selected = 0, gap = 7;
+    int bands, rows = 1, selected = 0, soloed = -1, gap = 7;
     std::function<bool (int)> on, dynamic;
-    std::function<void (int)> onChoose, onToggle;
+    std::function<void (int)> onChoose, onToggle, onSolo;
 };
 
 //==============================================================================

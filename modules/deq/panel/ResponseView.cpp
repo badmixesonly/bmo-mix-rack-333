@@ -400,8 +400,38 @@ int ResponseView::bandAt (juce::Point<float> p) const
     return best;
 }
 
+void ResponseView::setSolo (int band)
+{
+    if (band == soloing)
+        return;
+
+    soloing = band;
+
+    if (onSolo)
+        onSolo (band);
+}
+
 void ResponseView::mouseDown (const juce::MouseEvent& e)
 {
+    // `bands` is a *drawing* cache, refreshed on a 30 Hz timer, and hit-testing
+    // has always read it. A mouse arrives asynchronously to that timer, so a
+    // band switched on by automation, a preset or the tab strip in the last
+    // 33 ms was not grabbable and its node could be clicked straight through.
+    // Cheap to rule out -- twelve bands of eight parameters -- and it makes a
+    // click resolve against what is true rather than what was last painted.
+    readBands();
+
+    // Right-click held is solo, the same gesture the tabs carry. It does not
+    // start a drag and does not change the selection: auditioning a band is not
+    // the same as going to work on it.
+    if (e.mods.isPopupMenu())
+    {
+        if (const auto hit = bandAt (e.position); hit >= 0 && bands[(size_t) hit].on)
+            setSolo (hit);
+
+        return;
+    }
+
     dragging = bandAt (e.position);
 
     if (dragging < 0)
@@ -419,6 +449,24 @@ void ResponseView::mouseDrag (const juce::MouseEvent& e)
     if (dragging < 0)
         return;
 
+    // **Solo while dragging**, which is the whole reason this lives here rather
+    // than in mouseDown.
+    //
+    // JUCE does not deliver a second mouseDown while a button is already held
+    // -- `MouseInputSourceImpl::setButtons` says so in as many words, "ignore
+    // secondary clicks when there's already a button down", and returns before
+    // sending anything. What it *does* do is update the button state and send a
+    // drag, so the right button appears in this event's modifiers and nowhere
+    // else. Handling it here is the only place the gesture exists.
+    //
+    // `isRightButtonDown` rather than `isPopupMenu`: on macOS the latter is
+    // also ctrl-click, and ctrl is a modifier somebody may well be holding for
+    // a fine drag.
+    if (e.mods.isRightButtonDown())
+        setSolo (dragging);
+    else if (soloing >= 0)
+        setSolo (-1);
+
     const auto x = juce::jlimit (plot().getX(), plot().getRight(), e.position.x);
     params.setReal (indexOf (dragging, Control::freq), (float) hzFor (x));
 
@@ -429,6 +477,11 @@ void ResponseView::mouseDrag (const juce::MouseEvent& e)
 
 void ResponseView::mouseUp (const juce::MouseEvent&)
 {
+    // Unconditional, and before the drag check: a solo begun by right-clicking
+    // a node with no drag never set `dragging`, and would otherwise never be
+    // released.
+    setSolo (-1);
+
     if (dragging < 0)
         return;
 
@@ -439,6 +492,8 @@ void ResponseView::mouseUp (const juce::MouseEvent&)
 
 void ResponseView::mouseDoubleClick (const juce::MouseEvent& e)
 {
+    readBands();   // same reason as mouseDown: hit-test against what is true
+
     auto set = [this] (int band, Control c, float v)
     {
         auto& p = params.param (indexOf (band, c));
