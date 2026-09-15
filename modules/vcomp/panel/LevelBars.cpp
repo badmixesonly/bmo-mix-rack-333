@@ -12,6 +12,7 @@ namespace
     constexpr float kFallRate = 0.16f;
 
     constexpr float kCaptionSize = 10.0f;
+    constexpr float kScaleSize   = 8.0f;   ///< the printed dB figures
     // 7 rather than 3, and standing 5 px proud of the well rather than 3 --
     // Frosty, 2026-09-14. The gate is the one control on this panel that is
     // not a knob or a switch, and at 3 px it read as a tick mark on the meter
@@ -59,12 +60,19 @@ juce::Rectangle<int> LevelBar::wellBounds() const
 {
     auto area = getLocalBounds();
     area.removeFromLeft (kCaptionWidth);
+    area.removeFromBottom (kScaleRow);
     return area.withSizeKeepingCentre (area.getWidth(), kBarHeight);
 }
 
 float LevelBar::normalised (float db) const
 {
     return juce::jlimit (0.0f, 1.0f, (db - minDb) / (maxDb - minDb));
+}
+
+float LevelBar::positionOf (float db) const
+{
+    const auto n = normalised (db);
+    return grow == Grow::rightward ? n : 1.0f - n;
 }
 
 void LevelBar::refresh()
@@ -123,12 +131,49 @@ void LevelBar::paint (juce::Graphics& g)
 
     for (auto db = minDb + kTickStepDb; db < maxDb; db += kTickStepDb)
     {
-        const auto at = well.getX() + well.getWidth() * normalised (db);
+        const auto at = well.getX() + well.getWidth() * positionOf (db);
         g.drawVerticalLine ((int) at, well.getY() + 2.0f, well.getBottom() - 2.0f);
     }
 
     g.setColour (t.outline.withAlpha (0.6f));
     g.drawRoundedRectangle (well.reduced (0.5f), 2.0f, 1.0f);
+
+    // The printed scale, in the strip wellBounds reserves under the well.
+    //
+    // Every bar carries its own rather than one shared strip under the block,
+    // because the three do not share a scale: IN and OUT run -60..0 dBFS left
+    // to right, GR runs 0..24 of reduction right to left. One strip would be
+    // right about two of them and a lie about the third.
+    //
+    // The ends are justified into the well rather than centred on their own
+    // positions, so the outermost figures sit inside the meter instead of half
+    // over its edge.
+    {
+        const auto font = ui::labelFont (kScaleSize);
+        // Clear of kHandleProud, so the handle cannot land on a figure; see
+        // kScaleRow.
+        const auto top = well.getBottom() + kHandleProud + 1.0f;
+        const auto strip = juce::Rectangle<float> (well.getX(), top,
+                                                   well.getWidth(),
+                                                   well.getBottom() + (float) kScaleRow - top);
+
+        const auto figure = [&] (float db, juce::Justification justify)
+        {
+            const auto text = juce::String (juce::roundToInt (std::abs (db)));
+            const auto box = justify == juce::Justification::centred
+                                 ? strip.withX (strip.getX() + well.getWidth() * positionOf (db) - 16.0f)
+                                        .withWidth (32.0f)
+                                 : strip;
+
+            ui::drawLabel (g, text, box, justify, font, t.text2);
+        };
+
+        for (auto db = minDb + kTickStepDb; db < maxDb; db += kTickStepDb)
+            figure (db, juce::Justification::centred);
+
+        figure (grow == Grow::rightward ? minDb : maxDb, juce::Justification::centredLeft);
+        figure (grow == Grow::rightward ? maxDb : minDb, juce::Justification::centredRight);
+    }
 
     if (threshold != nullptr)
     {

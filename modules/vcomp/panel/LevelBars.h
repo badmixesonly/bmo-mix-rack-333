@@ -83,9 +83,31 @@ public:
     static constexpr int kCaptionWidth = 38;
     static constexpr int kBarHeight    = 14;
 
+    /** The strip under the well carrying the printed scale.
+
+        Deep enough that the gate handle, which stands proud of the well on
+        both edges, cannot reach the figures. BMO Opto learned this one the
+        expensive way: its GR needle rested exactly on the printed 0, in the
+        default state of that mode, and the fix was to put the numbers where
+        the needle cannot go rather than to give the needle a place to park.
+        The default here is the same shape of trap -- the gate rests at -60,
+        hard left, on top of the very figure that says so. */
+    static constexpr int kScaleRow     = 16;
+
 private:
     /** 0..1 along the well for a dB reading, before Grow is applied. */
     float normalised (float db) const;
+
+    /** 0..1 *across* the well, which is not the same thing: a leftward bar
+        reads its minimum at the right-hand end, because that is the end its
+        fill grows from.
+
+        The ticks used `normalised` directly until 2026-09-14 and were wrong on
+        the GR bar for it -- 0 dB of reduction drawn at the left, where the
+        fill starts at the right. Nothing showed, because GR carries one tick
+        at 12 of 24 and the midpoint is the single position the two agree on.
+        Printing the scale is what made it visible. */
+    float positionOf (float db) const;
 
     /** Sets the threshold parameter from a mouse x, through the standard
         gesture triplet. */

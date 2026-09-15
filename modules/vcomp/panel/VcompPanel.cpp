@@ -17,7 +17,7 @@ namespace
     constexpr int kSwitchHeight = ui::Tokens::switchHeight;
     constexpr int kSwitchGap    = ui::Tokens::switchGap;
 
-    constexpr int kBarRow   = 22;   ///< one meter row: the bar, with air around it
+    constexpr int kBarRow   = 22 + LevelBar::kScaleRow;   ///< the bar, its air, and its printed scale
     constexpr int kBarGap   = 2;
     constexpr int kMeterBlock = kBarRow * 3 + kBarGap * 2;
 
