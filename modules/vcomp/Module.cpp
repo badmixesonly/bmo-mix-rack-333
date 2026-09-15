@@ -34,6 +34,8 @@ const ModuleDef& module()
         {
             return std::make_unique<VcompPanel> (std::move (ctx));
         },
+        0,                  // expandedWidth: one width, like every module but DEQ
+        &ui::ltvLine(),     // the collaboration line -- silver plate, LTV marque
     };
 
     return def;
