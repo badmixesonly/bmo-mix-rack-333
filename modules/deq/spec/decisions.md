@@ -3,6 +3,86 @@
 The spec (`spec-v0.1.md`) is kept as received. Decisions that change it are
 recorded here, newest first, with who made them and what evidence they rest on.
 
+## 2026-09-15 — the UI pass: a dimmed control's caption, and what GR measures
+
+From module 2 of the UI pass on **AURORA**; the measurements and the renders
+behind both are in `testing-notes/ui-pass-deq-2026-09-15.md`.
+
+### A dimmed caption stays at alpha 0.4, and the contrast figure is accepted
+
+**Frosty, 2026-09-15.** *"Alpha is fine, legibility is low priority if the
+applicable function is disabled."*
+
+BMO DEQ is the only module in the suite that ships with dimmed knobs, and at
+Init **six of its eight band captions are dimmed** — `refreshEnablement` dims
+the five detector knobs whenever DYN is off, which is every band's default, and
+GAIN whenever the band is a cut. `core/ui/Controls.cpp:145` dims with a flat
+`ink.withAlpha (0.4f)`.
+
+Measured off the render, against a named ground:
+
+| | ink | on `#efefef` | on `#2e2e32` |
+|---|---|---|---|
+| enabled caption | `#5ecfc0` | 1.64:1 | 7.19:1 |
+| **disabled caption** | `#b5e2dc` / `#426f6b` | **1.23:1** | 2.36:1 |
+
+**1.23:1 is the lowest figure measured anywhere in this suite** — under the
+1.72–2.00 band the raw legends spend, and under BMO Tune RT's lime at 1.29,
+which is the lowest figure previously accepted. It is recorded here so that it
+reads as chosen rather than unnoticed, which is the whole point of this file.
+
+Two alternatives were rendered in both appearances and are on the record as not
+taken: a disabled caption dropping to `text2` (2.45 / 4.85, and it makes a
+disabled caption *darker* than an enabled one on the pale plate, inverting the
+hierarchy), and dimming the knob but not the word (1.64 / 7.19, and on the dark
+plate a disabled caption then reads exactly like an enabled one). Raising the
+alpha alone cannot clear the band on the pale plate: 1.64 is the ceiling,
+because that is what the enabled caption measures.
+
+**This decision is the suite's, not only DEQ's.** `PlainKnob::setKnobEnabled` is
+used by this module and nothing else today, and the next planned use is BMO
+Dimension's DETUNE scope (`ui-pass-checklist.md`, module 4). It is settled for
+that too, and should not be re-opened there.
+
+### The GR bar measures reduction, and does not show an upward band
+
+**Open — Frosty asked to see both, 2026-09-15.** Not settled, recorded so the
+behaviour is not mistaken for an oversight in the meantime.
+
+`DspCore::currentGainReductionDb` is `max(deepest, -offsetDb)`, so a band whose
+RANGE is positive contributes zero by construction, and
+`ModuleContext::gainReductionDb` is documented "always >= 0" — the callback
+cannot carry the other sign. Measured: one band at 1 kHz, `signal=-6`,
+`thr=-30`, `ratio=4`, and only RANGE's sign changed.
+
+| | the bar |
+|---|---|
+| `range=-12` | 88 px of `meterGr`, then 90 px of well |
+| `range=+12` | 180 px of well. Nothing |
+| DYN off | 180 px of well. Nothing |
+
+**The second and third rows are the same picture**, which is the fault: a band
+boosting 12 dB is drawn identically to a band doing nothing.
+
+A bipolar candidate was built and rendered at all three states in both
+appearances — a centre hairline, growing down for a cut and up for a boost,
+with a signed readout. It fits the existing 46 px cell and costs half the
+resolution: 46 px per direction against the present 92 for one. It needs
+`currentGainReductionDb` to return a signed deepest offset, which changes a
+`ModuleContext` callback's documented contract for every module, so it is a DSP
+edit rather than a panel one. The candidate is not committed.
+
+**A horizontal centre-out bar was also asked for** — growing one way for a cut
+and the other for a boost — and is for whoever takes that DSP edit. Measured
+here so the shape of the problem travels with the idea: on the 600 the shared
+output switch row has **216 px** free either side of DEQ/AUTO, which at ±24 dB
+is 4.5 px/dB and better resolution than the vertical bar has now. On the 320
+the same gaps are **76 px**. So a horizontal meter fits the full panel and not
+the compact one, and the two views would stop agreeing about what the GR meter
+is — which is the thing to solve before it is drawn, not after. It would also
+put a meter on the suite's shared switch line, which `checkOutputSection` pins
+across every module, so it is a suite-layout question as well as a DEQ one.
+
 ## 2026-09-12 — band solo, and the analyser
 
 Both are new since the spec. Both were asked for before the UI pass rather than

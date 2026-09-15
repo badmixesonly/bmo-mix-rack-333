@@ -6,7 +6,19 @@ waiting on Leteveon; do not change it. The tools and the before-numbers are in
 `ui-pass-render-loop.md`, the triage in `ui-pass-handoff-2026-09-14.md`.
 
 **One defect fixed. One measurement that is bigger than the item that led to
-it. Five decisions gathered for Frosty and none taken.**
+it. Five decisions put to Frosty — two answered the same day, three open.**
+
+| | |
+|---|---|
+| GR readout clipped to `−12.` | **fixed**, `71d6d01`, and asserted |
+| disabled caption at 1.23:1 | **settled** — stays at alpha 0.4, Frosty 2026-09-15. §4 |
+| GR bar blind to upward bands | **open**, bipolar candidate rendered at his request. §3 |
+| solo and the analyser | open. §6 |
+| the 48 kHz response view | open. §6 |
+| the compact 320 in a rack | open. §6 |
+
+Both settled calls are recorded at the call site, in
+`modules/deq/spec/decisions.md`, 2026-09-15.
 
 ---
 
@@ -95,18 +107,41 @@ is `deepest = max(deepest, -offsetDb * tick)`, so a positive offset contributes
 zero by construction, and `ModuleContext::gainReductionDb` is documented
 "always >= 0" — the callback cannot carry the other sign.
 
-**Frosty's call. Four options and what each costs:**
+**Frosty asked to see the empty bar and a bipolar version side by side, and
+raised a third shape.** Still open; nothing committed.
 
-1. **Leave it, and say so in `spec/decisions.md`.** The bar meters reduction;
-   upward bands are not shown. Free, and honest once written down.
-2. **Rename the caption.** `GR` → `CUT`. Free in code, but GR is the term every
-   other compressor in the suite uses and this would be the one that differs.
-3. **Make the bar bipolar**, growing down from a centre line for cut and up for
-   boost. Needs `currentGainReductionDb` to report a signed deepest offset,
-   which changes a `ModuleContext` callback's contract for every module.
-4. **A sixth callback.** The same shape as the note Tune's empty middle wants
-   ("it would be a sixth callback and a float from `TuneCore`"). Two modules now
-   want the context widened; worth deciding once rather than twice.
+Both rendered, three states each, both appearances:
+`snapshots/_dq-grcand-dark.png` and `_dq-grcand-light.png`. The sheets make the
+case on their own — **panels 1 and 3, "DYN off" and "RANGE +12", are the same
+picture**, and the bipolar column tells the three states apart.
+
+The bipolar candidate fits the existing 46 px cell: a centre hairline, growing
+down for a cut and up for a boost, with a signed readout (`−12.0` / `+12.0`).
+It costs half the resolution — 46 px per direction against the present 92 for
+one — and it needs `currentGainReductionDb` to return a signed deepest offset,
+which changes a `ModuleContext` callback's documented contract ("always >= 0")
+for every module. **So it is a DSP edit, not a panel one.** Built here only far
+enough to render; reverted, and the revert verified by hash against the
+committed panel.
+
+**The third shape — horizontal, centre-out, one way for a cut and the other for
+a boost — is Frosty's, and goes with that DSP edit.** Measured here so the
+constraint travels with the idea rather than being found while drawing it:
+
+| | free either side of DEQ / AUTO on the shared switch row |
+|---|---|
+| expanded 600 | **216 px** — at ±24 dB that is 4.5 px/dB, better than the vertical bar's 3.83 |
+| compact 320 | **76 px** |
+
+So it fits the full panel and not the compact one, and the two views would stop
+agreeing about what the GR meter *is* — which is the thing to settle before it
+is drawn. It would also put a meter on the suite's shared switch line, which
+`checkOutputSection` pins across every module, making it a suite-layout question
+as well as a DEQ one.
+
+A fourth option, unprompted and cheap, is on the record and not recommended:
+rename the caption `GR` → `CUT`. Free in code, but GR is the term every other
+compressor in the suite uses, and this would be the one panel that differs.
 
 ---
 
@@ -170,11 +205,20 @@ which inverts the hierarchy. Any option that keeps the order caps out at 1.42.
 The only way to have both is to raise the enabled caption too, and that reopens
 a decision already taken.
 
-**Not mine to pick.** But note the scope: `setKnobEnabled` is used by BMO DEQ
-and nothing else today, and the checklist's Dimension item ("dim CENTS when
-DETUNE is off — `PlainKnob::setKnobEnabled` exists and is unused suite-wide,
-this is its case") is module 4. Whatever is decided here is decided for
-Dimension as well, so it is worth taking before module 4 rather than twice.
+### Settled: A stands
+
+**Frosty, 2026-09-15:** *"Alpha is fine, legibility is low priority if the
+applicable function is disabled."*
+
+So the 1.23:1 is accepted rather than unnoticed, and it is written down at the
+call site — `modules/deq/spec/decisions.md`, 2026-09-15 — with the two rejected
+candidates and their numbers, so it reads as chosen.
+
+**And it is settled for BMO Dimension too.** `setKnobEnabled` is used by DEQ and
+nothing else today, and the checklist's Dimension item ("dim CENTS when DETUNE
+is off — `PlainKnob::setKnobEnabled` exists and is unused suite-wide, this is
+its case") is module 4. That module now inherits this answer and should not
+re-open it — which also means module 3 is no longer blocked on anything here.
 
 ---
 
@@ -227,12 +271,12 @@ stale and should not be read as current.
 
 ---
 
-## 6. Blocked on Frosty — evidence gathered, nothing decided
+## 6. Blocked on Frosty
 
-1. **The disabled-caption contrast**, §4. The largest item on this module, and
-   it reaches BMO Dimension too.
-2. **The GR bar and upward bands**, §3.
-3. **Solo and the analyser.** Confirmed exactly as the checklist has it. Both
+§4 and §3 above were put to him on 2026-09-15; §4 is answered, §3 has a render
+and no decision. These three were not:
+
+1. **Solo and the analyser.** Confirmed exactly as the checklist has it. Both
    are in the engine and tested — `DeqDsp::setSolo`, `DeqDsp::analyser()`,
    `DspCore` carries `AnalyserTap pre, post` and an atomic solo band — and
    `modules/deq/panel/` contains **not one reference to either**. Meanwhile
@@ -241,12 +285,12 @@ stale and should not be read as current.
    preference, a right-click on the analyser's own toggle. Wire them in this
    pass, or say in the decisions file that they wait. Shipping a decisions file
    that reads as if they exist is the one option that is not defensible.
-4. **The response view draws the 48 kHz design whatever the rate.**
+2. **The response view draws the 48 kHz design whatever the rate.**
    `ResponseView.h:99` is `static constexpr double kDisplayRate = 48000.0`, and
    the view has no path to the real rate — `ModuleContext` does not carry one.
    Up to about 1 dB out in the top octave at 44.1 or 96 k. The rate in
    `ModuleContext`, or a note.
-5. **The compact 320 in a rack.** Rendered next to BMO EQ and BMO Util, both
+3. **The compact 320 in a rack.** Rendered next to BMO EQ and BMO Util, both
    appearances (`snapshots/_dq-rack-dark.png`, `_dq-rack-light.png`). It holds
    its width and reads as its own module. Two things to look at rather than
    fix: the GR bar reads as an unexplained pale slab at that size with its `GR`
@@ -257,24 +301,45 @@ stale and should not be read as current.
 
 ## 7. Still open, not raised here
 
-- **Contrast assertions** (`docs/ui-workflow-brief.md` §4) still do not exist.
-  §4 above is exactly the bug class they would catch, and it would have been
-  caught on the day DEQ shipped: it is a pure function of the tokens and the
-  alpha, and needs no rendering. It stayed out of this commit because the floor
-  it should assert is the decision in §4, and asserting a floor the suite does
-  not meet is a red suite, not a guard. **Do it as soon as §4 is settled.**
+- **Contrast assertions** (`docs/ui-workflow-brief.md` §4) still do not exist,
+  and §4 above changed what they have to say. They are a pure function of the
+  tokens and the alpha and need no rendering, so they stayed out of this commit
+  only because the floor they assert is the thing §4 was deciding.
+
+  Now that it is decided, the floor cannot simply be "every (ink, ground) pair
+  clears X": 1.23:1 is **accepted**, so a blanket floor would be a red suite
+  rather than a guard. Two ways to write it honestly, and the second is better
+  — the assertion should carry the decision, not route around it:
+
+  1. Set the floor below 1.23 and catch only what is worse. Cheap, and almost
+     useless: nothing in the suite is worse.
+  2. Assert per pair against a table with the decision beside each figure —
+     raw legend ≥ 1.72 except DEQ's 1.64 and Tune's 1.29, disabled caption
+     ≥ 1.23. Then the test fails when a number moves *from what was signed off*
+     rather than from a generic floor, and adding a row means quoting who
+     agreed to it. That is `OptoDspTests`' "assert absolutes, not comparisons"
+     applied to colour.
 - **Nothing tests a rest dot.** Still true, and `rest-dot-finding.md` §5 still
   says so. The mark is painted, and the suppression rule lives inside
   `drawRotarySlider` mixed in with the geometry. A pure `restMarkFor (slider,
   trackRadius)` returning the proportion and whether one is drawn would be
   assertable without rendering — but it is a `core/ui` refactor touching every
   module's paint path, so it is a suite item and not a DEQ one.
-- Nothing pushed. **24 commits on `ui-pass` locally**, CI untouched this pass.
+- Nothing pushed. **25 commits on `ui-pass` locally**, CI untouched this pass.
 
 ## 8. Next
 
-**BMO Tune RT**, module 3 — but only once §4 has an answer, because Dimension
-(module 4) inherits it and because it is the one item on this module that
-changes what a panel looks like.
+**BMO Tune RT**, module 3. Nothing blocks it: §4 is answered, and §3 is a DSP
+edit rather than a panel one, so it leaves with whoever takes the signed GR
+value rather than holding this pass up.
+
+DEQ itself is **not complete** — the three items in §6 are still Frosty's, and
+the solo/analyser one in particular changes what the panel *is*. Leave the
+module open and do not start changing it.
+
+And when §7's contrast assertions are written, the floor they assert has to be
+below 1.23:1 or exclude a disabled caption explicitly, because that figure is
+now accepted rather than a bug. Assert the absolute, and say in the test which
+decision set it.
 
 *Everything above measured on **AURORA**.*
