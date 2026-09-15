@@ -12,7 +12,14 @@ namespace
     constexpr float kFallRate = 0.16f;
 
     constexpr float kCaptionSize = 10.0f;
-    constexpr int   kHandleWidth = 3;
+    // 7 rather than 3, and standing 5 px proud of the well rather than 3 --
+    // Frosty, 2026-09-14. The gate is the one control on this panel that is
+    // not a knob or a switch, and at 3 px it read as a tick mark on the meter
+    // rather than as the thing you drag. The hit test never needed it: a click
+    // anywhere on the bar moves the handle, so the width is telling the user
+    // there is something here to grab, not defining where to grab it.
+    constexpr int   kHandleWidth = 7;
+    constexpr float kHandleProud = 5.0f;
 
     /** Ticks every 12 dB: four across a 60 dB level bar, one across the GR
         bar's 24. Enough to read a threshold against, few enough not to turn
@@ -131,15 +138,14 @@ void LevelBar::paint (juce::Graphics& g)
         const auto value = threshold->convertFrom0to1 (threshold->getValue());
         const auto at = well.getX() + well.getWidth() * normalised (value);
 
-        // Resolved here rather than at attachThreshold, so it follows a line's
-        // ink and follows an appearance change with it. The handle was the
-        // last thing on an LTV panel still carrying the module accent, and a
-        // lone periwinkle mark on a silver plate is the loose end this closes.
-        g.setColour (ui::panelAccentFor (*this, handleColour));
+        // Whatever attachThreshold was given, unrouted: the handle is red now
+        // rather than the module accent, so there is no accent here for a line
+        // to override. See VcompPanel, where the colour is chosen.
+        g.setColour (handleColour);
         g.fillRect (juce::Rectangle<float> (at - (float) kHandleWidth * 0.5f,
-                                            well.getY() - 3.0f,
+                                            well.getY() - kHandleProud,
                                             (float) kHandleWidth,
-                                            well.getHeight() + 6.0f));
+                                            well.getHeight() + kHandleProud * 2.0f));
     }
 }
 

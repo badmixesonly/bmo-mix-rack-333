@@ -57,10 +57,16 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
               [this] { return context.gainReductionDb ? context.gainReductionDb() : 0.0f; }),
       outBar ("OUT", LevelBar::Grow::rightward, kGateOffDb, 0.0f,
               [this] { return context.peak ? meterDb (context.peak()) : kGateOffDb; }),
-      // Neither switch is a bypass, a mono or a polarity, so both take
-      // switchAlt -- see the table in modules/AGENTS.md. Not a free choice.
+      // COMPLEX is neither a bypass, a mono nor a polarity, so it takes
+      // switchAlt -- the table in modules/AGENTS.md, not a free choice.
       complexSwitch (context.params.param (Index::complex), "COMPLEX", ui::tokens().switchAlt),
-      arcSwitch     (context.params.param (Index::arc),     "SAUCE",   ui::tokens().switchAlt),
+      // SAUCE takes the engaged red rather than switchAlt, which is an
+      // exception to the switch table in modules/AGENTS.md and the second one
+      // in the suite. BMO Opto is the first, and for the same reason: a panel
+      // with no colour of its own can let the one colour on it mean "on".
+      // Frosty, 2026-09-14. The red is tokens().meterClip, the same one Opto
+      // lights TELE, LINK and COLOR with -- not a new hex, and themable.
+      arcSwitch     (context.params.param (Index::arc),     "SAUCE",   ui::tokens().meterClip),
       attackKnob    (context.params.param (Index::attack),    "ATTACK"),
       releaseKnob   (context.params.param (Index::release),   "RELEASE"),
       sidechainKnob (context.params.param (Index::sidechain), "SC HPF"),
@@ -80,10 +86,11 @@ VcompPanel::VcompPanel (ui::ModuleContext ctx)
     // module. meterGr is the token that exists for exactly this.
     grBar.setFlatColour (ui::tokens().meterGr);
 
-    // The gate, on the meter that shows the level it acts on. The handle takes
-    // the module's accent because it is a control, and every other control on
-    // this panel that is not a switch is in the accent too.
-    inBar.attachThreshold (context.params.param (Index::gate), context.def.accent);
+    // The gate, on the meter that shows the level it acts on. Red rather than
+    // the module accent -- Frosty, 2026-09-14 -- which is the same call as
+    // SAUCE above and leaves the panel greyscale but for the two things that
+    // act: the switch that is on, and the threshold that is cutting.
+    inBar.attachThreshold (context.params.param (Index::gate), ui::tokens().meterClip);
 
     for (auto* c : std::initializer_list<juce::Component*> {
              &amount, &inBar, &grBar, &outBar, &output, &complexSwitch, &arcSwitch,
