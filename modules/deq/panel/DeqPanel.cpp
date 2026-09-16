@@ -286,24 +286,11 @@ void DeqPanel::refreshEnablement()
     // locked.
     if (dynOn != nullptr) dynOn->setSwitchEnabled (true);
 
-    // **The knobs wear the band's placement**, so the strip being edited says
-    // which of the three it belongs to without anyone reading a switch.
-    //
-    // Placement earns this where the compress/expand mode did not: it barely
-    // moves, where the mode flips every time RANGE crosses zero, and a panel
-    // that recolours itself that often is louder than what it reports. The mode
-    // colours were carried here for one round on 2026-09-15 and taken back off;
-    // they stop at the GR bar, which is where a direction is measured.
-    const auto mine = placementColour ((int) std::lround (context.params.getReal (indexOf (selected, Control::place))),
-                                       context.def.accent);
-
-    // FREQ, GAIN and Q only. SHAPE keeps the module accent -- it says what kind
-    // of filter the band is, which is true of the band whatever it is summed
-    // to -- and so do the dynamics knobs, whose strip already has a colour job
-    // of its own in the GR bar.
-    for (auto* k : { freq.get(), gain.get(), q.get() })
-        if (k != nullptr)
-            k->setAccent (mine);
+    // **The knobs stay teal.** Placement colours the band.s tab, its node and
+    // the MID and SIDE switches, and stops there -- Frosty, 2026-09-15, after
+    // seeing it on FREQ, GAIN and Q for a round. The knobs are where the values
+    // are read, and three of them changing hue with a switch is motion where
+    // none is wanted; the tab and the node carry the identity without it.
 
     // The dynamics half wears its own colour -- knobs, captions and the mode
     // pair -- so the two halves of the panel are told apart by more than the
