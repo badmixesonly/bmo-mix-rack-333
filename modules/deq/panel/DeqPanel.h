@@ -88,7 +88,8 @@ private:
     // The selected band's controls: rebuilt by bindBand, so they are always
     // attached to the band on show and to nothing else.
     std::unique_ptr<ShapeDial> shape;
-    std::unique_ptr<ui::SwitchButton> dynOn, below;
+    std::unique_ptr<ui::SwitchButton> dynOn;
+    std::unique_ptr<DynamicsMode> mode;
     std::unique_ptr<ChoiceRow> place;
     std::unique_ptr<ui::PlainKnob> freq, gain, q, thr, range, ratio, attack, release;
 

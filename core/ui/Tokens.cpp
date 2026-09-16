@@ -40,6 +40,8 @@ namespace
         { "meterClip",  &Tokens::meterClip },
         { "meterGr",    &Tokens::meterGr },
         { "meterGrWarm", &Tokens::meterGrWarm },
+        { "meterCut",   &Tokens::meterCut },
+        { "meterBoost", &Tokens::meterBoost },
         { "analyserOrange",  &Tokens::analyserOrange },
         { "analyserGold",    &Tokens::analyserGold },
         { "analyserPink",    &Tokens::analyserPink },

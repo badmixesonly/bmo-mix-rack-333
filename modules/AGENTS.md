@@ -137,10 +137,16 @@ them was written by someone who had just been in the code.
    |---|---|
    | the module's bypass | the module's accent |
    | **mono** | **the module's accent**, so it matches the header bar |
+   | **a summing choice** | **the module's accent**, for the same reason |
    | **polarity** | **`tokens().polarity`, always** |
    | anything else | `tokens().switchAlt` |
 
-   The two named rows are the strict ones, and they pull opposite ways on
+   The summing row was added on 2026-09-15 for BMO DEQ, whose per-band MID
+   and SIDE light in the module colour: a mid/side choice is a summing
+   decision and not a per-channel one, which is the mono row's own argument.
+   White was asked for first and withdrawn on the polarity rule below.
+
+   The mono and polarity rows are the strict ones, and they pull opposite ways on
    purpose. Polarity means the same thing on every panel and is hunted for
    by sight rather than read, so it looks identical everywhere and takes no
    module colour at all; it spent three releases wearing each module's own

@@ -191,9 +191,13 @@ struct Tokens
 
     /** Gain reduction on a panel that carries no suite colour.
 
-        A second GR colour rather than a new value for `meterGr`, because BMO
-        DEQ draws with that one in three places and this is not a change to how
-        BMO looks.
+        BMO LTV Comp's, which is greyscale. A second GR colour rather than a new
+        value for `meterGr`, because BMO DEQ draws with that one in three places
+        and this was not a change to how BMO looks.
+
+        It stayed LTV Comp's alone: BMO DEQ's bidirectional bar was offered the
+        bronze on 2026-09-15 and took `meterCut` instead, so the LTV line keeps
+        a GR colour of its own.
 
         Bronze -- Frosty, 2026-09-15, from four warm candidates rendered in
         both appearances. **The warm gap is narrower than it looks**: the LTV
@@ -205,6 +209,52 @@ struct Tokens
         graphite -- which is what a bar measuring a different thing from the
         two bars either side of it needs to do. */
     juce::Colour meterGrWarm { 0xffb98a5e };
+
+    /** Gain a module is **taking away**, on a meter that shows both directions.
+        The other half of the pair is `meterBoost`; they exist together or not
+        at all, and nothing should use one without meaning the other.
+
+        **Azure's complement.** BMO DEQ's bar reads gain added in the azure, so
+        gain taken away is the colour directly opposite it: azure is hue 198.8
+        degrees and this is 18.8, at azure's own saturation. The hue is the
+        complement's and the lightness is chosen for legibility -- the same
+        method `analyserPink` records for the teal, and for the same reason,
+        which is that a true complement at the original's lightness is usually
+        the faintest thing on the panel.
+
+        Frosty picked it from a rendered ladder of that hue, 2026-09-15. At
+        4.51:1 on the dark well and 2.62:1 on the pale one it is the most
+        saturated of the four and the strongest of them where the suite is
+        weakest, which is the pale plate.
+
+        **Not the amber** `meterHigh`, which was asked for and rendered first.
+        That is hue 42, and it is what BMO LTV Comp's level bars turn from -9 dB
+        up -- in a rack, a DEQ metering gain reduction and an LTV Comp
+        approaching its ceiling would have been the same colour. This sits 23
+        degrees clear of it. */
+    juce::Colour meterCut { 0xffe46830 };
+
+    /** Gain a module is **adding** -- upward expansion -- for a meter that
+        shows both directions.
+
+        BMO DEQ is the only one: its dynamic bands expand upward as well as
+        compress downward, and since 2026-09-15 its bar reads gain taken away
+        down from the top and gain added up from the bottom. Two quantities in
+        one track, and drawn in one colour the picture said how much while only
+        the readout's sign said which way.
+
+        **The azure, and `meterCut` is its opposite** (Frosty, 2026-09-15) --
+        chosen in that order, so the cut colour is the one that had to move.
+        Gain going up keeps the colour BMO DEQ has always metered dynamics in,
+        and gain coming down takes the hue directly across the wheel from it.
+
+        A separate token from `meterGr` even though the two hold the same hex,
+        on the terms this file already sets for `track`, `switchAlt` and
+        `meterGr`: one name per job, so a colour can move for one of them
+        without silently moving for the others. `meterGr` still draws BMO DEQ's
+        band-tab dynamics dot and the curve's range whisker, neither of which
+        is a direction; this one is half of a pair that means one. */
+    juce::Colour meterBoost { 0xff4fb8e8 };
 
     /** The spectrum analyser's four alternatives, and its default.
 

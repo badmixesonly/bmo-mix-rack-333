@@ -122,6 +122,114 @@ private:
 };
 
 //==============================================================================
+/** COMPRESS and EXPAND -- what the band's dynamics actually do.
+
+    **Not a rename of ABOVE / BELOW**, which is what it replaced on 2026-09-15,
+    and the difference is the whole reason it exists. Whether a band compresses
+    or expands is the direction **and the sign of RANGE together**:
+
+    | direction | RANGE | what happens | which |
+    |---|---|---|---|
+    | Above | cut | loud gets quieter | compress |
+    | Above | boost | loud gets louder | expand |
+    | Below | cut | quiet gets quieter | expand |
+    | Below | boost | quiet gets louder | compress |
+
+    So compressing is `(dir == Above) == (RANGE < 0)`. A switch labelled ABOVE
+    told you the mechanism and left you to work the rest out; this tells you the
+    result, which is what anybody reaching for it actually wants.
+
+    Pressing one writes `dir` to whichever value produces that behaviour at the
+    RANGE the band is on. **Flipping RANGE's sign therefore re-lights the other
+    button with nobody touching it** -- correct, and Frosty's call knowing it:
+    with RANGE flipped the same `dir` genuinely is the other behaviour, and the
+    old switch simply hid that.
+
+    `dir` keeps its Above / Below choice names, so a host and every saved
+    session are untouched. */
+class DynamicsMode final : public juce::Component
+{
+public:
+    DynamicsMode (juce::RangedAudioParameter& direction, std::function<float()> range,
+                  juce::Colour compressTint, juce::Colour expandTint)
+        : rangeDb (std::move (range)),
+          attachment (direction, [this] (float v) { lastDir = v; refresh(); })
+    {
+        auto make = [this] (const char* text, juce::Colour tint, bool wantsCompress)
+        {
+            auto b = std::make_unique<juce::ToggleButton> (text);
+            b->setColour (juce::ToggleButton::tickColourId, tint);
+            b->setClickingTogglesState (false);
+            b->onClick = [this, wantsCompress] { choose (wantsCompress); };
+            addAndMakeVisible (*b);
+            return b;
+        };
+
+        compress = make ("COMP", compressTint, true);
+        expand   = make ("EXP",  expandTint,   false);
+
+        attachment.sendInitialUpdate();
+    }
+
+    /** True when the band compresses at its current direction and RANGE. */
+    bool isCompressing() const
+    {
+        const auto below = lastDir > 0.5f;
+        const auto cut = (rangeDb ? rangeDb() : 0.0f) < 0.0f;
+        return below != cut;   // above+cut, or below+boost
+    }
+
+    /** Re-reads RANGE and re-lights. RANGE is a knob and moves without telling
+        this, so the panel's timer calls it. */
+    void refresh()
+    {
+        const auto c = isCompressing();
+        compress->setToggleState (c, juce::dontSendNotification);
+        expand->setToggleState (! c, juce::dontSendNotification);
+    }
+
+    void setVertical (bool shouldStack) { stacked = shouldStack; resized(); }
+
+    void setModeEnabled (bool e) { compress->setEnabled (e); expand->setEnabled (e); }
+
+    void resized() override
+    {
+        auto area = getLocalBounds();
+        const auto gap = ui::Tokens::switchGap;
+
+        if (stacked)
+        {
+            compress->setBounds (area.removeFromTop ((area.getHeight() - gap) / 2));
+            area.removeFromTop (gap);
+            expand->setBounds (area);
+        }
+        else
+        {
+            compress->setBounds (area.removeFromLeft ((area.getWidth() - gap) / 2));
+            area.removeFromLeft (gap);
+            expand->setBounds (area);
+        }
+    }
+
+private:
+    void choose (bool wantsCompress)
+    {
+        // Whichever `dir` produces the asked-for behaviour at the RANGE the
+        // band is on now: compressing is above+cut, or below+boost.
+        const auto cut = (rangeDb ? rangeDb() : 0.0f) < 0.0f;
+        const auto below = wantsCompress ? ! cut : cut;
+
+        attachment.setValueAsCompleteGesture (below ? 1.0f : 0.0f);
+    }
+
+    bool stacked = true;
+    float lastDir = 0.0f;
+    std::function<float()> rangeDb;
+    std::unique_ptr<juce::ToggleButton> compress, expand;
+    juce::ParameterAttachment attachment;
+};
+
+//==============================================================================
 /** The twelve band tabs. Selecting one is panel state, not a parameter -- it
     decides which band the controls under it are bound to, and nothing more.
 
@@ -388,12 +496,24 @@ public:
         const auto inner = bar.reduced (2.0f);
         const auto depth = juce::jlimit (-1.0f, 1.0f, shown / kRangeDb);
 
-        g.setColour (t.meterGr);
-
+        // Two quantities in one track, so two colours. Drawn in one, the picture
+        // said how much while only the readout's sign said which way -- and a
+        // bar is read at a glance where a figure is not.
+        //
+        // Azure up for gain added -- the colour this module has always metered
+        // dynamics in -- and its complement down for gain taken away. See
+        // Tokens::meterCut: the hue is 180 degrees off the azure, and 23 clear
+        // of the amber LTV Comp turns its level bars at.
         if (depth > 0.0f)
+        {
+            g.setColour (t.meterCut);
             g.fillRect (inner.withHeight (inner.getHeight() * depth));
+        }
         else if (depth < 0.0f)
+        {
+            g.setColour (t.meterBoost);
             g.fillRect (inner.withTrimmedTop (inner.getHeight() * (1.0f + depth)));
+        }
 
         ui::drawLabel (g, "GR", caption, juce::Justification::centredBottom, ui::labelFont (kCaptionSize), t.text1);
 

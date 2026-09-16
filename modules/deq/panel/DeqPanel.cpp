@@ -216,13 +216,25 @@ void DeqPanel::bindBand()
     shape  = std::make_unique<ShapeDial> (bandParam (Control::shape), context.params.spec (indexOf (selected, Control::shape)), accent);
     dynOn  = std::make_unique<ui::SwitchButton> (bandParam (Control::dyn), "DYN", alt);
 
-    // Direction is a two-way choice (Above, Below) read as one switch: lit is
-    // BELOW. A SwitchButton on a choice writes 0 or 1, which are its indices.
-    below  = std::make_unique<ui::SwitchButton> (bandParam (Control::dir), "BELOW", alt);
+    // COMPRESS or EXPAND, which is the direction and RANGE's sign read
+    // together -- see DynamicsMode. Each lights in the colour its half of the
+    // GR bar fills in, so the switch, the meter and the knobs below all say
+    // the same thing at once.
+    mode   = std::make_unique<DynamicsMode> (bandParam (Control::dir),
+                                             [this] { return context.params.getReal (indexOf (selected, Control::range)); },
+                                             alt, alt);
     // Placement offers the two special cases; nothing lit is Stereo, which is
     // what a band does when it has not been asked for anything. Frosty,
     // 2026-09-15 -- see ChoiceRow for the argument.
-    place  = std::make_unique<ChoiceRow> (bandParam (Control::place), kPlaceLabels, alt, false, 0);
+    //
+    // **In the accent, not switchAlt**, which extends the mono row of the table
+    // in modules/AGENTS.md rather than breaking its "anything else" row: MID
+    // and SIDE are a summing decision, not a per-channel one, and the table
+    // gives mono the module colour for exactly that reason -- it reads as
+    // something the module does. White was asked for first and withdrawn: the
+    // suite reserves white for polarity, always, and BMO EQ and BMO Util both
+    // draw one.
+    place  = std::make_unique<ChoiceRow> (bandParam (Control::place), kPlaceLabels, accent, false, 0);
 
     freq    = knob (Control::freq,    "FREQ");
     gain    = knob (Control::gain,    "GAIN");
@@ -234,7 +246,7 @@ void DeqPanel::bindBand()
     release = knob (Control::release, "RELEASE");
 
     for (auto* c : std::initializer_list<juce::Component*> {
-             shape.get(), dynOn.get(), below.get(), place.get(),
+             shape.get(), dynOn.get(), mode.get(), place.get(),
              freq.get(), gain.get(), q.get(), thr.get(), range.get(), ratio.get(), attack.get(), release.get() })
         addAndMakeVisible (c);
 
@@ -251,7 +263,7 @@ void DeqPanel::refreshEnablement()
     const auto dynamic = context.params.getReal (indexOf (selected, Control::dyn)) > 0.5f && ! cut;
 
     if (gain != nullptr) gain->setKnobEnabled (! cut);
-    if (below != nullptr) below->setSwitchEnabled (dynamic);
+    if (mode != nullptr) mode->setModeEnabled (dynamic);
 
     // **DYN is never dimmed.** Frosty, 2026-09-15: it is one of the three
     // behaviour switches and it is the one that unlocks the strip below, so a
@@ -266,6 +278,11 @@ void DeqPanel::refreshEnablement()
     // locked.
     if (dynOn != nullptr) dynOn->setSwitchEnabled (true);
 
+    // **The mode colours stop at the meter.** They were carried onto the five
+    // knobs and the mode switch for a round on 2026-09-15 and taken back off:
+    // rendered, a strip that changes colour wholesale every time RANGE crosses
+    // zero is louder than the thing it is reporting. The GR bar keeps the two
+    // colours, which is where a direction is actually being measured.
     for (auto* k : { thr.get(), range.get(), ratio.get(), attack.get(), release.get() })
         if (k != nullptr)
             k->setKnobEnabled (dynamic);
@@ -305,8 +322,13 @@ void DeqPanel::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheel
 
 void DeqPanel::timerCallback()
 {
-    // Shape and DYN can be moved by automation or a preset, not only by the
-    // controls here.
+    // Shape, DYN and RANGE can be moved by automation or a preset, not only by
+    // the controls here. RANGE matters because its **sign** decides whether the
+    // band compresses or expands, so turning it through zero re-lights the
+    // mode pair and repaints five knob caps with nobody touching a switch.
+    if (mode != nullptr)
+        mode->refresh();
+
     refreshEnablement();
 
     if (clampPending && ! juce::ModifierKeys::currentModifiers.isAnyMouseButtonDown())
@@ -403,8 +425,9 @@ void DeqPanel::layoutCompact (juce::Rectangle<int> area)
         reduction.setShowsValue (false);
         const auto h = knobHeight (knobSide, 11.0f);
 
-        // BELOW alone now that DYN has gone up to sit with MID and SIDE.
-        spread (at (370, 466), { { below.get(), kSwitchW, kSwitchH }, { thr.get(), 76, h }, { range.get(), 76, h },
+        // COMPRESS over EXPAND, where BELOW was.
+        mode->setVertical (true);
+        spread (at (370, 466), { { mode.get(), kSwitchW, kSwitchH * 2 + kGap }, { thr.get(), 76, h }, { range.get(), 76, h },
                                  { &reduction, 36, reduction.heightFor (62) } }, true);
     }
 
@@ -487,8 +510,9 @@ void DeqPanel::layoutExpanded (juce::Rectangle<int> area)
         // glyph is why `widestValue` measures both rather than taking the
         // obvious one: this cell was 46 for exactly as long as it took the bar
         // to learn a second sign. checkDeqPanel asserts it at both widths.
-        // BELOW alone, as on the compact panel: DYN now sits with MID and SIDE.
-        spread (row, { { below.get(), kSwitchW, kSwitchH }, { thr.get(), 96, hb }, { range.get(), 88, hb },
+        // COMPRESS over EXPAND, as on the compact panel.
+        mode->setVertical (true);
+        spread (row, { { mode.get(), kSwitchW, kSwitchH * 2 + kGap }, { thr.get(), 96, hb }, { range.get(), 88, hb },
                        { ratio.get(), 80, hs }, { attack.get(), 80, hs }, { release.get(), 80, hs },
                        { &reduction, 49, reduction.heightFor (92) } }, false);
     }
