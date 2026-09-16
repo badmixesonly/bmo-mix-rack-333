@@ -254,7 +254,7 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
         const auto collides = std::abs (restAngle - plusAngle)  < clearArc
                            || std::abs (restAngle - minusAngle) < clearArc;
 
-        if (! collides)
+        if (! collides && (knob == nullptr || knob->hasRestMark()))
         {
             g.setColour (dim (accent));
             g.fillEllipse (juce::Rectangle<float> (5.0f, 5.0f).withCentre (at (restAngle, track)));

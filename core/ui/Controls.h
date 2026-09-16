@@ -40,6 +40,10 @@ public:
         Forwards to Knob::setUtilityTint; see it for why. */
     void setUtilityTint (juce::Colour);
 
+    /** Whether the rest-position dot is drawn at all.
+        Forwards to Knob::setRestMark; see it for why. */
+    void setRestMark (bool);
+
     /** Re-colours the knob and, unless a caption colour was passed in, its
         caption with it. For a module whose colour depends on its own state --
         BMO Opto runs greyscale in Tele and lavender in Stressed -- rather than

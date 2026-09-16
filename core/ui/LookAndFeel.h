@@ -56,6 +56,23 @@ public:
     void setTrackRadius (float r) noexcept { trackRadius = r; }
     float getTrackRadius() const noexcept  { return trackRadius; }
 
+    /** Whether the heavy dot marking the rest position is drawn at all.
+
+        On everywhere by default, and the drawing already drops it where it
+        would fuse with the plus or the minus at an end of the sweep. But that
+        test is a *pixel* clearance converted to an angle, so it depends on the
+        track radius: a control resting at an end loses its dot on a small knob
+        and keeps it on a large one, where the same gap subtends less arc. BMO
+        Tune RT's RETUNE is the case -- at face 96 the dot was suppressed, and
+        growing the face to 112 brought it back as what reads as a doubled
+        minus.
+
+        Off means no rest mark at any size. For a control whose default *is* an
+        end of its range, the pointer already says so when the panel opens.
+        Frosty, 2026-09-16. */
+    void setRestMark (bool b) noexcept { restMark = b; }
+    bool hasRestMark() const noexcept  { return restMark; }
+
     /** The inner control of a concentric pair claims only its own circle, so
         the ring around it stays grabbable right up to the corners. */
     void setCircularHitTest (bool b) noexcept { circularHit = b; }
@@ -76,6 +93,7 @@ private:
     juce::Colour accent { tokens().accent };
     juce::Colour utilityTint;
     bool  circularHit = false;
+    bool  restMark = true;
     int   detents = 0;
     float faceScale = 1.0f;
     float trackRadius = 0.0f;

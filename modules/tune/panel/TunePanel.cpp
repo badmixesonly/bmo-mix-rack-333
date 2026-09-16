@@ -336,6 +336,15 @@ TunePanel::TunePanel (ui::ModuleContext ctx)
         addAndMakeVisible (k.knob);
     }
 
+    // RETUNE rests at its minimum, so its rest dot lands on the minus. The
+    // shared clearance test drops a dot that fuses with an end symbol, but it
+    // is a pixel gap turned into an angle, so this face is large enough to
+    // clear it by a fraction and draw both -- which reads as a doubled minus.
+    // No rest mark at all is Frosty's call, 2026-09-16: the pointer already
+    // sits at the end when the panel opens. Vibrato and Relax default to an
+    // end too and are small enough that the shared test already hides theirs.
+    retune.setRestMark (false);
+
     // The accidentals light in the product's colour, like every selector.
     // Clicking sets a value rather than toggling, so a click and host
     // automation land in the same place; sync() reads the states back.

@@ -197,6 +197,12 @@ void PlainKnob::setUtilityTint (juce::Colour tint)
     repaint();
 }
 
+void PlainKnob::setRestMark (bool b)
+{
+    knob.setRestMark (b);
+    repaint();
+}
+
 //==============================================================================
 ConcentricBand::ConcentricBand (juce::RangedAudioParameter& selector, const ParamSpec& selectorSpec,
                                 juce::RangedAudioParameter* gain, juce::Colour accent,
