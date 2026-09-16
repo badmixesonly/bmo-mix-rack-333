@@ -8,6 +8,23 @@ namespace bmo::deq
 {
 
 //==============================================================================
+/** The colour a band wears, from its placement.
+
+    Stereo is the module accent; Mid and Side each have their own token. One
+    function because three surfaces ask the same question -- the band tabs, the
+    curve's nodes and the selected band's knobs -- and three copies of this
+    would be three chances to disagree about what colour a band is. */
+inline juce::Colour placementColour (int placeChoice, juce::Colour accent)
+{
+    switch (placeChoice)
+    {
+        case 1:  return ui::tokens().placeMid;
+        case 2:  return ui::tokens().placeSide;
+        default: return accent;
+    }
+}
+
+//==============================================================================
 /** A choice parameter as a row of switches, one lit -- or none.
 
     The suite has a switch for a bool (ui::SwitchButton) and a dial for a
@@ -32,7 +49,8 @@ namespace bmo::deq
 class ChoiceRow final : public juce::Component
 {
 public:
-    ChoiceRow (juce::RangedAudioParameter& parameter, juce::StringArray labels, juce::Colour tint,
+    ChoiceRow (juce::RangedAudioParameter& parameter, juce::StringArray labels,
+               std::function<juce::Colour (int)> tintFor,
                bool vertical = false, int implicitChoice = -1)
         : stacked (vertical), implicit (implicitChoice),
           attachment (parameter, [this] (float v) { show ((int) std::lround (v)); })
@@ -43,7 +61,8 @@ public:
                 continue;
 
             auto b = std::make_unique<juce::ToggleButton> (labels[i]);
-            b->setColour (juce::ToggleButton::tickColourId, tint);
+            b->setColour (juce::ToggleButton::tickColourId,
+                          tintFor ? tintFor (i) : ui::tokens().switchAlt);
             b->setClickingTogglesState (false);
 
             // Clicking the lit one goes back to the implicit choice, so the
@@ -256,9 +275,10 @@ public:
         it. */
     BandTabs (int count, std::function<bool (int)> isOn, std::function<bool (int)> isDynamic,
               std::function<void (int)> choose, std::function<void (int)> toggle = {},
-              std::function<void (int)> solo = {})
+              std::function<void (int)> solo = {}, std::function<juce::Colour (int)> colour = {})
         : bands (count), on (std::move (isOn)), dynamic (std::move (isDynamic)),
-          onChoose (std::move (choose)), onToggle (std::move (toggle)), onSolo (std::move (solo))
+          onChoose (std::move (choose)), onToggle (std::move (toggle)), onSolo (std::move (solo)),
+          bandColour (std::move (colour))
     {
         startTimerHz (10);
     }
@@ -294,9 +314,21 @@ public:
         {
             const auto r = tabBounds (b).toFloat();
             const auto isSel = b == selected, isOn = on && on (b);
+            const auto mine = bandColour ? bandColour (b) : accent;
 
-            g.setColour (isSel ? accent : (isOn ? t.switchOff : t.well));
+            g.setColour (isSel ? mine : (isOn ? t.switchOff : t.well));
             g.fillRoundedRectangle (r, ui::Tokens::corner);
+
+            // A band that is on but not selected still says what it is: a bar
+            // along the foot of its tab in its own colour. The fill cannot do
+            // it -- an unselected tab has to stay quiet enough that the
+            // selected one reads -- but three pixels along the bottom are
+            // unmistakable at a glance and cost the number nothing.
+            if (isOn && ! isSel)
+            {
+                g.setColour (mine);
+                g.fillRect (r.withTop (r.getBottom() - 3.0f).reduced (3.0f, 0.0f));
+            }
 
             if (! isSel && ! isOn)
             {
@@ -304,7 +336,7 @@ public:
                 g.drawRoundedRectangle (r.reduced (0.5f), ui::Tokens::corner, 1.0f);
             }
 
-            const auto ink = isSel ? ui::onAccentOf (accent) : (isOn ? t.text1 : t.text2);
+            const auto ink = isSel ? ui::onAccentOf (mine) : (isOn ? t.text1 : t.text2);
             ui::drawLabel (g, juce::String (b + 1), r, juce::Justification::centred, ui::labelFont (12.0f, true), ink);
 
             if (dynamic && dynamic (b))
@@ -390,6 +422,7 @@ private:
     int bands, rows = 1, selected = 0, soloed = -1, gap = 7;
     std::function<bool (int)> on, dynamic;
     std::function<void (int)> onChoose, onToggle, onSolo;
+    std::function<juce::Colour (int)> bandColour;
 };
 
 //==============================================================================

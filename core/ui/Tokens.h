@@ -232,6 +232,63 @@ struct Tokens
         up -- in a rack, a DEQ metering gain reduction and an LTV Comp
         approaching its ceiling would have been the same colour. This sits 23
         degrees clear of it. */
+    /** A band's **placement**, as a colour it carries everywhere.
+
+        BMO DEQ, 2026-09-15: Stereo keeps the module accent, and Mid and Side
+        each take one of these -- on the band's tab, on its node, and on the
+        knobs when it is the band being edited. So which of the three a band is
+        reads at a glance whether or not it is selected, which a lit switch in
+        the strip below could only say about the selected one.
+
+        Placement is the right thing to spend a colour on because it barely
+        moves. The compress/expand mode was tinted this way for one round and
+        taken back off: it flips whenever RANGE crosses zero, and a panel that
+        recolours itself that often is louder than what it is reporting.
+
+        **The hue space is crowded and these are what is left.** Sixteen hues in
+        the suite are already spoken for -- five module accents, the utility
+        azure, four meter states, four analyser options and BMO Tune's lime --
+        so the choice was made from the gaps, and both were picked from rendered
+        candidates rather than from the table (Frosty, 2026-09-15).
+
+        **Mid is the indigo on its pale-plate figure.** Magenta at 320 and green
+        at 104 were both rendered against it. Magenta measures 1.62:1 on the
+        pale well and green 1.39; the indigo is **1.90**, the only one of the
+        three inside the 1.72-2.00 band the suite's raw legends already spend --
+        and the pale plate is where this whole scheme is weakest, because Side
+        is down at 1.09 there whatever its hue. Green lost for a second reason
+        the numbers do not show: at 104 it is green-family with the teal at 172,
+        so a Stereo tab and a Mid tab read alike at a glance, which is the thing
+        this is for.
+
+        Its risk is off-panel and is accepted: BMO Dimension's lavender is at
+        271.6, eighteen degrees away, so a DEQ and a Dimension in one rack are
+        neighbours. */
+    juce::Colour placeMid  { 0xffa390df };   ///< hue 254
+    juce::Colour placeSide { 0xffdcd060 };   ///< hue 54
+
+    /** The dynamics half of a panel: its switches, its knobs and their names.
+
+        BMO DEQ, 2026-09-15. The panel divides into an EQ half and a dynamics
+        half, and they were the same colour with only a rule between them.
+
+        **The azure** (Frosty, 2026-09-15), so everything dynamic on the panel
+        agrees: these knobs, COMP and EXP, DYN, the dot on a band's tab that
+        says it has dynamics, and the whisker on its node that shows their
+        range. Before this they were four colours doing one job.
+
+        Six candidates were rendered whole before it landed here -- CEQ's pink,
+        a grey of its own, indigo, green, magenta and no section colour at all.
+        The pink crossed the accent table; the grey read well but took DYN's
+        "way in" quality off it, which was the thing that sent DYN up to sit
+        with MID and SIDE in the first place.
+
+        The same hex as `switchAlt`, and a token of its own on the terms this
+        file sets throughout: one name per job, so a colour can move for one of
+        them without silently moving for the others. Five candidates moved
+        through this line and only this line. */
+    juce::Colour dynamicsAccent { 0xff4fb8e8 };   ///< the azure, same hex as switchAlt
+
     juce::Colour meterCut { 0xffe46830 };
 
     /** Gain a module is **adding** -- upward expansion -- for a meter that

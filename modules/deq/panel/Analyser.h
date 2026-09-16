@@ -48,9 +48,11 @@ public:
 
     //== What it is pointed at =================================================
 
-    /** The tap, or null for a module with none. Enabling is what makes the
-        audio thread write at all, so an analyser that is switched off, or a
-        panel that has been closed, costs the DSP nothing. */
+    /** The tap, or null for a module with none.
+
+        Handing one over is what starts the audio thread writing, and handing
+        null back is what stops it. `~ResponseView` does the second, so a
+        session with no DEQ window open costs the DSP nothing. */
     void setTap (AnalyserTap* t) noexcept
     {
         if (tap == t)
@@ -62,21 +64,22 @@ public:
         tap = t;
 
         if (tap != nullptr)
-            tap->setEnabled (on);
-    }
-
-    void setEnabled (bool shouldBe) noexcept
-    {
-        on = shouldBe;
-
-        if (tap != nullptr)
-            tap->setEnabled (on);
-
-        if (! on)
+            tap->setEnabled (true);
+        else
             magnitudes.fill (kFloorDb);
     }
 
-    bool isEnabled() const noexcept { return on; }
+    /** **On whenever a panel is open, and there is no switch** (Frosty,
+        2026-09-15).
+
+        An analyser you have to find and turn on is one most people never see,
+        and the argument for a toggle was the cost of running it -- which is
+        already answered by the tap itself: nothing is written while no editor
+        is up, so the off state that matters is free and automatic. That left a
+        switch whose only job was to hide a working display.
+
+        So this asks whether there is a tap, not whether somebody enabled one. */
+    bool isEnabled() const noexcept { return tap != nullptr; }
 
     void setTint (Tint t) noexcept { chosen = t; }
     Tint tint() const noexcept { return chosen; }
@@ -106,7 +109,7 @@ public:
         means the host has not prepared it and there is nothing to draw. */
     bool update (double rate)
     {
-        if (! on || tap == nullptr || rate <= 0.0)
+        if (tap == nullptr || rate <= 0.0)
             return false;
 
         std::array<float, kFftSize> frame {};
@@ -172,7 +175,7 @@ public:
     {
         out.clear();
 
-        if (! on || binHz <= 0.0)
+        if (tap == nullptr || binHz <= 0.0)
             return;
 
         const auto left = plot.getX(), right = plot.getRight();
@@ -258,7 +261,6 @@ private:
     static constexpr float kFall   = 0.18f;
 
     AnalyserTap* tap = nullptr;
-    bool on = false;
     Tint chosen = kDefaultTint;
 
     juce::dsp::FFT fft { kFftOrder };
@@ -268,82 +270,5 @@ private:
     double binHz = 0.0;
 };
 
-//==============================================================================
-/** The analyser's own toggle, and the five-option chooser behind it.
-
-    **It lives in the well, not on a switch row**, and that is a rule rather
-    than a preference. `DeqPanel`'s own documentation says every control on this
-    panel changes the sound -- it is the stated reason the compact/expanded
-    switch is on the host's bar and never here. The analyser changes nothing
-    anyone hears, so putting it among DEQ and AUTO would quietly make that
-    sentence false. A display control belongs on the display.
-
-    Small, low-contrast and in the corner, because it is furniture: the well is
-    for the curve. Left-click toggles; **right-click chooses the colour**
-    (`spec/decisions.md`, 2026-09-12: "five options do not want five buttons on
-    a panel this busy"). */
-class AnalyserButton final : public juce::Component
-{
-public:
-    AnalyserButton (Analyser& a, juce::Colour moduleAccent, std::function<void()> onChange)
-        : analyser (a), accent (moduleAccent), changed (std::move (onChange))
-    {
-        setName ("SPEC");
-    }
-
-    void paint (juce::Graphics& g) override
-    {
-        const auto& t = ui::tokens();
-        const auto r = getLocalBounds().toFloat();
-        const auto lit = analyser.isEnabled();
-
-        g.setColour (lit ? analyser.colourFor (accent).withAlpha (0.85f) : t.hairline.withAlpha (0.5f));
-        g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, 1.0f);
-
-        ui::drawLabel (g, "SPEC", r, juce::Justification::centred, ui::captionFont (9.0f),
-                       lit ? analyser.colourFor (accent) : t.text2);
-    }
-
-    void mouseDown (const juce::MouseEvent& e) override
-    {
-        if (e.mods.isPopupMenu())
-        {
-            showChooser();
-            return;
-        }
-
-        analyser.setEnabled (! analyser.isEnabled());
-        repaint();
-
-        if (changed)
-            changed();
-    }
-
-private:
-    void showChooser()
-    {
-        juce::PopupMenu menu;
-
-        for (int i = 0; i < (int) Analyser::Tint::count; ++i)
-            menu.addItem (i + 1, Analyser::kTintNames[i], true, (int) analyser.tint() == i);
-
-        menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this),
-                            [this] (int choice)
-                            {
-                                if (choice <= 0)
-                                    return;
-
-                                analyser.setTint ((Analyser::Tint) (choice - 1));
-                                repaint();
-
-                                if (changed)
-                                    changed();
-                            });
-    }
-
-    Analyser& analyser;
-    juce::Colour accent;
-    std::function<void()> changed;
-};
 
 } // namespace bmo::deq

@@ -2,6 +2,8 @@
 #include "core/ui/LookAndFeel.h"
 #include "core/ui/Tokens.h"
 #include "modules/deq/dsp/DeqDsp.h"
+#include "modules/deq/panel/Widgets.h"
+#include "modules/deq/panel/Widgets.h"
 
 namespace bmo::deq
 {
@@ -311,6 +313,10 @@ void ResponseView::paint (juce::Graphics& g)
 
         const auto at = nodeFor (b);
         const auto isSel = i == sel;
+
+        // The band's own colour, from its placement: a node says whether it is
+        // Stereo, Mid or Side without being selected and without a legend.
+        const auto mine = placementColour ((int) b.placement, accent);
         const auto radius = compact ? kNodeRadiusCompact : kNodeRadius;
         const auto node = juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (at);
 
@@ -320,9 +326,9 @@ void ResponseView::paint (juce::Graphics& g)
 
             if (b.on)
             {
-                g.setColour (accent);
+                g.setColour (mine);
                 g.fillEllipse (big);
-                g.setColour (ui::accentInk (accent));
+                g.setColour (ui::accentInk (mine));
                 g.drawEllipse (big, 1.6f);
             }
             else
@@ -330,7 +336,7 @@ void ResponseView::paint (juce::Graphics& g)
                 // Selected and off: there, and obviously inert.
                 g.setColour (t.well);
                 g.fillEllipse (big);
-                g.setColour (accent.withAlpha (0.45f));
+                g.setColour (mine.withAlpha (0.45f));
                 g.drawEllipse (big, 1.6f);
             }
         }
@@ -338,14 +344,14 @@ void ResponseView::paint (juce::Graphics& g)
         {
             g.setColour (t.well);
             g.fillEllipse (node);
-            g.setColour (b.on ? accent : t.hairline);
+            g.setColour (b.on ? mine : t.hairline);
             g.drawEllipse (node, compact ? 1.4f : 1.6f);
         }
 
         if (! compact)
             ui::drawLabel (g, juce::String (i + 1), node.expanded (2.0f), juce::Justification::centred,
                            isSel ? ui::labelFont (10.0f, true) : numberFont,
-                           isSel && b.on ? ui::onAccentOf (accent) : (b.on ? t.text1 : t.text2));
+                           isSel && b.on ? ui::onAccentOf (mine) : (b.on ? t.text1 : t.text2));
     }
 
     // The frequency scale goes on last, over any node that has hung down into

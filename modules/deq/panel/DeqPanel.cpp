@@ -92,7 +92,9 @@ DeqPanel::DeqPanel (ui::ModuleContext ctx)
                                   && context.params.getReal (indexOf (b, Control::on)) > 0.5f; },
             [this] (int b) { selectBand (b); },
             [this] (int b) { toggleBand (b); },
-            [this] (int b) { if (context.setSolo) context.setSolo (b); }),
+            [this] (int b) { if (context.setSolo) context.setSolo (b); },
+            [this] (int b) { return placementColour ((int) std::lround (context.params.getReal (indexOf (b, Control::place))),
+                                                    context.def.accent); }),
       reduction (context.gainReductionDb),
 
       // The module's in/out, so it lights in the module's own colour; AUTO is
@@ -214,7 +216,7 @@ void DeqPanel::bindBand()
     };
 
     shape  = std::make_unique<ShapeDial> (bandParam (Control::shape), context.params.spec (indexOf (selected, Control::shape)), accent);
-    dynOn  = std::make_unique<ui::SwitchButton> (bandParam (Control::dyn), "DYN", alt);
+    dynOn  = std::make_unique<ui::SwitchButton> (bandParam (Control::dyn), "DYN", ui::tokens().dynamicsAccent);
 
     // COMPRESS or EXPAND, which is the direction and RANGE's sign read
     // together -- see DynamicsMode. Each lights in the colour its half of the
@@ -222,10 +224,14 @@ void DeqPanel::bindBand()
     // the same thing at once.
     mode   = std::make_unique<DynamicsMode> (bandParam (Control::dir),
                                              [this] { return context.params.getReal (indexOf (selected, Control::range)); },
-                                             alt, alt);
+                                             ui::tokens().dynamicsAccent, ui::tokens().dynamicsAccent);
     // Placement offers the two special cases; nothing lit is Stereo, which is
     // what a band does when it has not been asked for anything. Frosty,
     // 2026-09-15 -- see ChoiceRow for the argument.
+    //
+    // **Each button lights in its own placement colour**, through the same
+    // `placementColour` the tabs and the nodes go through -- so a lit MID, a
+    // Mid band's tab and its node cannot disagree about what colour Mid is.
     //
     // **In the accent, not switchAlt**, which extends the mono row of the table
     // in modules/AGENTS.md rather than breaking its "anything else" row: MID
@@ -234,7 +240,9 @@ void DeqPanel::bindBand()
     // something the module does. White was asked for first and withdrawn: the
     // suite reserves white for polarity, always, and BMO EQ and BMO Util both
     // draw one.
-    place  = std::make_unique<ChoiceRow> (bandParam (Control::place), kPlaceLabels, accent, false, 0);
+    place  = std::make_unique<ChoiceRow> (bandParam (Control::place), kPlaceLabels,
+                                          [accent] (int c) { return placementColour (c, accent); },
+                                          false, 0);
 
     freq    = knob (Control::freq,    "FREQ");
     gain    = knob (Control::gain,    "GAIN");
@@ -278,14 +286,34 @@ void DeqPanel::refreshEnablement()
     // locked.
     if (dynOn != nullptr) dynOn->setSwitchEnabled (true);
 
-    // **The mode colours stop at the meter.** They were carried onto the five
-    // knobs and the mode switch for a round on 2026-09-15 and taken back off:
-    // rendered, a strip that changes colour wholesale every time RANGE crosses
-    // zero is louder than the thing it is reporting. The GR bar keeps the two
-    // colours, which is where a direction is actually being measured.
+    // **The knobs wear the band's placement**, so the strip being edited says
+    // which of the three it belongs to without anyone reading a switch.
+    //
+    // Placement earns this where the compress/expand mode did not: it barely
+    // moves, where the mode flips every time RANGE crosses zero, and a panel
+    // that recolours itself that often is louder than what it reports. The mode
+    // colours were carried here for one round on 2026-09-15 and taken back off;
+    // they stop at the GR bar, which is where a direction is measured.
+    const auto mine = placementColour ((int) std::lround (context.params.getReal (indexOf (selected, Control::place))),
+                                       context.def.accent);
+
+    // FREQ, GAIN and Q only. SHAPE keeps the module accent -- it says what kind
+    // of filter the band is, which is true of the band whatever it is summed
+    // to -- and so do the dynamics knobs, whose strip already has a colour job
+    // of its own in the GR bar.
+    for (auto* k : { freq.get(), gain.get(), q.get() })
+        if (k != nullptr)
+            k->setAccent (mine);
+
+    // The dynamics half wears its own colour -- knobs, captions and the mode
+    // pair -- so the two halves of the panel are told apart by more than the
+    // rule between them. See Tokens::dynamicsAccent, including what it costs.
     for (auto* k : { thr.get(), range.get(), ratio.get(), attack.get(), release.get() })
         if (k != nullptr)
+        {
+            k->setAccent (ui::tokens().dynamicsAccent);
             k->setKnobEnabled (dynamic);
+        }
 }
 
 void DeqPanel::clampShelfQ()

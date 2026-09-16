@@ -44,6 +44,61 @@ used by this module and nothing else today, and the next planned use is BMO
 Dimension's DETUNE scope (`ui-pass-checklist.md`, module 4). It is settled for
 that too, and should not be re-opened there.
 
+### The analyser is always on, and has no switch
+
+**Frosty, 2026-09-15.** The 2026-09-12 entry left "where the chooser lives" to
+this pass. The answer turned out to be that there is nothing to choose.
+
+An analyser you have to find and switch on is one most people never see, and
+the argument for a toggle was the cost of running it -- which the tap already
+answers: `AnalyserTap::write` returns immediately unless a panel has enabled it,
+and `~ResponseView` hands back a null tap, so a session with no DEQ window open
+costs the audio thread nothing. The off state that matters is free and
+automatic. That left a switch whose only job was to hide a working display.
+
+So `Analyser::isEnabled` asks whether there is a tap, not whether somebody
+turned one on, and `AnalyserButton` is deleted.
+
+**What this leaves open, and it is smaller than it was:** the five-colour
+preference is still specified in the 09-12 entry and is not built. Its stated
+home was "a right-click on the analyser's own toggle", and there is no toggle
+now. `Analyser::setTint` and the five tokens exist and work; what is missing is
+somewhere to call it from and somewhere to keep the answer. Neutral is the
+default and is what ships until then.
+
+**Nothing about the colour preference is urgent** -- the default was chosen
+precisely so a panel that never offers the choice is still correct.
+
+### The DEQ switch is not a true bypass -- for the DSP pass
+
+**Found in the UI pass, 2026-09-15, and deliberately left for the DSP pass at
+Frosty's call.** Written here so it is not re-discovered as a surprise.
+
+`modules/AGENTS.md` calls the module switch "the module's bypass" and that is
+what `DeqDsp.h:69` does with it: `band.enabled = active && on`, so every band
+fades out. **But `gainTarget` is computed outside the `active` check**
+(`DeqDsp.h:106`), so:
+
+- **OUTPUT still applies with DEQ switched off.** Bypass with OUTPUT at +6 dB
+  still boosts 6 dB.
+- AUTO self-corrects, because no enabled bands means `staticBroadbandGain`
+  finds nothing to compensate and the figure lands at unity. So OUTPUT is the
+  whole of it.
+
+**Frosty's requirement, 2026-09-15: the bypass should ALWAYS be a true bypass.**
+It should remove any output gain added, and dim every parameter the way the
+dynamics section dims when DYN is off.
+
+The second half is a panel change and could have been done here; it was held
+back so the two land together, because a panel that greys itself out while the
+module is still changing the level would be worse than today's state, not
+better. Whoever takes the DSP half should take both.
+
+Worth checking against the rest of the suite while in there: no other module
+has an `active` parameter of this shape, so there is no house precedent for
+whether a module bypass passes its own output trim. Deciding it once, for all
+of them, is probably the real task.
+
 ### Band solo is a right-click held, and sidechain listen waits
 
 **Frosty, 2026-09-15.** The 2026-09-12 entry below settled what solo *is* --
