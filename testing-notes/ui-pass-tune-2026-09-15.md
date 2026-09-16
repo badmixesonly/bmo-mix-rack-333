@@ -198,17 +198,33 @@ problem.
 
 - **The rest-dot check does not apply to Tune.** All three knobs default to an
   end of their range — Vibrato 0 of 0–150, Relax 0 of 0–100, Retune step 0. No
-  interior default exists to collide with anything. The dot therefore sits on
-  the `−` on all three, which is correct and, at face 112, reads as a doubled
-  minus. Raised, not treated as a defect.
+  interior default exists to collide with anything.
+
+  **RETUNE now draws no rest mark at all** (Frosty, 2026-09-16). Its dot sat
+  on the minus, and the shared clearance test had been hiding it: that test is
+  a *pixel* gap converted to an angle, so at face 96 it suppressed the dot and
+  at 112 the wider track cleared it by a fraction and drew both, which read as
+  a doubled minus. `Knob::setRestMark` is the opt-out, off for RETUNE only.
+  Vibrato and Relax rest at an end too and are small enough that the shared
+  test still hides theirs.
+
+  The whole suite was re-rendered behind that change, since it is in
+  `LookAndFeel.cpp`: **twelve of twelve byte-identical** across eq, sat, util,
+  dim, deq and ltvcomp in both appearances. BMO Opto is excluded for the
+  reason `ui-pass-deq-2026-09-15.md` §9 gives — its render is not reproducible
+  run to run, so a matching hash from it is a coin flip rather than evidence.
 - **35 px at the foot** is the largest band after the separator.
-- **A detected-note readout** remains unbuilt and would still want a
-  `ModuleContext` field: `TuneCore` computes `note`, `pitchIn`, `target`,
-  `appliedCents`, `ratio` and `lag` (`TuneCore.h:34`) and none of it reaches a
-  panel. This was the third module in the pass to want a context widening —
-  see `ui-pass-deq-2026-09-15.md` §7 item 9, "worth one decision rather than
-  three". The rebuilt section no longer *needs* one, so it is now a feature
-  question rather than a layout one.
+- **A detected-note readout** is now the host pass's question, not this one's.
+  Frosty, 2026-09-16: decide it in Ableton, on whether it is *necessary*. It is
+  written up with what to look for and what it would cost in
+  **`tune-host-checklist.md` §1**, and `WORKFLOWS.md` stage 4 carries it.
+
+  In short: `TuneCore` computes `note`, `pitchIn`, `target`, `appliedCents`,
+  `ratio` and `lag` (`TuneCore.h:34`) and none of it reaches a panel, because
+  `ModuleContext` has no field for it. This was the third module in the pass
+  to want a context widening — `ui-pass-deq-2026-09-15.md` §7 item 9 calls
+  that "worth one decision rather than three". **The rebuilt section no longer
+  needs a readout to look right**, which is what makes it answerable on merit.
 
 ## 8. Housekeeping
 

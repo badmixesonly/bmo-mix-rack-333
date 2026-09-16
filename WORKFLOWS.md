@@ -285,9 +285,16 @@ and it is the gate before anything reaches Kevin.
   once attributed to the wrong build for want of that.
 - The per-module checklists already exist and are what to work through:
   `dim-testing-checklist.md`, `opto-testing-checklist.md`,
-  `deq-testing-checklist.md`, `saturator-voicing-retest.md`, and Tune's
-  handoff. What has no checklist yet -- BMO CEQ, BMO Util, the rack itself --
+  `deq-testing-checklist.md`, `vcomp-testing-checklist.md`,
+  `saturator-voicing-retest.md`, and for Tune `tune-host-checklist.md`
+  (written 2026-09-16; `tune-handoff.md` is superseded and is about the
+  engine). What has no checklist yet -- BMO CEQ, BMO Util, the rack itself --
   needs one written before the round, not during it.
+- **One decision is carried into this round rather than taken before it:**
+  whether BMO Tune RT needs a readout of the note it is hearing. Frosty,
+  2026-09-16 -- answer it in Ableton, on whether it is *necessary*. The panel
+  no longer needs it to look right, so it is a feature question rather than a
+  layout one. `tune-host-checklist.md` §1 has what to look for and the cost.
 - **Look and sound are separate passes over the same build.** Render every
   panel with `snapshot` and `bmo-tune-snapshot` in both appearances and read
   them side by side; then listen. A panel fault found by eye costs nothing to
