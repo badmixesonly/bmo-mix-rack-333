@@ -23,7 +23,7 @@ was about 1.2 ms. A 0.1 session reopens at 0.0 ms.)
 
 - **Vibrato** 0 % flattens the singer's vibrato onto the note; 100 % keeps it
   and only corrects the note it is centred on; 150 % exaggerates it.
-- **Flex** leaves small deviations alone. Off by default.
+- **Relax** leaves small deviations alone. Off by default. (Parameter id `flex`.)
 
 ## How it moves the pitch
 

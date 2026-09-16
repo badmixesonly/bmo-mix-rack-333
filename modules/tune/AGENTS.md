@@ -232,7 +232,8 @@ the latest of the three over most of the range.
   synthetic.
 - **rtsan, TSan, UBSan** need clang, which this machine does not have; MSVC's
   ASan is wired (`-DBMO_SANITIZE=address`).
-- **Flex** exists and defaults to 0. The two patents the spec flagged for it
+- **Relax** (parameter id `flex`, renamed in display only on 2026-09-16)
+  exists and defaults to 0. The two patents the spec flagged for it
   (US 9,147,385 B2, US 8,868,411 B2) are Smule's karaoke patents, not
   Antares' -- a miscitation in the source digest, checked at Google Patents on
   2026-09-10. Not legal advice.

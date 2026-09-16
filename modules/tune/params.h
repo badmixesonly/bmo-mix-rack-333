@@ -206,9 +206,10 @@ inline const ParamSpecs& specs()
             // 150 exaggerates it.
             S::floatParam (kVibrato, "Vibrato", 0.0f, 150.0f, 1.0f, 0.0f, F::Percent),
 
-            // FLEX: a soft-knee deadzone, off by default and not the point of
-            // this plugin -- see modules/tune/AGENTS.md for its IP note.
-            S::floatParam (kFlex, "Flex", 0.0f, 100.0f, 1.0f, 0.0f, F::Percent),
+            // RELAX: a soft-knee deadzone, off by default and not the point of
+            // this plugin -- see modules/tune/AGENTS.md for its IP note. Shown as
+            // "Relax" since 2026-09-16 (Frosty); the id stays `flex`.
+            S::floatParam (kFlex, "Relax", 0.0f, 100.0f, 1.0f, 0.0f, F::Percent),
 
             // No latency parameter: Tune RT is Live only, reporting 0 to the
             // host and running 0.4 ms behind at rest (Frosty, 2026-09-11).

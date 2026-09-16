@@ -42,17 +42,24 @@ namespace
     const juce::Rectangle<int> kRule { 0, 264, TunePanel::kDesignWidth, ui::ModulePanel::kRuleRow };
 
     // How it corrects. Retune is what this plugin is for (Frosty: "centered
-    // around hard tuning or retune speed"), so it is the big knob, at the
-    // centre of the section under the rule; Vibrato and Flex at 10 and 2
-    // o'clock, as round 7 placed them. The group -- the small knobs' tracks
-    // to Retune's caption -- is centred in the section.
-    const juce::Point<int> kClock { 180, 500 };
-    constexpr int kClockX = 118, kClockY = 84;
-    constexpr int kRetuneFace = 96, kSmallFace = 44;
+    // around hard tuning or retune speed"), so it leads: the big knob directly
+    // under the rule with its millisecond value beneath it, then Vibrato and
+    // Relax as a row of modifiers at the foot.
+    //
+    // Round 7's clock -- Retune low, the two smalls at 10 and 2 -- was
+    // replaced on 2026-09-16 (Frosty). The clock left 110 px of bare plate
+    // under the rule and could not be grown out of it: the three knobs are
+    // bound by the panel's 360 px width, not its height, and at face 132 the
+    // smalls collide with Retune. Reordering was the lever, not sizing.
+    // Frosty's calls, same day: Retune at the top of the stack, and the
+    // modifiers a size down at 48 so they read as subordinate to it.
+    const juce::Point<int> kClock { 180, 371 };
+    constexpr int kClockX = 118, kClockY = -214;
+    constexpr int kRetuneFace = 112, kSmallFace = 48;
 
     /** The knob's square: room for the face, its dotted track 10 px out, and
         the plus and minus on the track. */
-    int knobSide (int face) { return face >= kRetuneFace ? 136 : 80; }
+    int knobSide (int face) { return face + 36; }
 
     const juce::String kSharpGlyph (juce::CharPointer_UTF8 ("\xe2\x99\xaf"));
     const juce::String kFlatGlyph  (juce::CharPointer_UTF8 ("\xe2\x99\xad"));
@@ -167,8 +174,12 @@ public:
         // Not tokens of the suite's -- no module has a keyboard -- so derived
         // from tokens, per appearance, as the studies drew them: white keys
         // are the lightest surface on the plate, black keys the darkest.
-        const auto whiteKey = dark ? t.plateEdge.interpolatedWith (t.hairline, 0.25f) : t.knobTint;
-        const auto blackKey = dark ? t.well : t.outline.interpolatedWith (t.switchOff, 0.5f);
+        // An instrument graphic rather than a control surface: white keys are
+        // white in both appearances (`knobTint` has no dark variant, the way
+        // `meterFace` has none) and a black key is the darkest thing the
+        // appearance offers, so it reads as black rather than as dimmed.
+        const auto whiteKey = t.knobTint;
+        const auto blackKey = dark ? t.well : t.meterFace;
 
         const auto mask = scaleMask();
         const auto root = pitchClassOfKey (panel.choiceOf (Index::key));
@@ -183,15 +194,29 @@ public:
             // the lit white keys under it show through as an olive ghost.
             const auto fade = [&] (juce::Colour c) { return inScale ? c : c.interpolatedWith (t.plate, 0.65f); };
 
-            g.setColour (fade (lit ? kAccent : base));
+            const auto fill = fade (base);
+            g.setColour (fill);
             g.fillRoundedRectangle (r, 2.5f);
             g.setColour (fade (t.outline));
             g.drawRoundedRectangle (r.reduced (0.5f), 2.5f, 1.0f);
 
+            // In the scale: the accent as a band at the foot of the key. The
+            // key keeps its own colour, so the accent has two grounds to read
+            // on -- raw lime is 9.10:1 on a black key and 1.29:1 on a white
+            // one -- and `accentTextOn` steps it off whichever it lands on.
+            const auto onKey = ui::accentTextOn (kAccent, fill);
+
+            if (lit)
+            {
+                g.setColour (onKey);
+                g.fillRoundedRectangle (juce::Rectangle<float> (r.getWidth() - 7.0f, 5.0f)
+                                            .withCentre ({ r.getCentreX(), r.getBottom() - 6.5f }), 1.5f);
+            }
+
             if (note == root)
             {
-                g.setColour (fade (lit ? ui::onAccentOf (kAccent) : t.text2));
-                g.fillEllipse (juce::Rectangle<float> (5.6f, 5.6f).withCentre ({ r.getCentreX(), r.getBottom() - 8.0f }));
+                g.setColour (lit ? onKey : fade (t.text2));
+                g.fillEllipse (juce::Rectangle<float> (5.6f, 5.6f).withCentre ({ r.getCentreX(), r.getBottom() - 18.0f }));
             }
 
             // Switched out of the scale: a bar where a lit key would be.
@@ -387,7 +412,7 @@ std::vector<TunePanel::KnobPlace> TunePanel::knobPlaces()
     return {
         { &retune,  "RETUNE",  kClock,                                         kRetuneFace, 18.0f },
         { &vibrato, "VIBRATO", kClock + juce::Point<int> (-kClockX, -kClockY), kSmallFace,  15.0f },
-        { &flex,    "FLEX",    kClock + juce::Point<int> ( kClockX, -kClockY), kSmallFace,  15.0f },
+        { &flex,    "RELAX",   kClock + juce::Point<int> ( kClockX, -kClockY), kSmallFace,  15.0f },
     };
 }
 
@@ -442,7 +467,7 @@ void TunePanel::paintPanel (juce::Graphics& g)
     for (auto& k : knobPlaces())
     {
         const auto track = (float) k.face * 0.5f + ui::Tokens::trackGap;
-        const auto top = (float) k.centre.y + track * 0.74f + 8.0f;
+        const auto top = (float) k.centre.y + track + 4.0f;
         ui::drawLabel (g, k.caption, { (float) k.centre.x - 70.0f, top, 140.0f, k.captionSize * 1.2f },
                        juce::Justification::centredTop, ui::captionFont (k.captionSize), ink);
     }
@@ -461,9 +486,7 @@ juce::String TunePanel::retuneText() const
 
 juce::Rectangle<float> TunePanel::retuneReadoutArea()
 {
-    const auto track = (float) kRetuneFace * 0.5f + ui::Tokens::trackGap;
-    const auto captionTop = (float) kClock.y + track * 0.74f + 8.0f;
-    return { (float) kClock.x - 50.0f, captionTop + 18.0f * 1.2f + 4.0f, 100.0f, kRetuneReadoutSize * 1.3f };
+    return { 60.0f, 471.0f, 240.0f, kRetuneReadoutSize * 1.3f };
 }
 
 TunePanel::BoxText TunePanel::retuneReadout()

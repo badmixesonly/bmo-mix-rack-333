@@ -15,9 +15,13 @@ namespace bmo::tune
       - what to tune to: the keyboard (click a note out of the scale), Key
         with its ♯ and ♭, and Scale, Pitch Range and Ref A as value boxes that
         open menus;
-      - a rule, then how it corrects: Retune, large, at the centre of the
-        section, with Vibrato and Flex at 10 and 2 o'clock -- the clock of the
-        studies, with its lower half gone with HYBRID.
+      - a rule, then how it corrects: Retune, large, directly under it with
+        its millisecond value beneath, then Vibrato and Relax a size down as a
+        row of modifiers at the foot. Round 7's clock was replaced on
+        2026-09-16; the layout block in the .cpp says why.
+
+    `Relax` is the caption *and* the parameter's display name. Its id stays
+    `flex`, which is what a saved session references.
 
     Colours are lime by the suite's rules, as the studies settled them: knob
     caps by `faceOf`, captions by `accentInk`, and every selector lit in the
@@ -88,7 +92,7 @@ private:
     juce::String refText() const;
     juce::String retuneText() const;
 
-    static constexpr float kRetuneReadoutSize = 15.0f;
+    static constexpr float kRetuneReadoutSize = 38.0f;
     static juce::Rectangle<float> retuneReadoutArea();
 
     struct KnobPlace { ui::PlainKnob* knob; const char* caption; juce::Point<int> centre; int face; float captionSize; };
