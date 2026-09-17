@@ -74,19 +74,27 @@ time. Hash renders before and after any change that should move nothing.
       for the rejected candidate and its numbers.
 
 ### BMO Dimension (220)
-- [ ] `dim-ui-pass-plan.md` §1: L / R end marks on ROTATE and ASYM instead
-      of − / +. Not implemented; render shows − / +.
-- [ ] DETUNE switch sits over CENTS and DIFFUSE but gates only CENTS. Move
-      it over CENTS alone, or dim CENTS when off (`PlainKnob::setKnobEnabled`
-      exists and is unused suite-wide; this is its case).
-- [ ] FREQ caption is generic: it is SHUFFLE's corner. Candidate to fix at
-      650–700 Hz like RATE and DEPTH were, if the pass finds nobody moves it.
+Module 4 of the pass, 2026-09-16/17 on AURORA. `ui-pass-dim-2026-09-17.md`
+has the numbers and the rejected candidates.
+- [x] ~~L / R end marks on ROTATE and ASYM.~~ **Done**, on both, Blender at
+      12 pt. ASYM's + turned out to lean *left*; its DSP sign was flipped so
+      the R is true (test-pinned, **not yet heard**).
+- [x] ~~DETUNE switch scope.~~ **Settled by renaming and bracketing**: the
+      switch is GENERATE, centred over DETUNE and DRIFT, and each pair has a
+      bracket. Stacking it on DETUNE alone was rendered and not taken.
+- [x] ~~FREQ caption is generic.~~ **Renamed**: SHUFFLE / FREQ are BLOOM /
+      BELOW, and BELOW prints its frequency. The knob stays.
+- [x] Every control renamed, host names to match: GENERATE, DETUNE, DRIFT,
+      DIMENSION, BLOOM, BELOW, TURN, TILT, plus Drift Rate and Drift Depth
+      for the two hidden ones. IDs unchanged.
+- [x] Two legends, SOURCE and WIDTH. DIMENSION grown 92 -> 148 px and the
+      SOURCE block tightened.
 - [ ] No output trim and no meter. The DSP review measured +3.5 dB peak
       on Wide Vocal and +19 dB reachable; a trim is a schema append (new
       parameter at the end of `specs()`, default 0, `kVersionHint` bump),
-      so it is a product decision, not a panel one.
+      so it is a product decision, not a panel one. Untouched.
 - [ ] Light mode: the lavender captions measure 1.73:1 on the pale plate.
-      Still undecided, still being raised.
+      A suite question now (Dim is mid-pack), waiting to be asked as one.
 
 ### BMO DEQ (320 compact / 600 expanded)
 - [ ] Solo and the analyser exist in the engine and are tested, and the

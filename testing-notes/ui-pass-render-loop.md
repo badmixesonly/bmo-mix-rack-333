@@ -18,7 +18,10 @@ The pass is running one module at a time. LTV Comp (module 1) is done to the
 point where it is waiting on Leteveon; **BMO DEQ (module 2) is done to the point
 where it is waiting on Frosty** — one defect fixed, five decisions gathered, in
 `ui-pass-deq-2026-09-15.md`. Read that before touching DEQ, and read its §5
-before re-finding three things that look like faults and are not. Nothing is
+before re-finding three things that look like faults and are not. BMO Tune RT
+(module 3) is in `ui-pass-tune-2026-09-15.md`. **BMO Dimension (module 4) is
+done** -- its record is
+`ui-pass-dim-2026-09-17.md`, and its controls have new names. Nothing is
 pushed and CI has not been touched this pass.
 
 Both older documents were written before most of these commits, so check here

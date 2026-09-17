@@ -1,5 +1,12 @@
 # BMO Dimension — Ableton testing checklist
 
+> **Controls renamed 2026-09-17, in the UI pass.** The panel and the host now
+> say GENERATE (the DETUNE switch), DETUNE (CENTS), DRIFT (DIFFUSE), DIMENSION
+> (WIDTH), BLOOM and BELOW (SHUFFLE and FREQ), TURN (ROTATE) and TILT (ASYM).
+> This checklist was written with the old names and keeps them; the map is in
+> `modules/dim/AGENTS.md`. The panel is now two sections, SOURCE and WIDTH, so
+> section 4 is partly answered -- see `ui-pass-dim-2026-09-17.md`.
+
 Build under test: `frosty-add-bmo-dimension`. VST3 bundles come from the GitHub
 Actions run's **BMO-Windows** artifact — Dimension is in the package now, which
 it was not in `ee6721d` (`tools/packager/package.sh` drove a hardcoded product

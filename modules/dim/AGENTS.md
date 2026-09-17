@@ -7,6 +7,28 @@ cannot be read off the code.
 The long-form record is `testing-notes/dim-1.0-handoff.md` — every number, how
 it was measured, and what was tried and rejected. It is not repeated here.
 
+## The panel's words are not the code's
+
+Renamed in the UI pass, 2026-09-17 (Frosty). The panel caption and the host
+name agree; the parameter ID, the `Index` enum and the DSP still use the
+original words, and must — the IDs are permanent. This file and the DSP
+comments use the code's words.
+
+| panel / host | ID | code and older notes say |
+|---|---|---|
+| GENERATE / Generate | `detune_on` | DETUNE switch, detune stage |
+| DETUNE / Detune | `detune` | CENTS |
+| DRIFT / Drift | `diffuse` | DIFFUSE, the diffuse stage |
+| — / Drift Rate, Drift Depth | `rate`, `depth` | RATE, DEPTH (no controls) |
+| DIMENSION / Dimension | `width` | WIDTH |
+| BLOOM / Bloom | `shuffle` | SHUFFLE, the shuffler |
+| BELOW / Below | `shuffle_freq` | FREQ, Shuffle Freq |
+| TURN / Turn | `rotation` | ROTATE |
+| TILT / Tilt | `asymmetry` | ASYM, the shear |
+
+The panel's two legends are SOURCE (generate and diffuse) and WIDTH (the
+image stage).
+
 ## The invariant everything else rests on
 
 Three stages run in series — generate, diffuse, image — and **all three work on
