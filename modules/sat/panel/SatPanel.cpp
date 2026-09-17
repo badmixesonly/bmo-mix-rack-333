@@ -48,11 +48,26 @@ namespace
         were already at 30 and are not touched.
 
         The two numbers differ because the lift is applied under captions of two
-        different sizes, and a taller caption sits lower in its own box: at 28 pt
-        DRIVE needs 25 where the pair's 15 pt needs 19. Both land on 30. Re-measure
-        rather than re-derive if either size changes. */
-    constexpr int kDriveLift = 25;
+        different sizes, and a taller caption sits lower in its own box. Both
+        land on 30.
+
+        A lift is measured against the box it is applied to, so it does not
+        survive a change of row: DRIVE wanted 25 at the full row and wants 20 at
+        the trimmed one, where that same 25 measured 20 px rather than 30.
+        Re-measure rather than re-derive if a row or a caption size changes. */
+    constexpr int kDriveLift = 20;
     constexpr int kPairLift  = 19;
+
+    /** What DRIVE's row gives up so the oversampling section has air, in design
+        px. Frosty's call, 2026-09-17, rendered against keeping the row whole.
+
+        The section is paid for out of the middle's spare 55 px and costs no
+        control anything. What it cannot buy is *slack*: 7 px left over is not
+        enough for a section to centre its ink in, so DRIVE sat 35 px under the
+        rule above it against 47 over the one below, and the two switch rows had
+        12 px between them. Trimmed, that reads 43 and 47, and the rows are 18
+        apart. DRIVE's face pays: 136 design px to 121. */
+    constexpr int kDriveTrim = 24;
 
     /** What each section's content is nudged down by to centre its *ink* rather
         than its boxes, in design px. Frosty's call between the two, 2026-09-17.
@@ -67,6 +82,16 @@ namespace
     constexpr int kDriveNudge = 8;
     constexpr int kPairNudge  = 2;
 
+    /** The oversampling section: a rule with its name, and the three switches
+        under it. 20 + 28 of the 55 px the middle had spare, so no control on
+        this panel gives up anything for it.
+
+        Rendered against a dial with its positions printed round it -- BMO EQ's
+        LO-CUT pattern -- and against a third knob in the pair row. Frosty took
+        the switches, 2026-09-17: the dial cost a 76 px row and the knob cost
+        TONE and MIX a third of their faces. */
+    constexpr int kOsSwitchRow = ui::Tokens::switchHeight;
+
     constexpr int kSwitchWidth  = ui::Tokens::switchWidth;
     constexpr int kSwitchHeight = ui::Tokens::switchHeight;
 }
@@ -80,12 +105,49 @@ SatPanel::SatPanel (ui::ModuleContext ctx)
       outputLevel (context.params.param (Index::outputLevel), "OUTPUT"),
       satIn    (context.params.param (Index::satIn),    "SAT", context.def.accent),
       phase    (context.params.param (Index::phase),    ui::BmoLookAndFeel::phaseGlyph(), ui::tokens().polarity),
-      autoGain (context.params.param (Index::autoGain), "AUTO", ui::tokens().switchAlt)
+      autoGain (context.params.param (Index::autoGain), "AUTO", ui::tokens().switchAlt),
+      os2x ("2x"), os4x ("4x"), osHq ("HQ")
 
 {
     for (auto* c : std::initializer_list<juce::Component*> {
              &inputGain, &drive, &tone, &mix, &satIn, &phase, &autoGain, &outputLevel })
         addAndMakeVisible (c);
+
+    // Oversampling is anything-else by the table in modules/AGENTS.md, so the
+    // three light in switchAlt, the same as AUTO under them. The look and feel
+    // derives each label from the fill it is drawing.
+    for (auto* b : { &os2x, &os4x, &osHq })
+    {
+        b->setClickingTogglesState (false);
+        b->setColour (juce::ToggleButton::tickColourId, ui::tokens().switchAlt);
+        addAndMakeVisible (b);
+    }
+
+    osAttachment = std::make_unique<juce::ParameterAttachment> (
+        context.params.param (Index::oversampling),
+        [this] (float value) { showOversampling (juce::roundToInt (value)); });
+
+    // A click sets the parameter and the parameter lights the switches, so a
+    // click and host automation cannot disagree. Clicking the lit one is what
+    // reaches Off, since Off is the position with no switch of its own.
+    const auto choose = [this] (int choice)
+    {
+        return [this, choice]
+        {
+            const auto& p = context.params.param (Index::oversampling);
+            const auto current = juce::roundToInt (p.convertFrom0to1 (p.getValue()));
+
+            osAttachment->setValueAsCompleteGesture ((float) (current == choice ? 0 : choice));
+        };
+    };
+
+    os2x.onClick = choose (1);
+    os4x.onClick = choose (2);
+    osHq.onClick = choose (3);
+
+    // Lights whatever the parameter already says, which is how a render or a
+    // reopened editor comes up in the state it was left in.
+    osAttachment->sendInitialUpdate();
 
     for (auto* k : { &inputGain, &outputLevel })
         styleTrimKnob (*k);
@@ -103,6 +165,13 @@ SatPanel::SatPanel (ui::ModuleContext ctx)
 
     // Polarity is white in every module; its label is what says which module.
     phase.setActiveInkFrom (context.def.accent);
+}
+
+void SatPanel::showOversampling (int choice)
+{
+    os2x.setToggleState (choice == 1, juce::dontSendNotification);
+    os4x.setToggleState (choice == 2, juce::dontSendNotification);
+    osHq.setToggleState (choice == 3, juce::dontSendNotification);
 }
 
 void SatPanel::resized()
@@ -129,7 +198,7 @@ void SatPanel::resized()
 
     // The row carries the taller caption, so the face does not pay for it.
     // See kDriveCaption.
-    const int driveRow = kDriveRow
+    int driveRow = kDriveRow - kDriveTrim
                        + juce::roundToInt ((float) kDriveCaption * 1.2f)
                        - juce::roundToInt (15.0f * 1.2f);   // the caption this row was drawn for
 
@@ -138,27 +207,51 @@ void SatPanel::resized()
     // of them centring as one block -- Frosty, 2026-09-17. Centred as one, the
     // slack pooled above DRIVE and under MIX and neither section sat in the
     // middle of anything.
-    const int slack      = area.getHeight() - (driveRow + kRule + kPairRow);
+    const int slack      = area.getHeight()
+                         - (driveRow + kRule + kPairRow + kRule + kOsSwitchRow);
     const int driveSpan  = slack / 2;
     const int pairSpan   = slack - driveSpan;
+    // Clamped to the air the section actually has. The nudges were measured
+    // when the middle had 55 px spare and the oversampling section spends 48 of
+    // them, so an unclamped nudge would push a section past the rule under it.
+    const int driveNudge = juce::jlimit (0, driveSpan - driveSpan / 2, kDriveNudge);
+    const int pairNudge  = juce::jlimit (0, pairSpan  - pairSpan  / 2, kPairNudge);
 
     // Each section centres what you can see rather than what the layout holds.
     // See kDriveNudge.
-    area.removeFromTop (driveSpan / 2 + kDriveNudge);
+    area.removeFromTop (driveSpan / 2 + driveNudge);
     drive.setBounds (area.removeFromTop (driveRow));
-    area.removeFromTop (driveSpan - driveSpan / 2 - kDriveNudge);
+    area.removeFromTop (driveSpan - driveSpan / 2 - driveNudge);
 
     // Tone and Mix share a row: neither is the reason you reached for this,
     // and side by side they read as the two things you adjust after the fact.
     rule ({});
 
-    area.removeFromTop (pairSpan / 2 + kPairNudge);
+    area.removeFromTop (pairSpan / 2 + pairNudge);
 
     {
         auto pair = area.removeFromTop (kPairRow);
         const auto half = pair.getWidth() / 2;
         tone.setBounds (pair.removeFromLeft (half));
         mix.setBounds (pair);
+    }
+
+    // The three sit side by side on one row, the same width and gap as the
+    // switches under the output rule, so the two rows read as the same kind of
+    // control rather than as two inventions.
+    rule ("OVERSAMPLING");
+
+    {
+        constexpr int gap = ui::Tokens::switchGap;
+
+        auto group = area.removeFromTop (kOsSwitchRow)
+                         .withSizeKeepingCentre (kSwitchWidth * 3 + gap * 2, kSwitchHeight);
+
+        os2x.setBounds (group.removeFromLeft (kSwitchWidth));
+        group.removeFromLeft (gap);
+        os4x.setBounds (group.removeFromLeft (kSwitchWidth));
+        group.removeFromLeft (gap);
+        osHq.setBounds (group);
     }
 
     addRule (out.rule, {});
@@ -177,6 +270,7 @@ void SatPanel::resized()
     // The output meter used to share this row, out at the right margin. It is
     // gone, so the knob has the row to itself.
     outputLevel.setBounds (out.knob);
+
 }
 
 } // namespace bmo::sat

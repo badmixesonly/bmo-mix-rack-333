@@ -207,6 +207,69 @@ void checkOutputSection (bmo::ui::ModulePanel& panel, const juce::String& who)
     checkEquals (output->getBottom(), kOutputKnobBottom, who + " OUTPUT knob bottom");
 }
 
+/** The Saturator's oversampling row: three switches side by side over one
+    choice parameter, and Off is the position none of them lights.
+
+    Both halves matter. The geometry, because these are the suite's switch size
+    and gap, and a row that drifted off them would be the only one in the rack
+    that had. The behaviour, because a click here does not toggle a button: it
+    sets a parameter, and the parameter lights the switches. If that loop breaks
+    nothing lights at all, and a render of the default state cannot tell -- Off
+    is the state with nothing lit either way. */
+void checkSatOversampling (bmo::ui::ModulePanel& panel)
+{
+    juce::Button* row[3] {};
+    const char* names[3] { "2x", "4x", "HQ" };
+
+    for (int i = 0; i < 3; ++i)
+    {
+        row[i] = dynamic_cast<juce::Button*> (findNamed (panel, names[i]));
+
+        if (row[i] == nullptr)
+        {
+            check (false, juce::String ("sat has no ") + names[i] + " switch");
+            return;
+        }
+    }
+
+    for (int i = 0; i < 3; ++i)
+    {
+        checkEquals (row[i]->getWidth(),  bmo::ui::Tokens::switchWidth,
+                     juce::String ("sat ") + names[i] + " width");
+        checkEquals (row[i]->getHeight(), bmo::ui::Tokens::switchHeight,
+                     juce::String ("sat ") + names[i] + " height");
+        checkEquals (row[i]->getY(), row[0]->getY(),
+                     juce::String ("sat ") + names[i] + " top, against 2x's");
+    }
+
+    for (int i = 1; i < 3; ++i)
+        checkEquals (row[i]->getX() - row[i - 1]->getRight(), bmo::ui::Tokens::switchGap,
+                     juce::String ("sat gap before ") + names[i]);
+
+    check (row[0]->getBottom() < kSwitchRowTop,
+           "sat oversampling row should sit above the output switches, is at "
+               + juce::String (row[0]->getY()));
+
+    const auto lit = [&row] { return (row[0]->getToggleState() ? 1 : 0)
+                                   + (row[1]->getToggleState() ? 2 : 0)
+                                   + (row[2]->getToggleState() ? 4 : 0); };
+
+    checkEquals (lit(), 0, "sat oversampling at Init");
+
+    for (int i = 0; i < 3; ++i)
+    {
+        if (row[i]->onClick != nullptr)
+            row[i]->onClick();
+
+        checkEquals (lit(), 1 << i, juce::String ("sat ") + names[i] + " lit alone after a click");
+
+        if (row[i]->onClick != nullptr)
+            row[i]->onClick();
+
+        checkEquals (lit(), 0, juce::String ("sat ") + names[i] + " clicked again is Off");
+    }
+}
+
 /** The switch named `name` sits in the output section's switch row. */
 void checkOutputSwitch (bmo::ui::ModulePanel& panel, const juce::String& name,
                         const juce::String& who)
@@ -955,6 +1018,13 @@ int main (int argc, char** argv)
             checkOutputRule    (panel, product.who);
             checkOutputSection (panel, product.who);
         });
+
+    // The Saturator's oversampling section, added 2026-09-17: the parameter had
+    // been on the panel's schema and nowhere on the panel since 0.2.0.
+    withPanel (named ("sat"), [] (bmo::ui::ModulePanel& panel)
+    {
+        checkSatOversampling (panel);
+    });
 
     // BMO EQ: Hi-Q joined the output switch row in 0.2.3, and the band column
     // between the two shared sections is pinned row by row.
