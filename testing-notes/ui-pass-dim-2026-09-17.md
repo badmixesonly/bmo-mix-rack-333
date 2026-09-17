@@ -1,7 +1,7 @@
 # The UI pass — BMO Dimension, module 4
 
 **On AURORA, 2026-09-16 and 17.** Branch `ui-pass`, worktree
-`../bmo-mix-rack-333-ui`, starting from `fb4efe3` after DEQ and Tune. Three
+`../bmo-mix-rack-333-ui`, starting from `fb4efe3` after DEQ and Tune. Four
 commits, all local, nothing pushed and no CI. Frosty made every call below from
 renders in both appearances; the numbers are what they were taken on.
 
@@ -29,7 +29,7 @@ Largest bare band, dark: **72 px at 180 before, 51 px at 363 after.** EQ's 21
 is still the house floor; the rest is the even rhythm itself, one gap plus the
 padding around the knobs, and does not come down further without abandoning it.
 
-**Every other panel is byte-identical** across all three commits — eq
+**Every other panel is byte-identical** across the pass — eq
 `ac0d5c76`, sat `270159d1`, util `1225e160`, opto `784ca005`, ltvcomp
 `e3d5fc2f`, deq expanded `2eb512e8` and compact `62a1d9ec` (the last two
 checked against a render of the committed code, since DEQ's table row predates
