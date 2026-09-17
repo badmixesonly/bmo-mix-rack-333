@@ -45,6 +45,9 @@ pan knob.
 This is not a balance control and not a pan; a dead-centre vocal does not move
 at any setting. It is the reason this module is not just a width knob with a
 crossover.
+Positive settings favour the **right**, the same way ROTATE turns: material on
+the right comes up and material on the left goes down. (It leaned left until
+2026-09-16, when the sign was flipped to agree with ROTATE.)
 
 ## Presets
 

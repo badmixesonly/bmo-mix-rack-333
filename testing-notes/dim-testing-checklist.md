@@ -76,6 +76,10 @@ centre and also pin hard-panned material at the edges.
   localised — or as **phasey/hollow**?
 - Check it in **mono**. The sum is intended to change here, and does; nothing
   should cancel.
+- **Direction, since 2026-09-16:** turning ASYM **up** should favour the
+  **right** -- hard-right material louder, hard-left quieter -- the same way
+  ROTATE turns. The sign was flipped in the DSP so the panel could print L and
+  R; it is test-pinned, but not yet heard.
 
 If the widening reads badly there is a documented fallback at the shear in
 `modules/dim/dsp/DspCore.h` — `b = a/2` halves it at the cost of 2.18 dB of

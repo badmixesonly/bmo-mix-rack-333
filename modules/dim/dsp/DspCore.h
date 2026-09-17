@@ -535,10 +535,19 @@ private:
         Half scale puts the end of the knob at the point where fully-panned
         material on the disfavoured side is 6 dB down in the sum -- a lot of
         asymmetry, and still a signal. The knob keeps its frozen -100..+100 %
-        range; only what the end of it means is set here. */
+        range; only what the end of it means is set here.
+
+        **Negated, so + favours the right** -- Frosty, 2026-09-16. With
+        mid += a * side, a positive coefficient lifts material on the left
+        (whose side is positive) and lowers the right, so the knob's + end
+        leaned the image left: the opposite of ROTATE, and of every pan knob.
+        It was caught when the panel was about to print an R at that end. The
+        law is unchanged; only which end of the knob is which. The sign is a
+        free choice, the same as rotation's, so DimDspTests pins it. A session
+        that automated ASYM before this now leans the other way. */
     static float asymCoeff (float percent) noexcept
     {
-        return std::clamp (percent * 0.01f, -1.0f, 1.0f) * 0.5f;
+        return -std::clamp (percent * 0.01f, -1.0f, 1.0f) * 0.5f;
     }
 
     double sampleRate = 44100.0;

@@ -103,6 +103,14 @@ The coefficient is capped at half scale. Both laws degenerate above that — the
 shear turns the far side into pure anti-phase content, and the balance silenced
 a channel outright, which is what this shipped doing at ASYM 100 %.
 
+**The coefficient is the knob negated**, so + favours the right, as ROTATE
+does. With `a` positive the shear lifts the left (whose side is positive), so
+the knob leaned the image left until 2026-09-16, when the panel was about to
+print an R at that end. Frosty flipped the DSP rather than the letters. The
+sign is a free choice, not derivable from the manual, so `dim_dsp` pins it
+with absolutes: a hard-panned 0.4 tone at +50 % comes out 0.45 on the right
+and 0.35 on the left.
+
 ## Latency is zero, and stays zero
 
 A pitch shifter needs a window and this one uses 30 ms, but the mid path is a
