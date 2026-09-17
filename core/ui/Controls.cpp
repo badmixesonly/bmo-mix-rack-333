@@ -49,7 +49,8 @@ PlainKnob::PlainKnob (juce::RangedAudioParameter& param, const juce::String& cap
 
 juce::Rectangle<int> PlainKnob::captionBox() const
 {
-    return { 0, knob.getBottom(), getWidth(), captionRow() - 4 - (showsValue ? valueRow() : 0) };
+    return { 0, knob.getBottom() - captionLift, getWidth(),
+             captionRow() - 4 - (showsValue ? valueRow() : 0) };
 }
 
 juce::Rectangle<int> PlainKnob::valueBox() const
@@ -175,6 +176,12 @@ void PlainKnob::setCaptionSize (float points)
 {
     captionSize = points;
     resized();
+    repaint();
+}
+
+void PlainKnob::setCaptionLift (int pixels)
+{
+    captionLift = pixels;
     repaint();
 }
 

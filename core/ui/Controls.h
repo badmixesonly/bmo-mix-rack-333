@@ -44,6 +44,18 @@ public:
         Forwards to Knob::setRestMark; see it for why. */
     void setRestMark (bool);
 
+    /** Draws the caption this many pixels higher, into the air a knob carries
+        under its face.
+
+        A caption hangs off the knob's *box*, and the box is square while the
+        face is drawn at `faceScale` of it, so there is always a gap between the
+        two. Closing it by shrinking the box would shrink the knob with it --
+        the box is bound by its height on every panel in the suite. This moves
+        the name alone, and the value line follows it up.
+
+        Zero is what every knob laid out as before this existed. */
+    void setCaptionLift (int pixels);
+
     /** L and R at the ends of the track instead of minus and plus.
         Forwards to Knob::setEndMarks; see it for why. */
     void setEndMarks (Knob::EndMarks);
@@ -130,6 +142,7 @@ private:
     juce::Colour accentColour;
     int knobSide = std::numeric_limits<int>::max();
     float captionSize = 15.0f;
+    int captionLift = 0;
     bool showsValue = false;
     std::function<juce::String (const juce::String&)> valueFormat;
     juce::RangedAudioParameter& parameter;
