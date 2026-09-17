@@ -431,32 +431,88 @@ int main (int argc, char** argv)
     // whether a 25th fires cannot change the render. Renders without a signal
     // were always deterministic -- every meter sits at rest -- and stay on the
     // short loop, which is what keeps a colour render cheap.
-    const auto settleTicks = signalDb.has_value() ? 24 : 8;
+    //
+    // That was not the whole of it, and the premise is why. Convergence
+    // assumes the meter is fed a constant, and it is not: `Meter` publishes the
+    // RMS of the *last block*, and 512 samples of 1 kHz at 48 k is 10.67
+    // cycles, so every block's RMS differs a little with where the tone's
+    // phase fell. The needle does not settle on a value, it tracks a sequence,
+    // and where it ends depends on exactly which ticks read which blocks. The
+    // DEQ session found `snapshot opto` alternating between two images at
+    // signal=-18 on 2026-09-15; eight renders here on 2026-09-17 gave the
+    // baseline six times and a third image twice, AURORA.
+    //
+    // So the block now holds a whole number of cycles, which makes every
+    // block's RMS the same number and gives the convergence argument above the
+    // constant it assumed. 480 samples at 48 k and 441 at 44.1 k are ten
+    // cycles; 96 k takes five. Ticking the timers by hand instead was tried and
+    // does not work from here: the meters inherit juce::Timer privately.
+    //
+    // And 24 ticks was too few for a *hash*, whatever it does for the eye.
+    // One extra tick at 0.72^24 moves the needle tip about 0.02 px, which no
+    // one can see and which changes anti-aliased bytes all the same. 64 leaves
+    // 0.72^64 = 7e-10 of the swing, where an extra tick rounds away. It costs
+    // about 2.6 s a metered render; unmetered ones keep the 8-tick loop.
+    const auto settleTicks = signalDb.has_value() ? 64 : 8;
 
-    juce::AudioBuffer<float> block (juce::jmax (2, processor->getTotalNumOutputChannels()), 512);
+    const auto blockSize = [rate]
+    {
+        for (int cycles = 20; cycles > 0; --cycles)
+        {
+            const auto samples = cycles * rate / 1000.0;
+
+            if (samples <= 512.0 && samples == std::floor (samples))
+                return (int) samples;
+        }
+
+        return 512;
+    }();
+
+    juce::AudioBuffer<float> block (juce::jmax (2, processor->getTotalNumOutputChannels()), blockSize);
     juce::MidiBuffer midi;
     double phase = 0.0;
+
+    // A constant tone is still not a constant reading from a compressor: an
+    // opto cell is still moving 240 ms in, which is all the settle loop lasts,
+    // so gain reduction was a ramp and the render caught it wherever the
+    // ticks happened to leave it -- BMO Opto at crush=60 came back as two
+    // images in twelve. The DSP gets ten seconds of the same tone first, with
+    // no timers and no sleeping, so the loop below meters a steady state.
+    const auto fillTone = [&]
+    {
+        const auto amplitude = juce::Decibels::decibelsToGain (*signalDb);
+
+        for (int n = 0; n < block.getNumSamples(); ++n)
+        {
+            const auto v = (float) (amplitude * std::sin (phase));
+            // The tone is 1 kHz at whatever rate the processor was
+            // prepared at, not at a hardcoded 48 k -- otherwise `rate=`
+            // silently moves the test tone as well as the rate, and a
+            // meter reading would be answering a different question from
+            // the one asked.
+            phase += 2.0 * juce::MathConstants<double>::pi * 1000.0 / rate;
+
+            for (int ch = 0; ch < block.getNumChannels(); ++ch)
+                block.setSample (ch, n, v);
+        }
+    };
+
+    if (signalDb.has_value())
+    {
+        const auto prerollBlocks = (int) std::ceil (10.0 * rate / blockSize);
+
+        for (int i = 0; i < prerollBlocks; ++i)
+        {
+            fillTone();
+            processor->processBlock (block, midi);
+        }
+    }
 
     for (int i = 0; i < settleTicks; ++i)
     {
         if (signalDb.has_value())
         {
-            const auto amplitude = juce::Decibels::decibelsToGain (*signalDb);
-
-            for (int n = 0; n < block.getNumSamples(); ++n)
-            {
-                const auto v = (float) (amplitude * std::sin (phase));
-                // The tone is 1 kHz at whatever rate the processor was
-                // prepared at, not at a hardcoded 48 k -- otherwise `rate=`
-                // silently moves the test tone as well as the rate, and a
-                // meter reading would be answering a different question from
-                // the one asked.
-                phase += 2.0 * juce::MathConstants<double>::pi * 1000.0 / rate;
-
-                for (int ch = 0; ch < block.getNumChannels(); ++ch)
-                    block.setSample (ch, n, v);
-            }
-
+            fillTone();
             processor->processBlock (block, midi);
         }
 
