@@ -20,16 +20,16 @@ namespace
 {
     const Expected kSchema[]
     {
-        { P::kWidth,       "Width",          0.0f,  200.0f, 100.0f, 0 },
-        { P::kShuffle,     "Shuffle",        1.0f,    3.0f,   1.0f, 0 },
-        { P::kShuffleFreq, "Shuffle Freq", 350.0f, 1400.0f, 700.0f, 0 },
+        { P::kWidth,       "Dimension",      0.0f,  200.0f, 100.0f, 0 },
+        { P::kShuffle,     "Bloom",          1.0f,    3.0f,   1.0f, 0 },
+        { P::kShuffleFreq, "Below",        350.0f, 1400.0f, 700.0f, 0 },
         { P::kDetune,      "Detune",         0.0f,   25.0f,  10.0f, 0 },
-        { P::kDetuneOn,    "Detune On",      0.0f,    1.0f,   0.0f, 2 },
-        { P::kDiffuse,     "Diffuse",        0.0f,  100.0f,   0.0f, 0 },
-        { P::kRate,        "Rate",           0.05f,   5.0f,   0.40f, 0 },
-        { P::kDepth,       "Depth",          0.0f,  100.0f,  50.0f, 0 },
-        { P::kRotation,    "Rotation",     -45.0f,   45.0f,   0.0f, 0 },
-        { P::kAsymmetry,   "Asymmetry",   -100.0f,  100.0f,   0.0f, 0 },
+        { P::kDetuneOn,    "Generate",       0.0f,    1.0f,   0.0f, 2 },
+        { P::kDiffuse,     "Drift",          0.0f,  100.0f,   0.0f, 0 },
+        { P::kRate,        "Drift Rate",     0.05f,   5.0f,   0.40f, 0 },
+        { P::kDepth,       "Drift Depth",    0.0f,  100.0f,  50.0f, 0 },
+        { P::kRotation,    "Turn",         -45.0f,   45.0f,   0.0f, 0 },
+        { P::kAsymmetry,   "Tilt",        -100.0f,  100.0f,   0.0f, 0 },
     };
 }
 
@@ -50,15 +50,20 @@ int main()
 
         setValue (*proc, P::kWidth, 150.0f);
         check (param (*proc, P::kWidth).getCurrentValueAsText() == "150 %",
-               "Width reads as a percentage");
+               "Dimension reads as a percentage");
 
         setValue (*proc, P::kDiffuse, 40.0f);
         check (param (*proc, P::kDiffuse).getCurrentValueAsText() == "40 %",
-               "Diffuse reads as a percentage");
+               "Drift reads as a percentage");
+
+        // BELOW prints its value on the panel, so it says what unit it is in.
+        setValue (*proc, P::kShuffleFreq, 700.0f);
+        check (param (*proc, P::kShuffleFreq).getCurrentValueAsText() == "700 Hz",
+               "Below reads in hertz");
 
         setValue (*proc, P::kAsymmetry, -25.0f);
         check (param (*proc, P::kAsymmetry).getCurrentValueAsText() == "-25 %",
-               "Asymmetry reads as a signed percentage");
+               "Tilt reads as a signed percentage");
     }
 
     //== Latency ==============================================================
