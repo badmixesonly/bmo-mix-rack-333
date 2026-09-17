@@ -52,9 +52,53 @@ UtilPanel::UtilPanel (ui::ModuleContext ctx)
     // one size BMO EQ's column can afford; this knob is not one of those and
     // takes the room its own row gives it.
 
+    // PAN's ends are two directions, not two amounts: hard left is not less
+    // than hard right, and the minus and plus this knob wore said it was. The
+    // same marks BMO Dimension's TURN and TILT take, for the same reason.
+    pan.setEndMarks (ui::Knob::EndMarks::leftRight);
+
+    // WIDTH keeps its minus and plus. Frosty, 2026-09-17: Width runs 0..200 and
+    // rests at 100, so it reduces and increases around its rest position, which
+    // is what lessMore is for -- and the rest dot on the track is already the
+    // mark that says where that is.
+
     // Polarity is white in every module; its label is what says which module.
     for (auto* p : { &phaseL, &phaseR })
         p->setActiveInkFrom (context.def.accent);
+
+    lastMonoWasOn = context.params.param (Index::mono).getValue() > 0.5f;
+    width.setKnobEnabled (! lastMonoWasOn);
+
+    startTimerHz (15);
+}
+
+UtilPanel::~UtilPanel() { stopTimer(); }
+
+void UtilPanel::timerCallback()
+{
+    // MONO sums to (L+R)/2 *before* the mid/side stage, so while it is on the
+    // side signal is zero and WIDTH has nothing left to scale: turning it does
+    // nothing at all. Dim it, the way PlainKnob::setKnobEnabled was written for
+    // and BMO DEQ's gain knob uses on a cut filter.
+    //
+    // MONO itself is never dimmed. It is the switch that put WIDTH to sleep and
+    // it is the way back out, and DEQ's pass settled that dimming the way in
+    // reads as a door locked rather than as the door.
+    //
+    // **The dim is the full shipped one, caption and all**, which on the pale
+    // plate takes the caption from 1.72:1 to 1.25:1. A ladder was rendered that
+    // held the caption at full strength and dimmed only the face -- it measures
+    // better and Frosty did not take it, 2026-09-17: a knob whose name still
+    // reads at full strength while its face has gone pale reads as a knob that
+    // has broken, and the whole control fading says on purpose. Do not "fix"
+    // this to the ratio.
+    const auto monoOn = context.params.param (Index::mono).getValue() > 0.5f;
+
+    if (monoOn != lastMonoWasOn)
+    {
+        lastMonoWasOn = monoOn;
+        width.setKnobEnabled (! monoOn);
+    }
 }
 
 void UtilPanel::resized()

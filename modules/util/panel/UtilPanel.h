@@ -11,18 +11,25 @@ namespace bmo::util
 
     No output meter, which is a deliberate exception to the rule in
     modules/AGENTS.md that every module ends with one. */
-class UtilPanel final : public ui::ModulePanel
+class UtilPanel final : public ui::ModulePanel,
+                        private juce::Timer
 {
 public:
     explicit UtilPanel (ui::ModuleContext);
+    ~UtilPanel() override;
 
     void resized() override;
 
 private:
+    /** Reads MONO back and dims WIDTH while it is on -- see the call site for
+        why. Polled at 15 Hz rather than listened for, the same as BMO Opto's
+        mode, so host automation and a preset land where a click does. */
+    void timerCallback() override;
 
     ui::PlainKnob gain, pan, width;
     ui::SwitchButton phaseL, phaseR, mono;
 
+    bool lastMonoWasOn = false;
 };
 
 } // namespace bmo::util
