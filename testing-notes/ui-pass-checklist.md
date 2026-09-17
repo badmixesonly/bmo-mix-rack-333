@@ -62,7 +62,13 @@ time. Hash renders before and after any change that should move nothing.
 - [ ] Settled. DRIVE, TONE, MIX, three switches, both sections taken.
 
 ### BMO Opto (220)
-- [ ] Settled by the 2026-09-11 decisions: TELE / ELD / COLOR names, LINK
+Module 5 of the pass, 2026-09-17 on AURORA. `ui-pass-opto-2026-09-17.md`
+has the numbers and the rejected candidates.
+- [x] Opening state checked first: GR at rest clears its printed `0`.
+- [x] **GR scale** evenly ticked every 2 dB above 6 (`30443bf`).
+- [x] **IN/OUT scale** is GR's arc mirrored, from -24 to +3 (`db91b67`).
+- [x] `snapshot` renders a metered Opto reproducibly (`bfbafc4`).
+- [x] Settled by the 2026-09-11 decisions: TELE / ELD / COLOR names, LINK
       stays. Engaged colour red in Tele, amber in Stressed, both renders
       confirm.
 - [x] ~~Takes no output section on purpose … decide once whether that is

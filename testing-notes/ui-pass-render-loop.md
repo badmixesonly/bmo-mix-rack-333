@@ -45,7 +45,8 @@ be asked as one. **BMO DEQ is next, not Tune** -- corrected 2026-09-15. Reverse 
 is by when a module was added, and `git log --diff-filter=A` on each
 `params.h` puts DEQ at 09-10 **21:32** and Tune at 09-10 **17:23**. They landed
 the same day about four hours apart, which is how they got swapped. The order
-is LTV Comp, DEQ, Tune, Dimension, Opto, then the 09-05 three.
+is LTV Comp, DEQ, Tune, Dimension, Opto, then the 09-05 three -- which Frosty
+ordered on 2026-09-17 as **Util, Saturator, then CEQ**.
 
 Tune's empty middle, when its turn comes, is a candidates-for-Frosty item and
 not something to decide in the edit.
@@ -180,12 +181,19 @@ nothing.
 | BMO EQ | 280 | 560 | `ac0d5c764049b912` | `b57148059978ac2c` | 21 px at 544 |
 | Saturator | 260 | 520 | `270159d1c8ccccb5` | `e076b68d1d065d98` | 66 px at 91 |
 | BMO Util | **160** | 320 | `1225e16081194ecf` | `179fe57b060ba655` | 46 px at 520 |
-| BMO Opto | 220 | 440 | `784ca005ff68a747` | `9a87504c6cf57c33` | 48 px at 82 |
+| BMO Opto | 220 | 440 | ~~`784ca005ff68a747`~~ `ab3ff3b77116b7a5` | ~~`9a87504c6cf57c33`~~ `878cca7b1a80a551` | 48 px at 82 |
 | Dimension | 220 | 440 | `339dfc8560a3c548` | `4063603b21333eff` | 72 px at 180 |
 | BMO DEQ | 600 (expanded) | 1200 | `8b15e62102cad9a6` | `325623156690ffec` | 30 px at 536 |
 | BMO DEQ | 320 (compact) | 640 | `35df0fbe474b0551` | `20e67b4acc38959a` | 20 px at 340 |
 | LTV Comp | 260 | 520 | `e3d5fc2f21d11822` | `8901aa58c7466207` | 184 px at 486 |
 | BMO Tune RT | 360 | 720 | `8076f67b0802f196` | `10738b95c82711ef` | **110 px at 273** |
+
+**BMO Opto's row was re-taken 2026-09-17**, twice over: `bfbafc4` made a
+metered render reproducible (the old hash was one of two or three images the
+tool could produce), and `db91b67` moved the VU scale. See
+`ui-pass-opto-2026-09-17.md`. Bare Opto is `910e41b64ed45b5c` /
+`2394065f3f2b8a74`. The same tool fix moved **DEQ and the rack with a
+signal** and nothing else; every other row stands.
 
 **Every render is 2× the design size**, and that is the tool's doing, not the
 editor's: `createComponentSnapshot (bounds, false, 2.0f)` at the foot of
