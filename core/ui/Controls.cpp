@@ -734,29 +734,44 @@ float DynamicsMeter::fractionFor (float value, const std::vector<ScalePoint>& sc
 
 const std::vector<DynamicsMeter::ScalePoint>& DynamicsMeter::vuScale()
 {
-    // Approximates a classic VU faceplate: compressed toward -20, spread out
-    // from 0 to +3, where 0 VU sits noticeably right of centre rather than
-    // in the middle of the sweep. Not one real meter's calibration data --
-    // just close enough to read as the genre (see class comment).
-    // -2, -1, +1 and +2 are struck but not numbered: from -3 up the scale
-    // crowds into the last third of the sweep, and inking every one of them
-    // is what left the numbers illegibly small and touching. The numbered
-    // ones are the figures a VU is actually read against.
-    // The first point is struck but never printed, and it is where the needle
-    // parks in silence. 0.2.1 started the scale at -20, so an idle meter left
-    // the needle lying across its own leftmost numeral -- the rest state, and
-    // therefore the state the meter is in most of the time.
+    // The reduction scale below, mirrored. GR is read near its start, where a
+    // few dB is a decision; a VU is read near 0, so the same arc turned round
+    // puts the fine ticks at the top: a tick every dB from -2 to +3, the gaps
+    // widening toward +3 the way a real VU spreads there, then a tick every
+    // 2 dB down to -24. Frosty's call, 2026-09-17, on renders, so that the two
+    // faces of this meter are one design and switching IN/GR/OUT changes the
+    // figures rather than the instrument.
     //
-    // -7 and -3 lost their numbers as well. Five printed figures is what fits:
-    // at this radius the -10 to -5 gap is the tightest pair on the scale and
-    // clears by about 6 px, and every figure added between them takes that
-    // back. Hardware faceplates ink only the round figures for the same
-    // reason, and every tick is still struck here.
+    //   dB   -24  -22  -20  ...  -6   -4   -2   -1    0   +1   +2   +3
+    //   at  .000 .055 .109  ... .491 .545 .600 .665 .735 .810 .900 1.00
+    //   ink   y    .    .        y    .    .    .    y    .    .    y
+    //
+    // The top five dB are GR's 0..5 exactly (1 - its fractions). An exact
+    // mirror of all of GR spans 24 dB and would run -21..+3, printing -21,
+    // -15, -9 and -3; that was rendered and not taken for the figures. Starting
+    // at -24 costs the 2 dB gaps a little -- .055 of the sweep against GR's
+    // .06 -- and buys figures a VU is read against: 3, 0, -6, -12, -18, -24.
+    //
+    // It replaced a hand-placed table whose gaps ran .10, .17, .14, .09, .08,
+    // .09, then .05, .06, .07 up to 0 and .05 after it -- widening toward 0
+    // and snapping narrow above it. Also rendered and not taken: a true VU law
+    // (0 VU at .71; the low end crowds, the top goes sparse) and an even 1 dB
+    // ruler from -7 up.
+    //
+    // The first point is printed now and is where the needle parks in
+    // silence, the same as GR's 0. That is safe only because the figures sit
+    // outside the arc -- see paint(). Silence parks at -24 VU, which is
+    // -42 dBFS at kVuReference; anything quieter reads as rest.
+    constexpr float kStep = 0.60f / 11.0f;   ///< one 2 dB gap, -24 to -2
+
     static const std::vector<ScalePoint> scale {
-        { -30.0f, 0.00f, false },
-        { -20.0f, 0.10f }, { -15.0f, 0.27f, false }, { -10.0f, 0.41f }, { -7.0f, 0.50f, false }, { -5.0f, 0.58f },
-        { -3.0f, 0.67f, false }, { -2.0f, 0.72f, false }, { -1.0f, 0.78f, false }, { 0.0f, 0.85f },
-        { 1.0f, 0.90f, false }, { 2.0f, 0.95f, false }, { 3.0f, 1.00f },
+        { -24.0f, 0.0f },            { -22.0f, 1.0f * kStep, false }, { -20.0f, 2.0f * kStep, false },
+        { -18.0f, 3.0f * kStep },    { -16.0f, 4.0f * kStep, false }, { -14.0f, 5.0f * kStep, false },
+        { -12.0f, 6.0f * kStep },    { -10.0f, 7.0f * kStep, false }, {  -8.0f, 8.0f * kStep, false },
+        {  -6.0f, 9.0f * kStep },    {  -4.0f, 10.0f * kStep, false },
+        {  -2.0f, 1.0f - 0.400f, false }, { -1.0f, 1.0f - 0.335f, false },
+        {   0.0f, 1.0f - 0.265f },   {   1.0f, 1.0f - 0.190f, false }, {   2.0f, 1.0f - 0.100f, false },
+        {   3.0f, 1.0f },
     };
 
     return scale;
