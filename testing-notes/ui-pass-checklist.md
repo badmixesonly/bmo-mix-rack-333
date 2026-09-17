@@ -85,7 +85,32 @@ the numbers and the rejected candidates.
 - [ ] Low-cut crowding is parked at Frosty's request; leave it.
 
 ### BMO Saturator (260)
-- [ ] Settled. DRIVE, TONE, MIX, three switches, both sections taken.
+Module 7 of the pass, 2026-09-17 on AURORA. `ui-pass-sat-2026-09-17.md` has the
+numbers and the rejected candidates. The entry below said "settled" and the pass
+found four things anyway, which is the argument for walking every panel.
+- [x] ~~Settled. DRIVE, TONE, MIX, three switches, both sections taken.~~
+- [x] **DRIVE's name is 28 pt**, against the suite's 15, on the one control the
+      module is named for. Rendered at 20, 24, 28 and 32. Its row grew by what
+      the caption takes, so the face did not pay for its own name.
+- [x] **Caption gaps match the suite**: DRIVE and the pair sat 74 and 68 render
+      px off their faces against the 30 that BMO Util, BMO Opto's MAKEUP and LTV
+      Comp all measure. Both are 30 now, by Util's `setCaptionLift`. INPUT and
+      OUTPUT were already right and were not touched.
+- [x] **Each section centres its own ink**, rather than the middle centring as
+      one block with the slack pooled above DRIVE and under MIX.
+- [x] **Oversampling has a control** -- a rule and three switches, 2x / 4x / HQ,
+      with Off the position none of them lights. It had been on the schema and
+      nowhere on the panel since 0.2.0. `checkSatOversampling` pins the row and
+      the radio behaviour, since a render of the default state cannot tell a
+      working loop from a broken one: nothing is lit either way.
+- [x] DRIVE's row gives that section 24 px so it has air. The face goes 136
+      design px to 121; Frosty's call against keeping the row whole.
+- [ ] **BMO EQ has the same gap**: oversampling, no control, and it defaults to
+      2x rather than Off. That is module 8's, not this one's.
+- [ ] Host names `Sat In` and `Auto Gain` against the captions SAT and AUTO.
+      Frosty, 2026-09-17: fine as they are, unlike Dimension's. Left alone.
+- [ ] The white pointer on the pale knob faces measures 1.42:1 in light. Frosty
+      called it okay. It is suite-wide, not the Saturator's.
 
 ### BMO Opto (220)
 Module 5 of the pass, 2026-09-17 on AURORA. `ui-pass-opto-2026-09-17.md`
