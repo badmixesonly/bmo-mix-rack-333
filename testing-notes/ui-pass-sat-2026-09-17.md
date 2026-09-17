@@ -138,6 +138,31 @@ Frosty took the trim, 2026-09-17.
   `saturator-voicing-retest.md`, untouched by this pass, which was UI only.
 - **BMO EQ's oversampling** has no control either. Module 8.
 
+## 8a. What oversampling costs, measured
+
+Frosty asked whether the defaults on CEQ and DEQ add latency. Taken by compiling
+`core/dsp/Oversampler.h`'s own `oversamplerLatency` and running it on AURORA, not
+by reading the constants:
+
+| | samples at base rate | at 48 kHz |
+|---|---|---|
+| Off | 0 | 0 |
+| 2x | 40 | 0.83 ms |
+| 4x | 60 | 1.25 ms |
+| HQ (8x) | 70 | 1.46 ms |
+
+- **BMO DEQ: none, in any mode.** No oversampling parameter at all, and
+  `DspCore::latencySamples()` is a constexpr 0. `Design.h` names oversampling as
+  what costs TDR Nova its latency, so this is the design working.
+- **BMO EQ / CEQ: 40 samples at its default**, because it defaults to 2x rather
+  than Off -- `modules/eq/params.h:86` calls it the one module in the suite whose
+  default is not zero-latency, for the 1073 model's 16 kHz shelf. Whether that
+  default is still right is module 8's question, and a product one.
+- **The Saturator still defaults to Off.** What changed today is that the panel
+  can now reach the other three, where only a host could before.
+- **A rack reports the sum** of its slots (`tests/plugin/RackTests.cpp`), so a
+  CEQ and a Saturator on HQ in one rack is 110 samples.
+
 ## 9. Next
 
 BMO CEQ, the last of the 09-05 three, including the BMO EQ → BMO CEQ rename and
