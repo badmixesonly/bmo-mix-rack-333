@@ -65,10 +65,17 @@ the numbers and the rejected candidates.
       nothing on it** (`a2e5a63`), so the three names stay level.
 - [x] **Names 11 px closer to their knobs** (`a2e5a63`), matched by measurement
       to BMO Opto (38 render px face to caption) and LTV Comp (39).
-- [ ] The rack's shared switch rows: ØL/ØR sit below the row EQ and the
-      Saturator use for Ø, EQL and HI-Q, though the lower rule does line up.
-      Parked until the panel stopped moving, which it now has -- re-measure
-      rather than answer from the old render. See the rack entry below.
+- [x] ~~The rack's shared switch rows: ØL/ØR sit below the row EQ and the
+      Saturator use.~~ **Settled 2026-09-17, Frosty, on a six-slot rack render:
+      the placement is right as it stands and Util does not move.** The numbers,
+      so nobody re-finds this: EQ and the Saturator put their switches on the
+      shared output row, 575..600, with a trim knob under it at 602..679. Util
+      adopts neither half of that section -- it has no output stage -- so its
+      polarity pair centres in the body the section reserves, 595..620 and
+      637..662 against a body of 574..683. The two land 20 px apart *because*
+      one is a switch row with a knob under it and the other is a pair with the
+      whole body to itself. The lower rule, which is the alignment that carries
+      the rack, does line up: row 566 on all three, test-pinned.
 
 ### BMO EQ / CEQ (280)
 - [ ] Settled; the most finished panel in the suite. Only the rename.

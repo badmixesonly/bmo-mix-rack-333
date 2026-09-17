@@ -91,11 +91,28 @@ unnecessary. **The polarity pair needed no recentring either**: it already
 centres in the reserved body by construction, 595..620 and 637..662 against a
 body of 574..683.
 
-## 4. Still open on Util
+## 4. The switch rows, settled
 
-- **The rack's shared switch rows** — checklist §B item 7. Util's ØL/ØR sit
-  below the row EQ and the Saturator use for Ø, EQL and HI-Q; the lower rule
-  does line up. Frosty parked it until the panel stopped moving, which it now
-  has, so it wants re-measuring rather than answering from the old render.
+Frosty, 2026-09-17, on a six-slot rack render: **the placement is right and
+Util does not move.** The checklist had it as an open item because Util's
+polarity pair sits about 20 px below the row EQ and the Saturator put their
+switches on.
+
+Measured, it is not a misalignment but two different things:
+
+| | switches | knob under them |
+|---|---|---|
+| BMO EQ (EQL, Ø, HI-Q) | 575..600 | OUTPUT 602..679 |
+| Saturator (SAT, Ø, AUTO) | 575..600 | OUTPUT 602..679 |
+| **BMO Util (ØL, ØR)** | **595..620, 637..662** | none |
+
+EQ and the Saturator adopt the output section: a switch row with a trim knob
+beneath it. Util reserves the section and adopts neither half — it has no
+output stage — so the pair centres in the body the reservation leaves,
+574..683. The alignment that actually carries the rack is the rule above them,
+and that is row 566 on all three and pinned by `LayoutTests`.
+
+## 5. Still open on Util
+
 - **Light-plate captions at 1.72:1** — the suite-wide raw-legend question, the
   same one Dimension and DEQ are waiting on. Not a Util decision.
