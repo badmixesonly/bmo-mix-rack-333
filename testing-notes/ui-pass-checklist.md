@@ -44,12 +44,31 @@ time. Hash renders before and after any change that should move nothing.
 
 ## B. Per panel, what the renders showed
 
-### BMO Util (320 wide)
-- [ ] VOLUME colour (above).
-- [ ] Two large empty bands, between the rule under VOLUME and PAN, and
-      between MONO and the lower rule. Either the knobs grow or the panel
-      says why it is spaced this way. Compare with EQ's column, which has
-      no empty band over 16 px.
+### BMO Util (160 design, 320 rendered)
+Module 6 of the pass, 2026-09-17 on AURORA. `ui-pass-util-2026-09-17.md` has
+the numbers and the rejected candidates.
+- [x] ~~VOLUME colour (above).~~ **Settled 2026-09-14**, the utility azure
+      `#4fb8e8` (`aff0282`). Not re-opened this pass.
+- [x] ~~Two large empty bands … either the knobs grow or the panel says why.~~
+      **The knobs grew** (`a2e5a63`): one 150 px row for all three, so VOLUME
+      stopped being the smallest knob on the module named after it, and the
+      band under MONO went from 46 px to 22. The worst band is now 38 px above
+      VOLUME, against EQ's 21 and BMO Opto's 48.
+- [x] **PAN's ends read L and R** (`db63acb`), the marks Dimension's TURN and
+      TILT take. WIDTH keeps its minus and plus: it rests at 100 of 0..200, so
+      it cuts and boosts around its rest dot, which is what those marks are for.
+- [x] **WIDTH dims while MONO is on** (`db63acb`) -- the sum lands before the
+      mid/side stage, so it has nothing left to scale. The full dim, caption
+      included, and that is on the record: a knob whose name stays bright while
+      its face goes pale reads as broken rather than asleep.
+- [x] **VOLUME and PAN print their values; WIDTH reserves the line and prints
+      nothing on it** (`a2e5a63`), so the three names stay level.
+- [x] **Names 11 px closer to their knobs** (`a2e5a63`), matched by measurement
+      to BMO Opto (38 render px face to caption) and LTV Comp (39).
+- [ ] The rack's shared switch rows: ØL/ØR sit below the row EQ and the
+      Saturator use for Ø, EQL and HI-Q, though the lower rule does line up.
+      Parked until the panel stopped moving, which it now has -- re-measure
+      rather than answer from the old render. See the rack entry below.
 
 ### BMO EQ / CEQ (280)
 - [ ] Settled; the most finished panel in the suite. Only the rename.

@@ -21,8 +21,12 @@ where it is waiting on Frosty** — one defect fixed, five decisions gathered, i
 before re-finding three things that look like faults and are not. BMO Tune RT
 (module 3) is in `ui-pass-tune-2026-09-15.md`. **BMO Dimension (module 4) is
 done** -- its record is
-`ui-pass-dim-2026-09-17.md`, and its controls have new names. Nothing is
-pushed and CI has not been touched this pass.
+`ui-pass-dim-2026-09-17.md`, and its controls have new names. **BMO Opto
+(module 5) is done** (`ui-pass-opto-2026-09-17.md`, the meter's two scales),
+and so is **BMO Util (module 6)** (`ui-pass-util-2026-09-17.md`, one knob row,
+two value readouts, captions matched to the compressors). Next are the
+Saturator and then CEQ. Nothing is pushed and CI has not been touched this
+pass.
 
 Both older documents were written before most of these commits, so check here
 first:
@@ -35,7 +39,7 @@ first:
 | the handoff's "blocked on Frosty": **Vcomp's names and accent** | Still open, but **ordered**: Frosty wants control placement final *first*, then names, then the accent last. Do not re-open the names before the layout |
 | snapshot id `vcomp` | **`ltvcomp`** — the CLI keyword followed the module id. Flagged in the session note as not confirmed with Frosty |
 | `ui-pass-2026-09-14.md`: "six commits sit on `ui-pass`" | eleven, as of `1c5299f` |
-| BMO Util "(320 wide)" | design width is **160**; see §4 |
+| BMO Util "(320 wide)" | design width is **160**; see §4. **Fixed in the checklist 2026-09-17**, along with the rest of Util's entry — its pass is done |
 
 **The one-module rule.** Frosty asked for the pass to take one module at a
 time, which is why several live questions are parked rather than forgotten —
@@ -155,7 +159,8 @@ The three that carry this pass:
   cannot. The dump prints control *boxes* and boxes are nearly contiguous; the
   ink inside them is not, because a knob box carries padding above its face and
   below its caption. Read from the dump alone Util has no empty band worth the
-  name; rendered, its worst is 46 px against BMO EQ's 21.
+  name; rendered, its worst was 46 px against BMO EQ's 21 — 38 since its pass,
+  and at the top of the panel rather than under MONO.
 - **`ratio`** is how every colour claim in this pass has to be stated. A ratio
   without a named ground is not a measurement.
 - **`hash`** settles "this change should move nothing" instead of arguing it.
@@ -180,13 +185,20 @@ nothing.
 |---|---|---|---|---|---|
 | BMO EQ | 280 | 560 | `ac0d5c764049b912` | `b57148059978ac2c` | 21 px at 544 |
 | Saturator | 260 | 520 | `270159d1c8ccccb5` | `e076b68d1d065d98` | 66 px at 91 |
-| BMO Util | **160** | 320 | `1225e16081194ecf` | `179fe57b060ba655` | 46 px at 520 |
+| BMO Util | **160** | 320 | ~~`1225e16081194ecf`~~ `ce603457cbf3bc73` | ~~`179fe57b060ba655`~~ `ee71528c39941701` | ~~46 px at 520~~ 38 px at 0 |
 | BMO Opto | 220 | 440 | ~~`784ca005ff68a747`~~ `ab3ff3b77116b7a5` | ~~`9a87504c6cf57c33`~~ `878cca7b1a80a551` | 48 px at 82 |
 | Dimension | 220 | 440 | `339dfc8560a3c548` | `4063603b21333eff` | 72 px at 180 |
 | BMO DEQ | 600 (expanded) | 1200 | `8b15e62102cad9a6` | `325623156690ffec` | 30 px at 536 |
 | BMO DEQ | 320 (compact) | 640 | `35df0fbe474b0551` | `20e67b4acc38959a` | 20 px at 340 |
 | LTV Comp | 260 | 520 | `e3d5fc2f21d11822` | `8901aa58c7466207` | 184 px at 486 |
 | BMO Tune RT | 360 | 720 | `8076f67b0802f196` | `10738b95c82711ef` | **110 px at 273** |
+
+**BMO Util's row was re-taken 2026-09-17**, at the end of its own pass
+(`db63acb`, `a2e5a63`): one knob row for all three, values under VOLUME and
+PAN, and the captions 11 px closer. `signal=` still moves nothing on it — no
+meter — so the row is a bare render either way. With MONO on it is
+`7b1c566c8df65964` / `f91161aa5277371a`, and WIDTH is dimmed there. See
+`ui-pass-util-2026-09-17.md`.
 
 **BMO Opto's row was re-taken 2026-09-17**, twice over: `bfbafc4` made a
 metered render reproducible (the old hash was one of two or three images the
@@ -203,11 +215,11 @@ takes `scale = 1` when there is no window yet. So design height is
 52, and **the band positions above are design pixels**, which is what
 `gaps` prints.
 
-**`ui-pass-checklist.md` has BMO Util as "(320 wide)" and that is its render
+**`ui-pass-checklist.md` had BMO Util as "(320 wide)", which is its render
 width, not its design width.** `modules/util/Module.cpp:14` is `160`. Every
-other parenthetical in the checklist is a design width, so Util's is the one
-that does not mean what its neighbours mean — worth fixing there before
-somebody lays out a 160 px panel against a 320 px number.
+other parenthetical in the checklist is a design width, so Util's was the one
+that did not mean what its neighbours meant. **Fixed there 2026-09-17** — it
+reads "160 design, 320 rendered" now.
 
 DEQ has two rows, because it is two panels: the compact 320 needs
 `view=compact` and hashes differently. Both taken 2026-09-15.

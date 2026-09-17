@@ -10,7 +10,14 @@ namespace bmo::util
     chain and stays out of the way.
 
     No output meter, which is a deliberate exception to the rule in
-    modules/AGENTS.md that every module ends with one. */
+    modules/AGENTS.md that every module ends with one.
+
+    All three knobs take one row, and their names sit 11 px up into the air
+    under each face -- the distance BMO Opto's and LTV Comp's names sit at,
+    measured. VOLUME and PAN print their values; WIDTH reserves the same line
+    and prints nothing on it, so the three names stay level. WIDTH also dims
+    while MONO is on, because the sum happens before the mid/side stage and
+    leaves it nothing to scale. See testing-notes/ui-pass-util-2026-09-17.md. */
 class UtilPanel final : public ui::ModulePanel,
                         private juce::Timer
 {
