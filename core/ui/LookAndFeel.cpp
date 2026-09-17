@@ -291,11 +291,48 @@ void BmoLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int widt
             // sitting on the bottom of the sweep and stopped anchoring that
             // end by accident.
             const auto minusAt = at (minusAngle, track);
-            g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (minusAt));
+            const auto plusAt  = at (plusAngle, track);
 
-            const auto plusAt = at (plusAngle, track);
-            g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (plusAt));
-            g.fillRect (juce::Rectangle<float> (weight, arm * 2.0f).withCentre (plusAt));
+            if (knob != nullptr && knob->getEndMarks() == Knob::EndMarks::leftRight)
+            {
+                // Letters, so these are set rather than drawn -- two letters are
+                // not balanced by construction the way two bars are, which is
+                // what the ink-centring below is for.
+                //
+                // Blender at 12, Frosty's call on 2026-09-16 from a rendered
+                // ladder of both faces at 9-13 pt. Minerva is the caption face
+                // and was the obvious candidate, but at this size its L and R
+                // are narrow enough to read as marks rather than letters;
+                // Blender's are rounder and read at a glance. At 12 pt the ink
+                // is 8.5 px tall, level with the plus it stands in for, and
+                // clears the caption below by 8 px.
+                const auto font = captionFont (12.0f);
+
+                // Centred on the letter's ink, not its advance box: L and R
+                // have different widths and sidebearings, and centring the
+                // boxes would put the two marks at different distances from
+                // the ends they name.
+                const auto mark = [&] (const juce::String& letter, juce::Point<float> where)
+                {
+                    juce::GlyphArrangement ga;
+                    ga.addLineOfText (font, letter, 0.0f, 0.0f);
+                    const auto ink = ga.getBoundingBox (0, -1, false);
+
+                    juce::Path p;
+                    ga.createPath (p);
+                    p.applyTransform (juce::AffineTransform::translation (where - ink.getCentre()));
+                    g.fillPath (p);
+                };
+
+                mark ("L", minusAt);
+                mark ("R", plusAt);
+            }
+            else
+            {
+                g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (minusAt));
+                g.fillRect (juce::Rectangle<float> (arm * 2.0f, weight).withCentre (plusAt));
+                g.fillRect (juce::Rectangle<float> (weight, arm * 2.0f).withCentre (plusAt));
+            }
         }
     }
 

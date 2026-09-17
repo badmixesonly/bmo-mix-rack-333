@@ -203,6 +203,12 @@ void PlainKnob::setRestMark (bool b)
     repaint();
 }
 
+void PlainKnob::setEndMarks (Knob::EndMarks m)
+{
+    knob.setEndMarks (m);
+    repaint();
+}
+
 //==============================================================================
 ConcentricBand::ConcentricBand (juce::RangedAudioParameter& selector, const ParamSpec& selectorSpec,
                                 juce::RangedAudioParameter* gain, juce::Colour accent,

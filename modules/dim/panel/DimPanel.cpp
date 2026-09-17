@@ -62,6 +62,19 @@ DimPanel::DimPanel (ui::ModuleContext ctx)
                      &rotation, &asymmetry })
         k->setKnobSide (kPairKnobSide);
 
+    // ROTATE marks its ends L and R, not minus and plus: it turns the image one
+    // way or the other, and neither end is more than the other. Frosty,
+    // 2026-09-16. + moves the image right, confirmed by ear on bc89293 and
+    // asserted in DimDspTests, so the R is where the image goes.
+    //
+    // **ASYM keeps minus and plus for now, deliberately.** Frosty asked for
+    // both, and ASYM is the same kind of control -- but its + end favours the
+    // *left*: the shear is mid += a * side, so a hard-left source gets louder
+    // and a hard-right one quieter (DspCore.h records 0.00/1.00 in giving
+    // -0.50/0.50 out). An R at that end would be a label that lies. Either the
+    // sign flips in the DSP, which needs its own listen, or the marks wait.
+    rotation.setEndMarks (ui::Knob::EndMarks::leftRight);
+
     for (auto* c : std::initializer_list<juce::Component*> {
              &detuneOn, &cents, &diffuse, &width,
              &shuffle, &shuffleFreq, &rotation, &asymmetry })

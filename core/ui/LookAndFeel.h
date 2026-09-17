@@ -73,6 +73,18 @@ public:
     void setRestMark (bool b) noexcept { restMark = b; }
     bool hasRestMark() const noexcept  { return restMark; }
 
+    /** What the two ends of the dotted track say.
+
+        `lessMore` is the suite's minus and plus, and it is right for every
+        control that runs from less of something to more of it. `leftRight` is
+        for a control whose ends are two *directions* rather than two amounts --
+        BMO Dimension's ROTATE and ASYM, which move the image left or right,
+        where neither end is more than the other. */
+    enum class EndMarks { lessMore, leftRight };
+
+    void setEndMarks (EndMarks m) noexcept { endMarks = m; }
+    EndMarks getEndMarks() const noexcept  { return endMarks; }
+
     /** The inner control of a concentric pair claims only its own circle, so
         the ring around it stays grabbable right up to the corners. */
     void setCircularHitTest (bool b) noexcept { circularHit = b; }
@@ -94,6 +106,7 @@ private:
     juce::Colour utilityTint;
     bool  circularHit = false;
     bool  restMark = true;
+    EndMarks endMarks = EndMarks::lessMore;
     int   detents = 0;
     float faceScale = 1.0f;
     float trackRadius = 0.0f;
