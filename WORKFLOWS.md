@@ -354,12 +354,17 @@ files are, and stop.
 
 ### `ceq-latency` — BMO CEQ's latency work
 
-BMO EQ is the one module in the suite whose default is not zero-latency: its
-oversampling sets `latencyForParams`. **BMO EQ is renamed BMO CEQ** (Frosty,
-2026-09-11); the plugin code `Fsty`, the bundle id and both preset extensions
-do **not** change, because that is what makes existing sessions open. The
-rename touches the display name, the header and the docs, so do it with the UI
-pass rather than here.
+BMO CEQ is the one module in the suite whose default is not zero-latency: its
+oversampling sets `latencyForParams`, and at the 2x it ships on that is 40
+samples. Since 2026-09-17 the panel says so — the oversampling row lights one
+of its three switches at Init.
+
+**The rename landed with the UI pass**, 2026-09-17. The plugin code `Fsty`, the
+bundle id, the module id `eq` and the schema do **not** change, because that is
+what makes existing sessions open. The preset **extension did** change, to
+`.bmoceq` — this page used to say both extensions stay, which was wrong — and
+the `BMO EQ` and `FrostyEQ` folders are copied across on first run. See
+`testing-notes/ui-pass-ceq-2026-09-17.md`.
 
 ### `opto-high-gr` — behaviour at high reduction
 

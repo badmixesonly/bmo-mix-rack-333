@@ -144,6 +144,11 @@ public:
     static juce::Rectangle<float> toggleLabelBox (const juce::ToggleButton&);
     static juce::Font toggleLabelFont (const juce::ToggleButton&);
 
+    /** A property a switch may set on itself to pin its label's point size
+        instead of having it derived from its height. See `toggleLabelFont`,
+        and `SwitchButton::setLabelSize`, which is how a panel asks for it. */
+    static constexpr const char* kSwitchLabelSize = "bmoSwitchLabelSize";
+
     /** How much wider a toggle's label is than its box, in pixels; zero or
         less fits.
 

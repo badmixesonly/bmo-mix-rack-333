@@ -183,7 +183,7 @@ nothing.
 
 | module | design w | render w | pixel hash dark | pixel hash light | largest bare band (dark) |
 |---|---|---|---|---|---|
-| BMO EQ | 280 | 560 | `ac0d5c764049b912` | `b57148059978ac2c` | 21 px at 544 |
+| BMO CEQ | 280 | 560 | ~~`ac0d5c764049b912`~~ `cc76b8c7987bb940` | ~~`b57148059978ac2c`~~ `1ad53a0f0035f763` | 17 px at 427 |
 | Saturator | 260 | 520 | `270159d1c8ccccb5` | `e076b68d1d065d98` | 66 px at 91 |
 | BMO Util | **160** | 320 | ~~`1225e16081194ecf`~~ `ce603457cbf3bc73` | ~~`179fe57b060ba655`~~ `ee71528c39941701` | ~~46 px at 520~~ 38 px at 0 |
 | BMO Opto | 220 | 440 | ~~`784ca005ff68a747`~~ `ab3ff3b77116b7a5` | ~~`9a87504c6cf57c33`~~ `878cca7b1a80a551` | 48 px at 82 |
@@ -192,6 +192,13 @@ nothing.
 | BMO DEQ | 320 (compact) | 640 | `35df0fbe474b0551` | `20e67b4acc38959a` | 20 px at 340 |
 | LTV Comp | 260 | 520 | `e3d5fc2f21d11822` | `8901aa58c7466207` | 184 px at 486 |
 | BMO Tune RT | 360 | 720 | `8076f67b0802f196` | `10738b95c82711ef` | **110 px at 273** |
+
+**BMO CEQ's row was re-taken 2026-09-17**, at the end of the last module's
+pass, and the module is renamed. `snapshot`'s keyword is still **`eq`**: the
+*module* id never moved, only the product's display name. The panel gained an
+OVERSAMPLING row and an AUTO switch, HI-Q went up to the mid band, and the
+bands paid 17 px each for it. The rack's hash moves with it, because the rack
+has CEQ in it. See `ui-pass-ceq-2026-09-17.md`.
 
 **BMO Util's row was re-taken 2026-09-17**, at the end of its own pass
 (`db63acb`, `a2e5a63`): one knob row for all three, values under VOLUME and

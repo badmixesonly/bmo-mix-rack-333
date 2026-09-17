@@ -15,13 +15,14 @@ time. Hash renders before and after any change that should move nothing.
 
 ## A. Suite-wide, in this order
 
-- [ ] **BMO EQ → BMO CEQ rename.** `products/eq/Product.h` name and folder,
-      `products/eq/CMakeLists.txt` PRODUCT_NAME, `modules/eq/params.h`
-      kModuleName, the identity and accent tables, README, packager
-      README. `Fsty`, the bundle id, module id `eq` and the schema stay.
-      Needs the second preset-migration hop: `PresetInfo` grows a list of
-      legacy (folder, extension) pairs walked oldest first, and
-      `EqTests.cpp` updated. Users delete the old `BMO EQ.vst3`.
+- [x] ~~**BMO EQ → BMO CEQ rename.**~~ **Done 2026-09-17** with the module's
+      own pass: product name and folder, PRODUCT_NAME, `kModuleName`, the
+      identity table, README and the packager README, which gained a "BMO EQ
+      users" paragraph. `Fsty`, the bundle id, module id `eq` and the schema
+      stayed. The second preset hop went in with it -- `PresetInfo::legacy` is
+      a list, walked **newest first** rather than oldest as this said, because
+      "never overwrite" makes the first folder listed the winner and the newest
+      copy is the one the user last edited. `ui-pass-ceq-2026-09-17.md` §2.
 - [ ] **`utilGain` placeholder** (`core/ui/Tokens.h`, `#9c71c3`): Util's
       VOLUME reads as a Dimension control in a rack (hue 272° against
       Dimension's 271.6°) and measures about 3.6:1 on the dark plate, under
@@ -77,12 +78,29 @@ the numbers and the rejected candidates.
       whole body to itself. The lower rule, which is the alignment that carries
       the rack, does line up: row 566 on all three, test-pinned.
 
-### BMO EQ / CEQ (280)
-- [ ] Settled; the most finished panel in the suite. Only the rename.
-- [ ] Four parameters have no control (High Cut, Mix, Auto Gain,
-      Oversampling). Decide on the record whether that is intended.
-      Telephone and Mix Bus Sheen depend on two of them.
+### BMO CEQ (280)
+Module 8 of the pass and the last, 2026-09-17 on AURORA.
+`ui-pass-ceq-2026-09-17.md` has the numbers, the preset chain and the shapes
+that were turned down. This entry said "only the rename" and the pass found
+three controls with no home, which is the argument for walking every panel.
+- [x] ~~Settled; the most finished panel in the suite. Only the rename.~~
+- [x] **Renamed to BMO CEQ**, with the second preset-migration hop under it: a
+      list of legacy folders walked **newest first** (not oldest, as the
+      handoff said -- see the note for why that is the same rule stated
+      backwards), `.bmoceq`, the empty-folder gate replaced by a one-shot
+      `.migrated` marker, and the chain tested for the first time.
+- [x] ~~Four parameters have no control.~~ **Two now**: Oversampling took a
+      named section of 2x / 4x / HQ, and Auto Gain took the switch-row place
+      HI-Q left. High Cut and **Mix** stay host-only, Mix deliberately --
+      Frosty took a rendered MIX knob off on sight, and the parameter survives
+      only because removing it would shift the two after it in saved sessions.
+- [x] **HI-Q moved to the mid bell**, square, in the margin the dial was not
+      using. It needed `SwitchButton::setLabelSize`: a switch's label is 62% of
+      its height, so a square one cannot fit its own text at any size.
+- [x] The bands paid for the section: rows 112 -> 95, dial 59.5 -> 50.5 design
+      px. Four other shapes were rendered and turned down; see the note.
 - [ ] Low-cut crowding is parked at Frosty's request; leave it.
+- [ ] The legends EQL / LO-CUT / HI-Q: still not looked at, lowest priority.
 
 ### BMO Saturator (260)
 Module 7 of the pass, 2026-09-17 on AURORA. `ui-pass-sat-2026-09-17.md` has the

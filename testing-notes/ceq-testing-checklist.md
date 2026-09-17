@@ -7,13 +7,21 @@ listen for" in a DAW, in priority order, not a build or install guide.
 Drafted from a code and measurement review, not from an ear: the numbers
 are measured, the verdicts are Frosty's.
 
-The module is still called BMO EQ in this build. It is BMO CEQ after the UI
-pass; nothing about the sound changes with the name.
+The module is still called BMO EQ in this build. **It is BMO CEQ from the UI
+pass on** (2026-09-17); nothing about the sound changes with the name, and a
+session saved under either old name still opens.
 
-**Four of its sixteen parameters are not on the panel**: High Cut, Mix,
-Auto Gain and Oversampling. Reach them through Live's configure mode or the
-automation lanes (rack lanes p09, p14, p15, p16). Two presets depend on
-them (Telephone: High Cut; Mix Bus Sheen: Auto Gain).
+**Two of its sixteen parameters are not on the panel**: High Cut and Mix.
+Reach them through Live's configure mode or the automation lanes (rack lanes
+p09 and p14). Telephone depends on High Cut.
+
+Auto Gain and Oversampling were on that list until the UI pass, which gave
+each a control -- `AUTO` on the switch row, and an `OVERSAMPLING` row of
+2x / 4x / HQ under LO-CUT with Off the position none of them lights. **Mix is
+deliberately not on the panel** (Frosty, 2026-09-17) and will not be; the
+parameter stays only because removing it would shift the two after it in every
+saved session. So §6 below is a host-only test of a control the panel does not
+offer, and §2's oversampling checks can be driven from the panel now.
 
 ## 1. Does it work at all
 - Loads standalone and in a rack slot, no crashes, glitches or silence.

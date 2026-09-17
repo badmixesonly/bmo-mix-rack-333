@@ -359,7 +359,16 @@ juce::Rectangle<float> BmoLookAndFeel::toggleLabelBox (const juce::ToggleButton&
 
 juce::Font BmoLookAndFeel::toggleLabelFont (const juce::ToggleButton& button)
 {
-    return labelFont (toggleLabelBox (button).getHeight() * 0.62f, true);
+    // 62% of the box, unless the switch pins a size. Deriving it from the
+    // height is right for a row of switches that are all the suite's own
+    // height, and wrong for one that is taller than it is wide: the text grows
+    // with the height, so it outgrows the width faster than the width grows.
+    // "HI-Q" overflows a square switch at *every* size because of it -- 11.3 px
+    // at 40, 16.0 at 54. BMO CEQ's HI-Q pins the size a 26 px switch would have
+    // used, so a square switch sets its label the same as the row does.
+    const auto pinned = (float) button.getProperties().getWithDefault (kSwitchLabelSize, 0.0);
+
+    return labelFont (pinned > 0.0f ? pinned : toggleLabelBox (button).getHeight() * 0.62f, true);
 }
 
 float BmoLookAndFeel::toggleLabelOverflow (const juce::ToggleButton& button)

@@ -207,16 +207,20 @@ void checkOutputSection (bmo::ui::ModulePanel& panel, const juce::String& who)
     checkEquals (output->getBottom(), kOutputKnobBottom, who + " OUTPUT knob bottom");
 }
 
-/** The Saturator's oversampling row: three switches side by side over one
-    choice parameter, and Off is the position none of them lights.
+/** An oversampling row: three switches side by side over one choice parameter,
+    and Off is the position none of them lights. The Saturator took one on
+    2026-09-17 and BMO CEQ the same day.
 
     Both halves matter. The geometry, because these are the suite's switch size
     and gap, and a row that drifted off them would be the only one in the rack
     that had. The behaviour, because a click here does not toggle a button: it
     sets a parameter, and the parameter lights the switches. If that loop breaks
-    nothing lights at all, and a render of the default state cannot tell -- Off
-    is the state with nothing lit either way. */
-void checkSatOversampling (bmo::ui::ModulePanel& panel)
+    nothing lights at all, and on the Saturator a render of the default state
+    cannot tell -- Off is the state with nothing lit either way.
+
+    `litAtInit` is the mask the row opens on: 0 for the Saturator, which starts
+    Off, and 1 for CEQ, which starts on 2x. */
+void checkOversamplingRow (bmo::ui::ModulePanel& panel, const juce::String& who, int litAtInit)
 {
     juce::Button* row[3] {};
     const char* names[3] { "2x", "4x", "HQ" };
@@ -227,7 +231,7 @@ void checkSatOversampling (bmo::ui::ModulePanel& panel)
 
         if (row[i] == nullptr)
         {
-            check (false, juce::String ("sat has no ") + names[i] + " switch");
+            check (false, who + " has no " + names[i] + " switch");
             return;
         }
     }
@@ -235,38 +239,47 @@ void checkSatOversampling (bmo::ui::ModulePanel& panel)
     for (int i = 0; i < 3; ++i)
     {
         checkEquals (row[i]->getWidth(),  bmo::ui::Tokens::switchWidth,
-                     juce::String ("sat ") + names[i] + " width");
+                     who + " " + names[i] + " width");
         checkEquals (row[i]->getHeight(), bmo::ui::Tokens::switchHeight,
-                     juce::String ("sat ") + names[i] + " height");
+                     who + " " + names[i] + " height");
         checkEquals (row[i]->getY(), row[0]->getY(),
-                     juce::String ("sat ") + names[i] + " top, against 2x's");
+                     who + " " + names[i] + " top, against 2x's");
     }
 
     for (int i = 1; i < 3; ++i)
         checkEquals (row[i]->getX() - row[i - 1]->getRight(), bmo::ui::Tokens::switchGap,
-                     juce::String ("sat gap before ") + names[i]);
+                     who + " gap before " + names[i]);
 
     check (row[0]->getBottom() < kSwitchRowTop,
-           "sat oversampling row should sit above the output switches, is at "
+           who + " oversampling row should sit above the output switches, is at "
                + juce::String (row[0]->getY()));
 
     const auto lit = [&row] { return (row[0]->getToggleState() ? 1 : 0)
                                    + (row[1]->getToggleState() ? 2 : 0)
                                    + (row[2]->getToggleState() ? 4 : 0); };
 
-    checkEquals (lit(), 0, "sat oversampling at Init");
+    checkEquals (lit(), litAtInit, who + " oversampling at Init");
+
+    // Back to Off before the walk below, which starts from nothing lit. On CEQ
+    // that is itself the assertion that clicking the lit switch is the way to
+    // reach Off, since Off is the one position with no switch of its own.
+    for (int i = 0; i < 3; ++i)
+        if (litAtInit == (1 << i) && row[i]->onClick != nullptr)
+            row[i]->onClick();
+
+    checkEquals (lit(), 0, who + " clicking the lit switch reaches Off");
 
     for (int i = 0; i < 3; ++i)
     {
         if (row[i]->onClick != nullptr)
             row[i]->onClick();
 
-        checkEquals (lit(), 1 << i, juce::String ("sat ") + names[i] + " lit alone after a click");
+        checkEquals (lit(), 1 << i, who + " " + names[i] + " lit alone after a click");
 
         if (row[i]->onClick != nullptr)
             row[i]->onClick();
 
-        checkEquals (lit(), 0, juce::String ("sat ") + names[i] + " clicked again is Off");
+        checkEquals (lit(), 0, who + " " + names[i] + " clicked again is Off");
     }
 }
 
@@ -312,14 +325,20 @@ void checkEqBandColumn (bmo::ui::ModulePanel& panel)
 
     // 98 is the first row under the input section's rule; 558 is the top of
     // the output section's.
+    //
+    // The bands were 112 until 2026-09-17, when the oversampling section went
+    // in below LO-CUT and they paid for it: a rule, a switch row and the plate
+    // under it, 50 px, taken evenly off the three. The column no longer runs
+    // to the output rule on its own -- LO-CUT's foot plus that section does.
     constexpr Row rows[] = {
-        { "HIGH",   98, 112 },
-        { "MID",   226, 112 },
-        { "LOW",   354, 112 },
-        { "LO-CUT", 482, 76 },
+        { "HIGH",   98, 95 },
+        { "MID",   209, 95 },
+        { "LOW",   320, 95 },
+        { "LO-CUT", 431, 77 },
     };
 
     constexpr int kOutputRuleTop = 558;
+    constexpr int kOversamplingSection = 50;
 
     for (const auto& row : rows)
     {
@@ -338,8 +357,30 @@ void checkEqBandColumn (bmo::ui::ModulePanel& panel)
     }
 
     if (auto* lowCut = findNamed (panel, "LO-CUT"))
-        checkEquals (lowCut->getBottom(), kOutputRuleTop,
-                     "eq band column should end flush against the output rule, and its foot");
+        checkEquals (lowCut->getBottom() + kOversamplingSection, kOutputRuleTop,
+                     "eq band column plus the oversampling section should end flush against"
+                     " the output rule, and its foot");
+
+    // HI-Q went from the output switch row back to the mid band on 2026-09-17,
+    // where the control it affects is. It is laid over the band's own cell, so
+    // this pins the thing a reader would notice if it drifted: that it is
+    // beside the mid band and nowhere near the switch row.
+    auto* hiQ = findNamed (panel, "HI-Q");
+    auto* midBand = findNamed (panel, "MID");
+
+    if (hiQ == nullptr || midBand == nullptr)
+    {
+        check (false, "eq should have both a HI-Q switch and a MID band");
+        return;
+    }
+
+    checkEquals (hiQ->getBounds().getCentreY(), midBand->getBounds().getCentreY(),
+                 "eq HI-Q centres on the mid band");
+    check (hiQ->getY() >= midBand->getY() && hiQ->getBottom() <= midBand->getBottom(),
+           "eq HI-Q should sit within the mid band's own rows, is "
+               + juce::String (hiQ->getY()) + ".." + juce::String (hiQ->getBottom() - 1));
+    check (hiQ->getBottom() < kSwitchRowTop,
+           "eq HI-Q should no longer be on the output switch row");
 }
 
 /** Every trim knob is the shared trim height, wherever it appears.
@@ -1023,14 +1064,16 @@ int main (int argc, char** argv)
     // been on the panel's schema and nowhere on the panel since 0.2.0.
     withPanel (named ("sat"), [] (bmo::ui::ModulePanel& panel)
     {
-        checkSatOversampling (panel);
+        checkOversamplingRow (panel, "sat", 0);
     });
 
-    // BMO EQ: Hi-Q joined the output switch row in 0.2.3, and the band column
-    // between the two shared sections is pinned row by row.
+    // BMO CEQ: AUTO took the switch-row place HI-Q left when it went up to the
+    // mid band, the oversampling section arrived under LO-CUT, and the band
+    // column between the two shared sections is pinned row by row.
     withPanel (named ("eq"), [] (bmo::ui::ModulePanel& panel)
     {
-        checkOutputSwitch (panel, "HI-Q", "eq");
+        checkOutputSwitch (panel, "AUTO", "eq");
+        checkOversamplingRow (panel, "eq", 1);
         checkEqBandColumn (panel);
     });
 

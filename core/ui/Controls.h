@@ -190,6 +190,27 @@ public:
         For layout tests, like PlainKnob::captionOverflow. */
     float legendOverflow() const;
 
+    /** Draws the dial and its legend this far right of the cell's own centre.
+
+        For a band whose cell has been cut short on one side to keep clear of
+        something beside it, while the dial itself should stay where it was. BMO
+        CEQ's mid bell does exactly that: HI-Q sits in the margin to its right,
+        the cell stops short of it so that neither takes the other's clicks, and
+        the dial is pushed back onto the panel's centre line with its
+        neighbours. Zero is what every other band draws at. */
+    void setDialOffset (int dx);
+
+    /** How far the dial's ink reaches either side of its centre: the legend's
+        own outer limit plus half a label box, so it holds wherever the widest
+        label is drawn.
+
+        A band is a circle in a letterbox -- its radius comes off the cell's
+        height, so there is bare plate either side of it. A panel that wants to
+        put something in that plate needs this to place it against the dial
+        rather than against the cell's edge. BMO CEQ puts HI-Q there, beside the
+        mid bell it belongs to. */
+    int inkHalfWidth() const;
+
 private:
     /** How far a band's fan stops short of 12 and 6 o'clock -- or runs past
         them, when the band is outset. 15 degrees. */
@@ -246,6 +267,7 @@ private:
     juce::StringArray legend;
     juce::Colour accentColour;
     bool hasCentre = false, ringEnabled = true;
+    int dialOffset = 0;   ///< see setDialOffset
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ConcentricBand)
 };
@@ -278,6 +300,17 @@ public:
         against the plate, so it stays dark on a white switch whatever the
         plate underneath is doing. */
     void setActiveInkFrom (juce::Colour accent);
+
+    /** Sets the label at a fixed point size instead of one derived from the
+        switch's height.
+
+        Only a switch that is not the suite's own shape needs this. The derived
+        size is 62% of the box, which is right while every switch is 70 x 26 and
+        wrong for a square one: the label grows with the height and outgrows the
+        width, so "HI-Q" overflows a square switch at every size. BMO CEQ's
+        HI-Q, which sits square in the margin beside the mid bell, pins the size
+        the 26 px row uses so it sets like its neighbours. */
+    void setLabelSize (float points);
 
     /** Drawn engaged and not clickable, for a control the DSP holds on
         regardless of its parameter.

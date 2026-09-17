@@ -455,6 +455,21 @@ ConcentricBand::Geometry ConcentricBand::geometry() const
     return { ringRadius, 0.0f, maxRadius, juce::roundToInt (-(top + bottom) * 0.5f) };
 }
 
+int ConcentricBand::inkHalfWidth() const
+{
+    return juce::roundToInt (geometry().maxRadius + kLegendBoxWidth * 0.5f);
+}
+
+void ConcentricBand::setDialOffset (int dx)
+{
+    if (dialOffset == dx)
+        return;
+
+    dialOffset = dx;
+    resized();
+    repaint();
+}
+
 void ConcentricBand::paint (juce::Graphics& g)
 {
     if (legend.isEmpty())
@@ -463,7 +478,7 @@ void ConcentricBand::paint (juce::Graphics& g)
     const auto& t = tokens();
     const auto area = getLocalBounds().toFloat();
     const auto geo = geometry();
-    const auto centrePoint = area.getCentre().translated (0.0f, (float) geo.shift);
+    const auto centrePoint = area.getCentre().translated ((float) dialOffset, (float) geo.shift);
 
     const auto startAngle = ring.getRotaryParameters().startAngleRadians;
     const auto endAngle   = ring.getRotaryParameters().endAngleRadians;
@@ -528,7 +543,7 @@ void ConcentricBand::resized()
 {
     // The dial moves with its legend, so a filter is nudged down by the same
     // amount paint() nudges the labels -- see geometry().
-    const auto bounds = getLocalBounds().translated (0, geometry().shift);
+    const auto bounds = getLocalBounds().translated (dialOffset, geometry().shift);
 
     ring.setBounds (bounds);
 
@@ -590,6 +605,12 @@ void SwitchButton::setToggleStateSilently (bool shouldBeOn)
 void SwitchButton::setTint (juce::Colour tint)
 {
     button.setColour (juce::ToggleButton::tickColourId, tint);
+    button.repaint();
+}
+
+void SwitchButton::setLabelSize (float points)
+{
+    button.getProperties().set (BmoLookAndFeel::kSwitchLabelSize, points);
     button.repaint();
 }
 
