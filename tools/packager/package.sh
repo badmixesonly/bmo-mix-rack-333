@@ -99,9 +99,15 @@ Install
     VST3  ->  C:\Program Files\Common Files\VST3\
 
 FrostyEQ users
-  BMO EQ is FrostyEQ renamed; sessions that used FrostyEQ open with
-  BMO EQ. Remove the old FrostyEQ.vst3 / FrostyEQ.component so the DAW
+  BMO CEQ is FrostyEQ renamed; sessions that used FrostyEQ open with
+  BMO CEQ. Remove the old FrostyEQ.vst3 / FrostyEQ.component so the DAW
   does not show both.
+
+BMO EQ users
+  BMO EQ is now BMO CEQ -- the console EQ, so the name says what it is
+  next to BMO DEQ. Same plugin, same sessions, same sound. Remove the old
+  BMO EQ.vst3 / BMO EQ.component, or the DAW lists both. Your presets are
+  copied into the BMO CEQ folder the first time it runs.
 
 Presets
   ~/Library/Audio/Presets/LT3 Audio/<product>/   (macOS)

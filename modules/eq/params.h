@@ -17,7 +17,7 @@ namespace bmo::eq
 //==============================================================================
 
 inline constexpr auto kModuleId   = "eq";
-inline constexpr auto kModuleName = "BMO EQ";
+inline constexpr auto kModuleName = "BMO CEQ";
 
 inline constexpr auto kHfFreq       = "hf_freq";
 inline constexpr auto kHfGain       = "hf_gain";

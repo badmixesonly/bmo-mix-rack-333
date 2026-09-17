@@ -10,7 +10,7 @@ namespace bmo::products
 inline ProductInfo deqInfo()
 {
     return { "BMO DEQ",
-             { "BMO DEQ", ".bmodeq", {}, {} },
+             { "BMO DEQ", ".bmodeq" },
              deq::kVersionHint, deq::kStateVersion };
 }
 

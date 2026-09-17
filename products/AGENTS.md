@@ -12,7 +12,7 @@ Permanent. Allocate here before the first build of anything new.
 
 | Product | Module id | Plugin code | Bundle id | Presets |
 |---|---|---|---|---|
-| BMO EQ | `eq` | `Fsty` | `com.lt3audio.frostyeq` | `.bmoeq` (reads `.frostyeq`) |
+| BMO CEQ | `eq` | `Fsty` | `com.lt3audio.frostyeq` | `.bmoceq` (reads `.bmoeq`, `.frostyeq`) |
 | BMO Saturator | `sat` | `Bsat` | `com.lt3audio.bmosaturator` | `.bmosat` |
 | BMO Util | `util` | `Butl` | `com.lt3audio.bmoutil` | `.bmoutil` |
 | BMO Opto | `opto` | `Bopt` | `com.lt3audio.bmoopto` | `.bmoopto` |
@@ -23,8 +23,8 @@ Permanent. Allocate here before the first build of anything new.
 | LTV Comp -- **not a BMO product** | `ltvcomp` | `Ltvc` | `com.lt3audio.ltvcomp` | `.ltvcomp` (reads `.bmovcomp`) |
 
 Manufacturer code `LT3a`, company "LT3 Audio", preset root `LT3 Audio/`.
-BMO EQ keeps FrostyEQ's code and bundle id on purpose: that is what makes
-existing sessions open.
+BMO CEQ keeps FrostyEQ's code and bundle id on purpose, through two renames:
+that is what makes existing sessions open.
 
 ## Lines
 
@@ -150,10 +150,25 @@ Reserved for later products (not built, do not reuse): `Bfet` FET comp,
 
 ## BMO EQ and BMO DEQ — settle BMO EQ's name
 
-**Status (2026-09-10): not decided.** **BMO CEQ**, for console EQ, is the
-leading proposal for BMO EQ's new name. Frosty has not chosen it or any
-other name, and nothing has been renamed. BMO DEQ's identity is settled
-(above) and the core lets it go past 32 parameters.
+**Status: DONE, 2026-09-17 on AURORA.** Frosty chose **BMO CEQ**, for console
+EQ, on 2026-09-11, and the rename landed with the module's UI pass. The
+argument below is kept because it is why the name is what it is; what the
+rename touched is in the table further down, and all of it is done.
+
+Two things about it are worth carrying forward:
+
+- **The preset chain runs newest first**, not oldest first as the 0.2.4 review
+  and the UI-pass handoff both specified. Walking oldest first with "never
+  overwrite" means a preset name that exists in both old folders arrives from
+  **FrostyEQ** — the copy from before the user's later edits — and the BMO EQ
+  one is dropped. Newest first is the same rule stated the way it was meant.
+  `tests/plugin/EqTests.cpp` pins the direction, and reversing the order in
+  `products/eq/Product.h` fails it.
+- **The copy is one-shot, marked, not gated on an empty folder.** The old gate
+  stranded anyone who had saved a preset before the copy ran. `kMigrationMarker`
+  (`.migrated`, which carries no product extension, so nothing lists it as a
+  preset) replaces it, and Frosty chose it on 2026-09-17 so that a preset the
+  user deletes does not come back on the next launch.
 
 This section was written while BMO DEQ was still "BMO Parametric", and the
 argument below is that one's. The new names make the fix clearer, not
@@ -208,15 +223,26 @@ for doing it once more and never again, not for flinching.
   name is the existing pattern, not an exception. BMO DEQ takes `deq`.
 - **The parameter schema.** Untouched; this is a label change.
 
-### The one real code change
+### The one real code change — done
 
-`PresetInfo` carries exactly **one** legacy pair, and BMO EQ has already
+`PresetInfo` carried exactly **one** legacy pair, and BMO EQ had already
 spent it on `("FrostyEQ", ".frostyeq")`. A second rename needs a second hop,
 so either `PresetInfo` grows a chain of legacy names, or the FrostyEQ hop is
 dropped on the grounds that anyone who ran BMO EQ once has already been
 migrated. **Dropping it is the wrong call** -- it silently strands any
 tester who skipped a release, and the whole point of `migrateLegacy()` is
-that nobody has to have been paying attention. Grow the chain.
+that nobody has to have been paying attention. The chain was grown:
+`PresetInfo::legacy` is a `std::vector<LegacyPreset>`, newest first, and every
+other product passes an empty one.
+
+**It is tested now, which it never was before.** `migrateLegacy` used to
+return early whenever `setDirectoryForTesting` was in use, so the suite could
+not reach it at all; it resolves old folders through the same `folderFor` as
+the current one, and `EqTests` walks the whole chain -- both hops, the same
+name in both folders, the marker, a deleted preset staying deleted, and a
+user's own file never being overwritten. The same hole is still open for
+LTV Comp's one hop (`tests/plugin/VcompTests.cpp`), which now could be closed
+the same way.
 
 Users will also have to delete the old `BMO EQ.vst3`, exactly as they did
 for `FrostyEQ.vst3`, or the DAW lists both. The packager README already has

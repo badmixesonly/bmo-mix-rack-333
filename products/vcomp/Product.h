@@ -15,7 +15,7 @@ inline ProductInfo vcompInfo()
     // the old extension. One hop is enough -- unlike BMO CEQ, which needs a
     // second because it has been renamed once already.
     return { "LTV Comp",
-             { "LTV Comp", ".ltvcomp", "BMO Vcomp", ".bmovcomp" },
+             { "LTV Comp", ".ltvcomp", { { "BMO Vcomp", ".bmovcomp" } } },
              vcomp::kVersionHint, vcomp::kStateVersion };
 }
 

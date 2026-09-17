@@ -7,7 +7,7 @@ new plugin.
 
 | Product | What it is | Width |
 |---|---|---|
-| **BMO EQ** | FrostyEQ, renamed: a Neve-style three-band EQ with low cut, oversampled | 280 |
+| **BMO CEQ** | the console EQ: Neve-style, three bands, low cut, oversampled. Was FrostyEQ, then BMO EQ | 280 |
 | **BMO Saturator** | Drive, tone and blend, with auto-gain | 260 |
 | **BMO Util** | Gain, pan, width, polarity, mono | 160 |
 | **BMO Opto** | A two-knob opto-style leveller, CRUSH and LEVEL, with a feedback detector | 220 |
@@ -77,8 +77,9 @@ panel, but they have no host lane, so a rack cannot automate them.
 ## Presets and themes
 
 Presets live under `~/Library/Audio/Presets/LT3 Audio/<Product>/` on macOS
-and `%APPDATA%\LT3 Audio\<Product>\Presets\` on Windows. BMO EQ migrates a
-FrostyEQ preset folder on first run.
+and `%APPDATA%\LT3 Audio\<Product>\Presets\` on Windows. BMO CEQ copies its BMO EQ and
+FrostyEQ preset folders across on first run, newest first, and leaves a
+`.migrated` marker there so the copy never runs twice.
 
 A theme is a flat JSON file of token name to hex colour at
 `LT3 Audio/Themes/Default.json`; every open editor re-reads it once a second.

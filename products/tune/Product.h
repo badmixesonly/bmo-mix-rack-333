@@ -13,7 +13,7 @@ namespace bmo::products
 inline ProductInfo tuneInfo()
 {
     return { "BMO Tune RT",
-             { "BMO Tune RT", ".bmotune", {}, {} },
+             { "BMO Tune RT", ".bmotune" },
              tune::kVersionHint, tune::kStateVersion };
 }
 
