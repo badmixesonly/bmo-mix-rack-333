@@ -787,21 +787,28 @@ const std::vector<DynamicsMeter::ScalePoint>& DynamicsMeter::reductionScale()
     //
     // 0 and 24 are fixed points. Everything between is set against them.
     //
-    //   dB    0    1     2     3     4     5     6     9    12    15    18    21   24
-    //   at  .000 .100  .190  .265  .335  .400  .460  .555  .665  .745  .820  .912 1.000
-    //   ink  y    .     .     y     .     .     y     .     y     .     y     .    y
+    //   dB    0    1    2    3    4    5    6    8   10   12   14   16   18   20   22   24
+    //   at  .000 .100 .190 .265 .335 .400 .460 .520 .580 .640 .700 .760 .820 .880 .940 1.00
+    //   ink  y    .    .    y    .    .    y    .    .    y    .    .    y    .    .    y
     //
-    // A tick every dB through 0..6, and at 9, 15 and 21, so the arc reads as
-    // one continuous scale while only the round figures are inked. That is the
-    // rule vuScale above follows, and for the same reason -- it inks five of
-    // its thirteen points.
+    // Two regions. Through 0..6 a tick every dB, each gap a little narrower
+    // than the one before -- Frosty's placement, untouched. Above 6 a tick
+    // every 2 dB at an even .06 of the sweep, which is exactly the 5-to-6 gap,
+    // so the arc runs on past 6 at the spacing it arrived with instead of
+    // changing gear there. Every inked figure above 6 is even and lands on a
+    // tick. Frosty's call, 2026-09-17, on renders.
     //
-    // 9 is struck but not printed. It was inked until the whole panel was
-    // looked at rather than a crop: at six figures this reads as an
-    // instrument, at nine as a chart, and 9 was also the figure that made the
-    // tightest pair. Measured on the render, the closest inked pair is now
-    // 12 to 18 at 12.5 px, against 8.6 with the 9 inked and about 6 where the
-    // vuScale comment says figures stop clearing.
+    // It replaced ticks at 9, 15 and 21 whose gaps ran .095, .110, .080,
+    // .075, .092, .088 -- hand-placed and never smoothed, widest at 9..12,
+    // which read as a wobble through 3..12. Rendered and not taken: log curves
+    // above 6 (a hole after 6, 18 and 24 crowded), even 3 dB gaps (clean, but
+    // the tick rhythm halves at 6), and 1 dB ticks above 6 (a comb denser than
+    // the 0..6 it sits beside -- each dB there gets half the 5-to-6 arc).
+    //
+    // 9 was once inked and is not even struck now. At six figures this reads
+    // as an instrument, at nine as a chart. Inked figures above 6 sit .18 of
+    // the sweep apart, wider than the .155 that 12..18 had when it was the
+    // tightest pair.
     //
     // The needle is non-linear in dB as a result -- it moves further per dB at
     // small reductions, which is the point of all of this, and which VU
@@ -809,9 +816,9 @@ const std::vector<DynamicsMeter::ScalePoint>& DynamicsMeter::reductionScale()
     static const std::vector<ScalePoint> scale {
         { 0.0f,  0.000f },        { 1.0f,  0.100f, false }, { 2.0f,  0.190f, false },
         { 3.0f,  0.265f },        { 4.0f,  0.335f, false }, { 5.0f,  0.400f, false },
-        { 6.0f,  0.460f },        { 9.0f,  0.555f, false },
-        { 12.0f, 0.665f },        { 15.0f, 0.745f, false },
-        { 18.0f, 0.820f },        { 21.0f, 0.912f, false },
+        { 6.0f,  0.460f },        { 8.0f,  0.520f, false }, { 10.0f, 0.580f, false },
+        { 12.0f, 0.640f },        { 14.0f, 0.700f, false }, { 16.0f, 0.760f, false },
+        { 18.0f, 0.820f },        { 20.0f, 0.880f, false }, { 22.0f, 0.940f, false },
         { kGrRangeDb, 1.000f },
     };
 
