@@ -56,18 +56,42 @@ touched.
 
 ## macOS: "damaged and can't be opened"
 
-Not damaged. These builds are **not signed or notarised**, and macOS puts a
-quarantine flag on anything unzipped from a download. `install.command` clears
-it on exactly what it installed. By hand:
+Three different causes wear these same words, and only the first is the one
+people reach for.
+
+1. **The quarantine flag.** These builds are not signed or notarised, so macOS
+   quarantines anything unzipped from a download. `install.command` clears it.
+2. **The flag cleared in the wrong place.** macOS has two plug-in locations —
+   `~/Library/Audio/Plug-Ins/` and `/Library/Audio/Plug-Ins/`. An `xattr`
+   aimed at the first when the plugins are in the second matches nothing,
+   exits quietly, and looks exactly like the command not working. The
+   installer clears both, and prints a `sudo` line for anything it could not
+   write.
+3. **An arm64-only build on an Intel Mac.** No amount of `xattr` helps. The
+   installer checks this first and stops with an explanation rather than
+   letting you chase the flag.
+
+By hand, covering both locations:
 
 ```
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/BMO*.vst3 ~/Library/Audio/Plug-Ins/VST3/LTV*.vst3
+for d in ~/Library/Audio/Plug-Ins /Library/Audio/Plug-Ins; do
+  sudo xattr -dr com.apple.quarantine "$d"/VST3/BMO*.vst3 "$d"/VST3/LTV*.vst3 2>/dev/null
+  sudo xattr -dr com.apple.quarantine "$d"/Components/BMO*.component "$d"/Components/LTV*.component 2>/dev/null
+done
 ```
 
 Both globs are needed. **LTV Comp is the one bundle whose name does not start
 with `BMO`**, and the `BMO*`-only command this README used to give left it
-quarantined and looking broken after everything else worked. The installer
-avoids the problem entirely by clearing the flag per bundle, by name.
+quarantined and looking broken after everything else worked.
+
+To tell the three apart on the affected machine:
+
+```
+uname -m
+lipo -archs "/Library/Audio/Plug-Ins/VST3/BMO CEQ.vst3/Contents/MacOS/BMO CEQ"
+```
+
+`x86_64` from the first against `arm64` from the second is cause 3.
 
 ## macOS: architecture
 

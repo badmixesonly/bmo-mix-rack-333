@@ -110,12 +110,20 @@ Install
       VST3  ->  ~/Library/Audio/Plug-Ins/VST3/
       AU    ->  ~/Library/Audio/Plug-Ins/Components/
       These are not signed or notarised yet, so macOS will say a plugin
-      is "damaged and can't be opened". It is not damaged; that is the
-      quarantine flag on anything unzipped from a download. Clear it:
-        xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/BMO*.vst3 ~/Library/Audio/Plug-Ins/VST3/LTV*.vst3
-        xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/BMO*.component ~/Library/Audio/Plug-Ins/Components/LTV*.component
-      Both globs matter: LTV Comp is the one bundle whose name does not
-      begin with BMO, and a BMO-only glob leaves it quarantined.
+      is "damaged and can't be opened". It is almost never damaged.
+      Three things wear those words:
+        1. the quarantine flag, on anything unzipped from a download;
+        2. the flag cleared in ~/Library while the plugins are in
+           /Library, which matches nothing and looks like a no-op;
+        3. an arm64-only build on an Intel Mac, which no xattr fixes.
+      Covering 1 and 2 by hand:
+        for d in ~/Library/Audio/Plug-Ins /Library/Audio/Plug-Ins; do
+          sudo xattr -dr com.apple.quarantine "$d"/VST3/BMO*.vst3 "$d"/VST3/LTV*.vst3 2>/dev/null
+          sudo xattr -dr com.apple.quarantine "$d"/Components/BMO*.component "$d"/Components/LTV*.component 2>/dev/null
+        done
+      Both globs matter: LTV Comp is the one bundle whose name does
+      not begin with BMO. For 3, run  uname -m  -- if it says x86_64
+      you need a package from a tag run, which is universal.
     Windows
       VST3  ->  C:\Program Files\Common Files\VST3\
     Then rescan plugins in your DAW.
