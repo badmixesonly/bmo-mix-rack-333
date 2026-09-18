@@ -249,6 +249,21 @@ Jobs: **DSP** (Linux, seconds), **Each side alone** (Linux, the two switches),
 **macOS** and **Windows** (the plugins, ~20-25 min). The Windows job's
 `BMO-Windows` artifact is what ICE QUEEN installs, by hash.
 
+#### Installing an artifact
+
+Unzip it and run the installer beside the bundles — `install.command` on
+macOS, `install.ps1` elevated on Windows. It removes bundles an earlier build
+left under a name this one no longer uses (`tools/packager/superseded.txt`),
+copies everything into place, and on macOS clears the quarantine flag that
+makes an unsigned plugin report itself as **"damaged and can't be opened"**.
+That message is Gatekeeper, not a broken build; nothing in CI signs or
+notarises. `tools/packager/README.md` has the detail, including why the mac
+package from a non-tag run is arm64 only.
+
+Verify by **hash, never by size** afterwards: `scripts/build.sh` installs a
+Debug build over the same folder, so a local build silently replaces the
+artifact a listening result belongs to.
+
 #### The last green run on `integration`
 
 **34834557823** (dispatched) and **34834687703** (started by the `v0.2.4`

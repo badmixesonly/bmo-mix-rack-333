@@ -244,9 +244,16 @@ user's own file never being overwritten. The same hole is still open for
 LTV Comp's one hop (`tests/plugin/VcompTests.cpp`), which now could be closed
 the same way.
 
-Users will also have to delete the old `BMO EQ.vst3`, exactly as they did
-for `FrostyEQ.vst3`, or the DAW lists both. The packager README already has
-a section for this; it gains a second paragraph.
+A rename that changes the **bundle filename** leaves the old bundle in the
+user's plug-in folder, and the DAW lists both. Add a line to
+`tools/packager/superseded.txt` -- one list, read by the macOS and Windows
+installers both -- and the installers remove it. `tools/packager/README.md`
+has the format and the guard that stops a bad line deleting a live plugin.
+
+Say in the generated `README.txt` whether **sessions** survive the rename,
+not just presets: they are different questions. BMO CEQ kept `Fsty` and its
+bundle id through two renames so old sessions open; LTV Comp changed both, so
+they do not.
 
 ## Accents
 

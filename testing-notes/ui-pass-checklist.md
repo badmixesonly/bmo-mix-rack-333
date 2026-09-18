@@ -245,3 +245,33 @@ has the numbers and the rejected candidates.
 - [ ] Every ratio quoted against a named ground, from `tools/inspect`.
 - [ ] `testing-notes/ui-pass-<date>.md` with before/after hashes and
       Frosty's calls recorded at the call sites.
+
+## D. All eight panels, walked and recorded
+
+**Frosty's call, 2026-09-17, from the review of pull request #9: not all eight
+were fully tested, so all eight are to be.** The pass was described as covering
+every rack panel with its own record; six of them have one. This section is the
+count, and it is the gate on calling the pass done.
+
+The eight are the rack's seven modules and the rack's own panel. BMO Tune RT is
+**not** one of them — it is not in the rack — but it has a record and its §B
+items stay open, so it is listed here for completeness rather than as a gate.
+
+| panel | own record | §B items | still owed |
+|---|---|---|---|
+| BMO Util | `ui-pass-util-2026-09-17.md` | 7 done, 0 open | — |
+| BMO CEQ | `ui-pass-ceq-2026-09-17.md` | 5 done, 2 open | the EQL / LO-CUT / HI-Q legends; low-cut crowding is parked at Frosty's request |
+| BMO Saturator | `ui-pass-sat-2026-09-17.md` | 6 done, 3 open | host names `Sat In` / `Auto Gain` against the captions; the 1.42:1 white pointer in light |
+| BMO Opto | `ui-pass-opto-2026-09-17.md` | 6 done, 0 open | — |
+| BMO Dimension | `ui-pass-dim-2026-09-17.md` | 5 done, 2 open | — |
+| BMO DEQ | `ui-pass-deq-2026-09-15.md` | 0 done, 4 open | **every §B item**; the record predates them |
+| **LTV Comp** | **none** | 1 done, 3 open | **a record, plus the meter block, the IN-caption hit-test, and the names — AMOUNT, LOW THRU, HIGH THRU, SC HPF, COMPLEX and the product name are all first drafts, and the accent `#a2a8ff` is not signed off** |
+| **The rack** | **none** | 0 done, 2 open | **a record, plus the shared-row count and the slot bar** |
+
+- [ ] BMO DEQ's four §B items closed, or re-recorded as decided.
+- [ ] **LTV Comp walked**, with `ui-pass-ltvcomp-<date>.md`. Its names and
+      accent need Frosty, and the product needs Leteveon's approval before any
+      of it is settled.
+- [ ] **The rack walked**, with `ui-pass-rack-<date>.md`.
+- [ ] The three items in §C above, which are still unticked for the pass as a
+      whole.
