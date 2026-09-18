@@ -73,7 +73,7 @@ EqPanel::EqPanel (ui::ModuleContext ctx)
       phase  (context.params.param (Index::phase),  ui::BmoLookAndFeel::phaseGlyph(), ui::tokens().polarity),
       midHiQ (context.params.param (Index::midHiQ), "HI-Q", ui::tokens().switchAlt),
       autoGain (context.params.param (Index::autoGain), "AUTO", ui::tokens().switchAlt),
-      os2x ("2x"), os4x ("4x"), osHq ("HQ")
+      os2x ("2x"), os4x ("4x"), osHq ("8x")
 {
     for (auto* c : std::initializer_list<juce::Component*> {
              &inputGain, &high, &mid, &low, &highPass, &eqIn, &phase, &midHiQ,

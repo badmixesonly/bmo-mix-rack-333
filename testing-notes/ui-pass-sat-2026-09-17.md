@@ -16,7 +16,7 @@ Read `ui-pass-render-loop.md` for the tools.
 | before | `270159d1c8ccccb5` | `e076b68d1d065d98` |
 | after the caption and centring work (`8e56cd1`) | `6a2218d7b6bd28e3` | `237d1ac8657d7a93` |
 | after the oversampling section | `0a94a1b7dbdb1b6d` | `4777584d5a82c801` |
-| after, `oversampling=HQ (8x)` | `27e1d91ad8614d39` | — |
+| after, `oversampling=8x` | `27e1d91ad8614d39` | — |
 
 Largest bare band, dark: **66 px → 43**. The six other panels and the rack hash
 as before; `ui_layout_tests` and `sat_tests` are green.
@@ -97,7 +97,7 @@ nowhere on the panel — host automation only, which is also still true of BMO E
 | c | a small dial in the bare plate beside OUTPUT | cost nothing; read as a second trim |
 | **d** | **a rule and three switches, side by side** | **taken** |
 
-Frosty took the section from a, the switches from his own ask: **2x / 4x / HQ,
+Frosty took the section from a, the switches from his own ask: **2x / 4x / 8x,
 with Off the position none of them lights.** 20 px of rule and 28 of switches, at
 the suite's switch width and gap, so the row reads as the same kind of control as
 SAT / Ø / AUTO under it. They light in `switchAlt` — anything-else by the table
@@ -149,7 +149,7 @@ by reading the constants:
 | Off | 0 | 0 |
 | 2x | 40 | 0.83 ms |
 | 4x | 60 | 1.25 ms |
-| HQ (8x) | 70 | 1.46 ms |
+| 8x | 70 | 1.46 ms |
 
 - **BMO DEQ: none, in any mode.** No oversampling parameter at all, and
   `DspCore::latencySamples()` is a constexpr 0. `Design.h` names oversampling as
@@ -161,7 +161,7 @@ by reading the constants:
 - **The Saturator still defaults to Off.** What changed today is that the panel
   can now reach the other three, where only a host could before.
 - **A rack reports the sum** of its slots (`tests/plugin/RackTests.cpp`), so a
-  CEQ and a Saturator on HQ in one rack is 110 samples.
+  CEQ and a Saturator on 8x in one rack is 110 samples.
 
 ## 9. Next
 

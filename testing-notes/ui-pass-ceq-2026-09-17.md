@@ -64,7 +64,7 @@ so — and could now be closed the same way.
 
 ## 3. What the panel gained
 
-**Oversampling has a control** (`OVERSAMPLING` on a rule, then 2x / 4x / HQ).
+**Oversampling has a control** (`OVERSAMPLING` on a rule, then 2x / 4x / 8x).
 It had been on the schema since 0.2.0 and nowhere on the panel, reachable only
 by host automation. Same shape the Saturator took a day earlier, and the same
 radio-over-one-choice-parameter arrangement: a click sets the parameter and the

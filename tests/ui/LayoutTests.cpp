@@ -223,7 +223,7 @@ void checkOutputSection (bmo::ui::ModulePanel& panel, const juce::String& who)
 void checkOversamplingRow (bmo::ui::ModulePanel& panel, const juce::String& who, int litAtInit)
 {
     juce::Button* row[3] {};
-    const char* names[3] { "2x", "4x", "HQ" };
+    const char* names[3] { "2x", "4x", "8x" };
 
     for (int i = 0; i < 3; ++i)
     {

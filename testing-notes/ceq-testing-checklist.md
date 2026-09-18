@@ -17,7 +17,7 @@ p09 and p14). Telephone depends on High Cut.
 
 Auto Gain and Oversampling were on that list until the UI pass, which gave
 each a control -- `AUTO` on the switch row, and an `OVERSAMPLING` row of
-2x / 4x / HQ under LO-CUT with Off the position none of them lights. **Mix is
+2x / 4x / 8x under LO-CUT with Off the position none of them lights. **Mix is
 deliberately not on the panel** (Frosty, 2026-09-17) and will not be; the
 parameter stays only because removing it would shift the two after it in every
 saved session. So §6 below is a host-only test of a control the panel does not

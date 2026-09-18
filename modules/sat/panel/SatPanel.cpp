@@ -106,7 +106,7 @@ SatPanel::SatPanel (ui::ModuleContext ctx)
       satIn    (context.params.param (Index::satIn),    "SAT", context.def.accent),
       phase    (context.params.param (Index::phase),    ui::BmoLookAndFeel::phaseGlyph(), ui::tokens().polarity),
       autoGain (context.params.param (Index::autoGain), "AUTO", ui::tokens().switchAlt),
-      os2x ("2x"), os4x ("4x"), osHq ("HQ")
+      os2x ("2x"), os4x ("4x"), osHq ("8x")
 
 {
     for (auto* c : std::initializer_list<juce::Component*> {

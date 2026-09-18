@@ -90,7 +90,7 @@ three controls with no home, which is the argument for walking every panel.
       backwards), `.bmoceq`, the empty-folder gate replaced by a one-shot
       `.migrated` marker, and the chain tested for the first time.
 - [x] ~~Four parameters have no control.~~ **Two now**: Oversampling took a
-      named section of 2x / 4x / HQ, and Auto Gain took the switch-row place
+      named section of 2x / 4x / 8x, and Auto Gain took the switch-row place
       HI-Q left. High Cut and **Mix** stay host-only, Mix deliberately --
       Frosty took a rendered MIX knob off on sight, and the parameter survives
       only because removing it would shift the two after it in saved sessions.
@@ -116,7 +116,7 @@ found four things anyway, which is the argument for walking every panel.
       OUTPUT were already right and were not touched.
 - [x] **Each section centres its own ink**, rather than the middle centring as
       one block with the slack pooled above DRIVE and under MIX.
-- [x] **Oversampling has a control** -- a rule and three switches, 2x / 4x / HQ,
+- [x] **Oversampling has a control** -- a rule and three switches, 2x / 4x / 8x,
       with Off the position none of them lights. It had been on the schema and
       nowhere on the panel since 0.2.0. `checkSatOversampling` pins the row and
       the radio behaviour, since a render of the default state cannot tell a
