@@ -33,6 +33,10 @@ namespace
         well. It does not any more, so this is only breathing room now. */
     constexpr float kScaleGap    = 2.0f;
 
+    /** The box the gate's name is drawn in. Wide enough for "GATE" at
+        kScaleSize with air either side. */
+    constexpr float kGateLabelWidth = 34.0f;
+
 }
 
 LevelBar::LevelBar (juce::String captionText, Grow growDirection,
@@ -43,6 +47,10 @@ LevelBar::LevelBar (juce::String captionText, Grow growDirection,
       maxDb (maximumDb),
       source (std::move (levelSource))
 {
+    // Named after the caption a reader sees, like every other control in the
+    // suite -- see PlainKnob's constructor. It is what lets a layout test ask
+    // for "IN" and get the bar the gate is on.
+    setName (caption);
     setInterceptsMouseClicks (false, false);
 }
 
@@ -137,6 +145,37 @@ float LevelBar::positionOf (float db) const
 {
     const auto n = normalised (db);
     return grow == Grow::rightward ? n : 1.0f - n;
+}
+
+float LevelBar::gateMarkerXFor (float db) const
+{
+    // `normalised`, not `positionOf`: only a rightward bar carries a handle,
+    // so the two agree here. If a leftward one ever does, this needs the flip
+    // and so does setThresholdFromX -- together, or they part company again.
+    const auto well = wellBounds().toFloat();
+    return well.getX() + well.getWidth() * normalised (db);
+}
+
+juce::Rectangle<float> LevelBar::gateLabelBoundsFor (float db) const
+{
+    const auto well = wellBounds().toFloat();
+    const auto at = gateMarkerXFor (db);
+
+    // Clamped to the **component**, never to the well. Clamping it to the well
+    // is what pinned the name in place over the last 17 px of leftward travel
+    // while the flag went on without it -- worst at the gate's own default of
+    // -60, hard left, where the two sat 17 px apart.
+    //
+    // At this parameter's range the clamp cannot engage at all: the gate runs
+    // kGateOffDb to -10 rather than to 0, so the box wants component-x 21 at
+    // one end and a right edge of 192.8 at the other, inside a component 240
+    // wide. It is here so that a widened range clips the word at the panel's
+    // edge rather than silently detaching it from the thing it names.
+    const auto x = juce::jlimit (0.0f, (float) getWidth() - kGateLabelWidth,
+                                 at - kGateLabelWidth * 0.5f);
+
+    return { x, well.getY() - (float) kTagRow,
+             kGateLabelWidth, (float) kTagRow - kFlagHeight - 1.0f };
 }
 
 void LevelBar::refresh()
@@ -286,7 +325,7 @@ void LevelBar::paint (juce::Graphics& g)
         // is literally the level it will act at -- which is the entire reason
         // the gate lives here instead of on a knob.
         const auto value = threshold->convertFrom0to1 (threshold->getValue());
-        const auto at = well.getX() + well.getWidth() * normalised (value);
+        const auto at = gateMarkerXFor (value);
 
         // Whatever attachThreshold was given, unrouted: the handle is red now
         // rather than the module accent, so there is no accent here for a line
@@ -345,14 +384,8 @@ void LevelBar::paint (juce::Graphics& g)
             // the clamp should always have said: it cannot engage at this
             // range, and if the range ever widens it stops the word being
             // clipped off the panel instead of pinning it inside the trough.
-            const auto font = ui::labelFont (kScaleSize);
-            const auto width = 34.0f;
-            const auto x = juce::jlimit (0.0f, (float) getWidth() - width, at - width * 0.5f);
-
-            ui::drawLabel (g, "GATE",
-                           juce::Rectangle<float> (x, well.getY() - (float) kTagRow,
-                                                   width, (float) kTagRow - kFlagHeight - 1.0f),
-                           juce::Justification::centred, font,
+            ui::drawLabel (g, "GATE", gateLabelBoundsFor (value),
+                           juce::Justification::centred, ui::labelFont (kScaleSize),
                            ui::panelAccentFor (*this, handleColour));
         }
 
