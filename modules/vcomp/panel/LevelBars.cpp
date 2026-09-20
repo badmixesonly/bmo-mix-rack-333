@@ -327,12 +327,27 @@ void LevelBar::paint (juce::Graphics& g)
                               at,                             well.getY());
             g.fillPath (flag);
 
-            // Clamped into the well, so the name stays legible at either end
-            // of the travel instead of running off the panel -- and the gate's
-            // own default is hard left, which is exactly where it would.
+            // The name rides **with** the flag. They are one control and they
+            // have to move as one, which they did not until 2026-09-19: the
+            // label was clamped into the *well*, so over the last 17 px of
+            // leftward travel the flag went on and the word stayed behind.
+            // Worst at the gate's own default, -60, where it is hard left and
+            // the two sat 17 px apart -- measured on AURORA, flag centre at
+            // component-x 37.8 against the label's 54.8.
+            //
+            // The clamp was defending against an overflow that cannot happen.
+            // **The gate's range is kGateOffDb to -10, not to 0** (params.h),
+            // and the label is 34 px wide, so at the two extremes it wants
+            // component-x 21 and a right edge of 192.8 inside a component 240
+            // wide. Both fit, with 21 px spare at one end and 47 at the other.
+            //
+            // Clamped to the component rather than to the well, which is what
+            // the clamp should always have said: it cannot engage at this
+            // range, and if the range ever widens it stops the word being
+            // clipped off the panel instead of pinning it inside the trough.
             const auto font = ui::labelFont (kScaleSize);
             const auto width = 34.0f;
-            const auto x = juce::jlimit (well.getX(), well.getRight() - width, at - width * 0.5f);
+            const auto x = juce::jlimit (0.0f, (float) getWidth() - width, at - width * 0.5f);
 
             ui::drawLabel (g, "GATE",
                            juce::Rectangle<float> (x, well.getY() - (float) kTagRow,
